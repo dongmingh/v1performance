@@ -1,0 +1,53 @@
+{
+    "chaincodeID": "MyTest",
+    "transMode": "Simple",
+    "transType": "Invoke",
+    "invokeType": "Query",
+    "nOrderers": "1",
+    "nPeers": "2",
+    "nThread": "2",
+    "nRequest": "10",
+    "runDur": "30",
+    "burstOpt": {
+        "burstFreq0":  "500",
+        "burstDur0":  "3000",
+        "burstFreq1": "2000",
+        "burstDur1": "10000"
+    },
+    "mixOpt": {
+        "mixFreq": "20000"
+    },
+    "constantOpt": {
+        "recHist": "HIST",
+        "constFreq": "1000"
+    },
+    "TCertBatchSize": "200",
+    "ccType": "general",
+    "ccOpt": {
+        "keyStart": "5000",
+        "payLoadMin": "1024",
+        "payLoadMax": "2048"
+    },
+    "deploy": {
+        "chaincodePath": "chaincode_example02",
+        "fcn": "init",
+        "args": ["a","0","b","0"]
+    },
+    "invoke": {
+        "query": {
+            "fcn": "invoke",
+            "args": ["query", "b"]
+        },
+        "move": {
+            "fcn": "invoke",
+            "args": ["move", "a","b","1"]
+        }
+    },
+    "SCFile": [
+		{"ServiceCredentials":"SCFiles/config-local.json"},
+		{"ServiceCredentials":"SCFiles/hsbn-bluemix.json"},
+		{"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
+		{"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
+		{"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"}
+	]
+}

@@ -1,0 +1,56 @@
+{
+  "credentials": {
+    "peers": [
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 7051
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 7052
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 7053
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 7054
+      }
+    ],
+    "cop": {
+      "10.120.223.35_cop": {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 8888
+      }
+    },
+    "orderer": {
+      "10.120.223.35_orderer": {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 5151
+      }
+    },
+    "users": [
+      {
+        "username": "sdk",
+        "secret": "sdkpw",
+        "affiliation": "bank_a"
+      },
+      {
+        "username": "admin",
+        "secret": "Xurw3yU9zI0l",
+        "affiliation": "bank_a"
+      },
+      {
+        "username": "lukas",
+        "group1secret": "NPKYL39uKbkj",
+        "affiliation": "bank_a"
+      },
+      {
+        "username": "WebAppAdmin",
+        "secret": "1d5266a126",
+        "affiliation": "bank_a"
+      }
+    ]
+  }
+}
