@@ -1,15 +1,26 @@
-#Performance Node SDK - Hyperledger Fabric
+
+
+#Performance Node SDK - Hyperledger Fabric v1.0
+
+----------
 
 
 The performance Node SDK uses [Hyperledger Fabric Client (HFC) SDK](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup/) to interact with a [Hyperledger fabric](https://github.com/hyperledger/fabric) network.
 
+#Code Base
+
+    fabric commit level: b0e902ea482a5dd4f5a82b8051052c2915811e59
+    fabric-sdk-node: a7f57baca0ece7111f74f7b9174c2083df7cda86
 
 #Setup
 
-1. download all scripts (1 bash shell script and 3 js scripts) and userInput json files into the local working directory
-1. create a sub directory, SCFiles, under the working directory
-1. add Service Credentials file for each LPAR to the SCFiles directory
-1. modify userInput.json according to the desired test and the Service Credentials files
+1. git clone https://github.com/hyperledger/fabric-sdk-node.git
+2. cd fabric-sdk-node
+3. git reset --hard a7f57baca0ece7111f74f7b9174c2083df7cda86
+4. download all scripts (1 bash shell script and 2 js scripts) and 1 json file into directory fabric-sdk-node/test/unit
+5. create a sub directory, SCFiles, under the working directory
+6. add Service Credentials file for each LPAR to the SCFiles directory
+7. modify userInput-example02.json according to the desired test and the Service Credentials files
 
 
 #Usage
@@ -17,14 +28,13 @@ The performance Node SDK uses [Hyperledger Fabric Client (HFC) SDK](http://hyper
     ./perf_driver.sh <user input json file> <nLPARs>
 
 
-* user input json file: the json file contains all user specified parameters for the test, see below for description
-
-* nLPARs: number of LPARs
+- user input json file: the json file contains all user specified parameters for the test, see below for description.
+- nLPARs: number of LPARs
 
 
 ###Examples
 
-* ./perf_driver.sh userInput-example02.json 1
+- ./perf_driver.sh userInput-example02.json 1
 
 The above command will execute chaincode on 1 LPAR specified in userInput-example02.json
 
@@ -32,10 +42,9 @@ The above command will execute chaincode on 1 LPAR specified in userInput-exampl
 
 #Scripts
 
-* perf_driver.sh: the performance driver
-* perf-certificate.js: the Node js to download certificate.
-* perf-main.js: the performance main js
-* perf-execRequest.js: A Node js executing transaction requests
+- perf_driver.sh: the performance driver
+- perf-main.js: the performance main js
+- perf-execRequest.js: A Node js executing transaction requests
 
 
 #User Input File
@@ -85,6 +94,7 @@ The above command will execute chaincode on 1 LPAR specified in userInput-exampl
             }
         },   
 	    "SCFile": [
+            {"ServiceCredentials":"SCFiles/config-35.json"},
 	        {"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
 		    {"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
 	 	    {"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"},
@@ -94,79 +104,66 @@ The above command will execute chaincode on 1 LPAR specified in userInput-exampl
     
 where:
 
-* **transMode**: transaction mode
+- **transMode**: transaction mode
+  -  Simple: one transaction type and rate only, the subsequent transaction is sent when the response, success or failure, of the previous transaction is received
+  -  Burst: various traffic rates
+  -  Mix: mix invoke and query transactions
+  -  Constant: the transactions are sent by the specified rate, constFreq, regardless the response
 
- * Simple: one transaction type and rate only, the subsequent transaction is sent when the response, success or failure, of the previous transaction is received
+- **transType**: transaction type
 
- * Burst: various traffic rates
+  - Deploy: deploy transaction
+  - Invoke: invokes transaction
 
- * Mix: mix invoke and query transactions
+- **invokeType**: invoke transaction type.  This parameter is valid only if the transType is set to invoke
 
- * Constant: the transactions are sent by the specified rate, constFreq, regardless the response
+  - Move: move transaction
+  - Query: query transaction
 
-* **transType**: transaction type
+- **nPeer**: number of peers, this number has to match with the peer netwrok, default is 4
 
- * Deploy: deploy transaction
+- **nThread**: number of threads for the test, default is 4
 
- * Invoke: invokes transaction
+- **nRequest**: number of transaction requests for each thread
 
-* **invokeType**: invoke transaction type.  This parameter is valid only if the transType is set to invoke
+- **runDur**: run duration in seconds when nRequest is 0
 
- * Move: move transaction
+- **burstOpt**: the frequencies and duration for Burst transaction mode traffic. Currently, two transaction rates are supported. The traffic will issue one transaction every burstFreq0 ms for burstDur0 ms, then one transaction every burstFreq1 ms for burstDur1 ms, then the pattern repeats. These parameters are valid only if the transMode is set to Burst.
 
- * Query: query transaction
+  - burstFreq0: frequency in ms for the first transaction rate
+  - burstDur0:  duration in ms for the first transaction rate
+  - burstFreq1: frequency in ms for the second transaction rate
+  - burstDur1:  duration in ms for the second transaction rate
 
-* **nPeer**: number of peers, this number has to match with the peer netwrok, default is 4
 
-* **nThread**: number of threads for the test, default is 4
+- **mixOpt**: each invoke is followed by a query on every thread. This parameter is valid only the transMode is set to Mix.
 
-* **nRequest**: number of transaction requests for each thread
+  - mixFreq: frequency in ms for the transaction rate. This value should be set based on the characteristics of the chaincode to avoid the failure of the immediate query.
 
-* **runDur**: run duration in seconds when nRequest is 0
-
-* **burstOpt**: the frequencies and duration for Burst transaction mode traffic. Currently, two transaction rates are supported. The traffic will issue one transaction every burstFreq0 ms for burstDur0 ms, then one transaction every burstFreq1 ms for burstDur1 ms, then the pattern repeats. These parameters are valid only if the transMode is set to Burst.
-
-  * burstFreq0: frequency in ms for the first transaction rate
-
-  * burstDur0:  duration in ms for the first transaction rate
-
-  * burstFreq1: frequency in ms for the second transaction rate
-
-  * burstDur1:  duration in ms for the second transaction rate
-    
-
-* **mixOpt**: each invoke is followed by a query on every thread. This parameter is valid only the transMode is set to Mix.
+- **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to Constant.
   
-  * mixFreq: frequency in ms for the transaction rate. This value should be set based on the characteristics of the chaincode to avoid the failure of the immediate query.
+  - recHist: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
+  - constFreq: frequency in ms for the transaction rate.
 
-* **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to Constant.
-  
-  * recHist: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
+- **TCertBatchSize**: TCert batch size, default is 200
 
-  * constFreq: frequency in ms for the transaction rate.
+- **ccType**: chaincode type
 
-* **TCertBatchSize**: TCert batch size, default is 200
+  - auction: The first argument in the query and invoke request is incremented by 1 for every transaction.  And, the invoke payload is made of a random string with various size between payLoadMin and payLoadMax defined in ccOptions.
+  - general: The arguments of transaction request are taken from the user input json file without any changes.
 
-* **ccType**: chaincode type
+- **ccOpt**: chaincode options
+  - keyStart: the starting transaction key index, this is used when the ccType is auction which requires a unique key for each invoke.
+  - payLoadMin: minimum size in bytes of the payload. The payload is made of random string with various size between payLoadMin and payLoadMax.
+  - payLoadMax: maximum size in bytes of the payload
 
-  * auction: The first argument in the query and invoke request is incremented by 1 for every transaction.  And, the invoke payload is made of a random string with various size between payLoadMin and payLoadMax defined in ccOptions.
+- **deploy**: deploy contents
 
-  * general: The arguments of transaction request are taken from the user input json file without any changes.
+- **query**: query contents
 
-* **ccOpt**: chaincode options
-  * keyStart: the starting transaction key index, this is used when the ccType is auction which requires a unique key for each invoke.
+- **invoke**e contents
 
-  * payLoadMin: minimum size in bytes of the payload. The payload is made of random string with various size between payLoadMin and payLoadMax.
-
-  * payLoadMax: maximum size in bytes of the payload
-
-* **deploy**: deploy contents
-
-* **query**: query contents
-
-* **invoke**e contents
-
-* **SCFile**: the service credentials list, one per LPAR
+- **SCFile**: the service credentials list, one per LPAR
 
 
 #Service Credentials

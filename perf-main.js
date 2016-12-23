@@ -16,9 +16,9 @@
 
 /*
  *   usage:
- *      node perf-main.js <LPARid> <ui file>
- *        - LPARid: LPAR id
+ *      node perf-main.js <ui file> <LPARid>
  *        - ui file: user input file
+ *        - LPARid: LPAR id
  */
 // This is an end-to-end test that focuses on exercising all parts of the fabric APIs
 // in a happy-path scenario

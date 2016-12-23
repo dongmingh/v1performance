@@ -46,8 +46,8 @@ var tCurr;
 var tEnd;
 var tLocal;
 var i = 0;
-var inv_m = 0;
-var inv_q = 0;
+var inv_m = 0;    // counter of invoke move
+var inv_q = 0;    // counter of invoke query
 var IDone=0;
 var QDone=0;
 var recHist;
@@ -170,9 +170,9 @@ var request_query = {
 };
 
 
-
-//util.debuglog('error');
-// test begins ....
+/*
+ *   transactions begin ....
+ */
     execTransMode();
 
 function execTransMode() {

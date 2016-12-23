@@ -1,11 +1,10 @@
 {
-    "chaincodeID": "MyTest",
     "transMode": "Simple",
     "transType": "Invoke",
-    "invokeType": "Query",
+    "invokeType": "Move",
     "nOrderers": "1",
-    "nPeers": "2",
-    "nThread": "2",
+    "nPeers": "3",
+    "nThread": "3",
     "nRequest": "10",
     "runDur": "30",
     "burstOpt": {
