@@ -20,7 +20,6 @@
         "recHist": "HIST",
         "constFreq": "1000"
     },
-    "TCertBatchSize": "200",
     "ccType": "general",
     "ccOpt": {
         "keyStart": "5000",
