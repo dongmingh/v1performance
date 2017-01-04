@@ -115,9 +115,13 @@ for (i=0; i<uiContent.deploy.args.length; i++) {
     testDeployArgs.push(uiContent.deploy.args[i]);
 }
 
+    console.log('chaincode path: ', testUtil.CHAINCODE_PATH);
+    console.log('chaincode path: ', uiContent.deploy.chaincodePath);
+    //chaincodePath: testUtil.CHAINCODE_PATH,
+    //chaincodePath: uiContent.deploy.chaincodePath,
 var request_deploy = {
     targets: grpcArgs,
-    chaincodePath: testUtil.CHAINCODE_PATH,
+    chaincodePath: uiContent.deploy.chaincodePath,
     chaincodeId: chaincode_id,
     fcn: uiContent.deploy.fcn,
     args: testDeployArgs,

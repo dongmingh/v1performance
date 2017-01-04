@@ -27,7 +27,7 @@
         "payLoadMax": "2048"
     },
     "deploy": {
-        "chaincodePath": "chaincode_example02",
+        "chaincodePath": "github.com/example_cc",
         "fcn": "init",
         "args": ["a","0","b","0"]
     },
