@@ -19,17 +19,21 @@
       }
     ],
     "cop": {
-      "10.120.223.35_cop": {
+      "localhost_cop": {
         "discovery_host": "10.120.223.35",
         "discovery_port": 8888
       }
     },
-    "orderer": {
-      "10.120.223.35_orderer": {
+    "orderer": [
+      {
         "discovery_host": "10.120.223.35",
         "discovery_port": 5151
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 5152
       }
-    },
+    ],
     "users": [
       {
         "username": "sdk",
@@ -39,6 +43,11 @@
       {
         "username": "admin",
         "secret": "Xurw3yU9zI0l",
+        "affiliation": "bank_a"
+      },
+      {
+        "username": "admin",
+        "secret": "adminpw",
         "affiliation": "bank_a"
       },
       {

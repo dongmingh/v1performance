@@ -28,16 +28,31 @@ var tape = require('tape');
 //var _test = require('tape-promise');
 //var test = _test(tape);
 
+var log4js = require('log4js');
+var logger = log4js.getLogger('E2E');
+logger.setLevel('ERROR');
+
 var path = require('path');
 
-var hfc = require('../..');
+var hfc = require('hfc');
+hfc.setLogger(logger);
+
+//var grpc = require('grpc');
+
 var util = require('util');
-var grpc = require('grpc');
 var testUtil = require('./util.js');
-var utils = require('../../lib/utils.js');
+var utils = require('hfc/lib/utils.js');
+var Peer = require('hfc/lib/Peer.js');
+var Orderer = require('hfc/lib/Orderer.js');
 var fs = require('fs');
 
-var chain = hfc.newChain('testChain-e2e');
+var client = new hfc();
+var chain = client.newChain('testChain-e2e');
+utils.setConfigSetting('crypto-keysize', 256);
+var keyValStorePath = testUtil.KVS;
+client.setStateStore(hfc.newDefaultKeyValueStore({
+        path: keyValStorePath
+}));
 
 // local vars
 var webUser;
@@ -54,6 +69,9 @@ var recHist;
 var buff;
 var ofile;
 var chaincode_id = 'mycc1';
+var chain_id = '**TEST_CHAINID**';
+var tx_id = null;
+var nonce = null;
 
 testUtil.setupChaincodeDeploy();
 
@@ -65,16 +83,12 @@ utils.setConfigSetting('crypto-keysize', 256);
 // with the key size 256 above), in order to match what the peer and COP use
 utils.setConfigSetting('crypto-hash-algo', 'SHA2');
 
-chain.setKeyValueStore(hfc.newKeyValueStore({
-	path: testUtil.KVS
-}));
-
 var pid = parseInt(process.argv[2]);
 // input: userinput json file
 var LPARid = parseInt(process.argv[3]);
 var uiFile = process.argv[4];
 var tStart = parseInt(process.argv[5]);
-console.log('[LPAR:id=%d:%d] input parameters: LPARid=%d, uiFile=%s, tStart=%d', LPARid, pid, LPARid, uiFile, tStart);
+console.log('[LPARid:id=%d:%d] input parameters: LPARid=%d, uiFile=%s, tStart=%d', LPARid, pid, LPARid, uiFile, tStart);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 
 var svcFile = uiContent.SCFile[LPARid].ServiceCredentials;
@@ -84,33 +98,31 @@ var users = network.credentials.users;
 var cop = network.credentials.cop;
 var orderer = network.credentials.orderer;
 
-//set Member Services url and Orderer url
-var cop_id = Object.keys(network.credentials.cop);
-tmp = 'http://' + cop[cop_id].discovery_host + ':' + cop[cop_id].discovery_port;
-console.log('[LPARid:id=%d:%d] cop url: %s', LPARid, pid, tmp);
-chain.setMemberServicesUrl(tmp);
-var orderer_id = Object.keys(network.credentials.orderer);
-tmp = 'grpc://' + orderer[orderer_id].discovery_host + ':' + orderer[orderer_id].discovery_port;
-console.log('[LPARid:id=%d:%d] orderer url: %s', LPARid, pid, tmp);
-chain.setOrderer(tmp);
-
 //user parameters
 //var chaincode_id = uiContent.chaincodeID;
 var transMode = uiContent.transMode;
 var transType = uiContent.transType;
 var invokeType = uiContent.invokeType;
 var nRequest = parseInt(uiContent.nRequest);
-var nPeers = parseInt(uiContent.nPeers);
-var nOrderers = parseInt(uiContent.nOrderers);
-console.log('[LPARid:id=%d:%d] nOrderers: %d, nPeers: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', LPARid, pid, nOrderers, nPeers, transMode, transType, invokeType, nRequest);
+var nPeer = parseInt(uiContent.nPeer);
+var nOrderer = parseInt(uiContent.nOrderer);
+console.log('[LPARid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', LPARid, pid, nOrderer, nPeer, transMode, transType, invokeType, nRequest);
 
 var runDur=0;
 if ( nRequest == 0 ) {
    runDur = parseInt(uiContent.runDur);
-   console.log('[LPARid:id=%d:%d] nOrderers: %d, nPeers: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', LPARid, pid, nOrderers, nPeers, transMode, transType, invokeType, runDur);
+   console.log('[LPARid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', LPARid, pid, nOrderer, nPeer, transMode, transType, invokeType, runDur);
    // convert runDur to ms
    runDur = 1000*runDur;
 }
+
+//add orderer
+for (i=0; i<nOrderer; i++) {
+    tmp = 'grpc://' + orderer[i].discovery_host + ":" + orderer[i].discovery_port;
+    console.log('[LPARid=%d] orderer url: ', LPARid, tmp);
+    chain.addOrderer(new Orderer(tmp));
+}
+
 
 //var g = ['grpc://10.120.223.35:7051', 'grpc://10.120.223.35:7052', 'grpc://10.120.223.35:7053'];
 var g = [];
@@ -119,56 +131,64 @@ for (i=0; i<peers.length; i++) {
     g.push(tmp);
 }
 
-var grpcArgs = [];
-grpcArgs.push(hfc.getPeer(g[pid % nPeers]));
-console.log('[LPARid:id=%d:%d] grpc url: %s', LPARid, pid, g[pid % nPeers]);
+chain.addPeer(new Peer(g[pid % nPeer]));
+console.log('[LPARid:id=%d:%d] peer url: %s', LPARid, pid, g[pid % nPeer]);
 
 
-//var testDeployArgs = uiContent.invoke.args.split(",");
-var testDeployArgs = [];
-for (i=0; i<uiContent.deploy.args.length; i++) {
-    testDeployArgs.push(uiContent.deploy.args[i]);
-}
-
-var request_deploy = {
-    targets: grpcArgs,
-    chaincodePath: testUtil.CHAINCODE_PATH,
-    chaincodeId: chaincode_id,
-    fcn: uiContent.deploy.fcn,
-    args: testDeployArgs,
-    'dockerfile-contents' :
-    'from hyperledger/fabric-ccenv\n' +
-    'COPY . $GOPATH/src/build-chaincode/\n' +
-    'WORKDIR $GOPATH\n\n' +
-    'RUN go install build-chaincode && mv $GOPATH/bin/build-chaincode $GOPATH/bin/%s'
-};
-
-//var testInvokeArgs = uiContent.invoke.move.args.split(",");
+var ccType = uiContent.ccType;
+var keyStart = parseInt(uiContent.ccOpt.keyStart);
+var arg0 = keyStart;
+console.log('ccType: %s, keyStart; %d', ccType, keyStart);
+//construct invoke request
 var testInvokeArgs = [];
 for (i=0; i<uiContent.invoke.move.args.length; i++) {
     testInvokeArgs.push(uiContent.invoke.move.args[i]);
 }
 
-var request_invoke = {
-    targets: grpcArgs,
-    chaincodeId : chaincode_id,
-    fcn: uiContent.invoke.move.fcn,
-    args: testInvokeArgs
-};
+var request_invoke;
+function getMoveRequest() {
+    if ( ccType == 'ccchecker') {
+        arg0 ++;
+        testInvokeArgs[1] = 'key'+pid+'_'+arg0;
+        testInvokeArgs[2] = pid+'_'+arg0;
+    }
 
-//var testQueryArgs
+    request_invoke = {
+        chaincodeId : chaincode_id,
+        chainId: chain_id,
+        txId: utils.buildTransactionID(),
+        nonce: utils.getNonce(),
+        fcn: uiContent.invoke.move.fcn,
+        args: testInvokeArgs
+    };
+
+   //console.log('request_invoke: ', request_invoke);
+}
+
+//construct query request
 var testQueryArgs = [];
 for (i=0; i<uiContent.invoke.query.args.length; i++) {
     testQueryArgs.push(uiContent.invoke.query.args[i]);
 }
 
-var request_query = {
-    targets: grpcArgs,
-    chaincodeId : chaincode_id,
-    fcn: uiContent.invoke.query.fcn,
-    args: testQueryArgs
-};
+var request_query;
+function getQueryRequest() {
+    if ( ccType == 'ccchecker') {
+        arg0 ++;
+        testQueryArgs[1] = 'key'+pid+'_'+arg0;
+    }
 
+    request_query = {
+        chaincodeId : chaincode_id,
+        chainId: chain_id,
+        txId: utils.buildTransactionID(),
+        nonce: utils.getNonce(),
+        fcn: uiContent.invoke.query.fcn,
+        args: testQueryArgs
+    };
+
+    //console.log('request_query: ', request_query);
+}
 
 /*
  *   transactions begin ....
@@ -182,7 +202,7 @@ function execTransMode() {
     inv_q = 0;
 
     //enroll user
-    chain.enroll(users[0].username, users[0].secret)
+    testUtil.getSubmitter(client)
     .then(
         function(admin) {
             console.log('[LPARid:id=%d:%d] Successfully enrolled user \'admin\'', LPARid, pid);
@@ -263,18 +283,29 @@ function isExecDone(trType){
 }
 
 
+var txRequest;
+function getTxRequest(results) {
+    txRequest = {
+        proposalResponses: results[0],
+        proposal: results[1],
+        header: results[2]
+    };
+}
 
 // invoke_move_simple
 function invoke_move_simple(freq) {
     inv_m++;
 
-    webUser.sendTransactionProposal(request_invoke)
+    getMoveRequest();
+    chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
-            var proposal = results[1];
+            //var proposal = results[1];
+            //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
+            getTxRequest(results);
             if (proposalResponses[0].response.status === 200) {
-                return webUser.sendTransaction(proposalResponses, proposal);
+                return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
@@ -322,7 +353,8 @@ function invoke_move_simple(freq) {
 function invoke_query_simple(freq) {
     inv_q++;
 
-    webUser.queryByChaincode(request_query)
+    getQueryRequest();
+    chain.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
             isExecDone('Query');
@@ -361,7 +393,8 @@ function execModeSimple() {
         }
         console.log('[LPARid:id=%d:%d] tStart %d, tLocal %d', LPARid, pid, tStart, tLocal);
         if ( invokeType.toUpperCase() == 'MOVE' ) {
-            var freq = 20000;
+//            var freq = 20000;
+            var freq = 0;
             invoke_move_simple(freq);
         } else if ( invokeType.toUpperCase() == 'QUERY' ) {
             invoke_query_simple(0);
@@ -375,13 +408,15 @@ function execModeSimple() {
 function invoke_move_const(freq) {
     inv_m++;
 
-    webUser.sendTransactionProposal(request_invoke)
+    getMoveRequest();
+    chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
-            var proposal = results[1];
+            //var proposal = results[1];
+            getTxRequest(results);
             if (proposalResponses[0].response.status === 200) {
-                return webUser.sendTransaction(proposalResponses, proposal);
+                return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
@@ -437,7 +472,8 @@ function invoke_move_const(freq) {
 function invoke_query_const(freq) {
     inv_q++;
 
-    webUser.queryByChaincode(request_query)
+    getQueryRequest();
+    chain.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
             // output
@@ -514,13 +550,15 @@ function invoke_move_mix(freq) {
     tCurr = new Date().getTime();
     console.log('LPAR:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', LPARid, pid, tCurr, freq);
 
-    webUser.sendTransactionProposal(request_invoke)
+    getMoveRequest();
+    chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
-            var proposal = results[1];
+            //var proposal = results[1];
+            getTxRequest(results);
             if (proposalResponses[0].response.status === 200) {
-                return webUser.sendTransaction(proposalResponses, proposal);
+                return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
@@ -560,7 +598,8 @@ function invoke_query_mix(freq) {
     tCurr = new Date().getTime();
     console.log('LPAR:id=%d:%d, invoke_query_mix(): tCurr= %d', LPARid, pid, tCurr);
 
-    webUser.queryByChaincode(request_query)
+    getQueryRequest();
+    chain.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
                 isExecDone('Move');
@@ -643,13 +682,15 @@ function invoke_move_burst() {
     // set up burst traffic duration and frequency
     getBurstFreq();
 
-    webUser.sendTransactionProposal(request_invoke)
+    getMoveRequest();
+    chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
-            var proposal = results[1];
+            //var proposal = results[1];
+            getTxRequest(results);
             if (proposalResponses[0].response.status === 200) {
-                return webUser.sendTransaction(proposalResponses, proposal);
+                return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
@@ -697,7 +738,8 @@ function invoke_query_burst() {
     // set up burst traffic duration and frequency
     getBurstFreq();
 
-    webUser.queryByChaincode(request_query)
+    getQueryRequest();
+    chain.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
             isExecDone('Query');

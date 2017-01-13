@@ -8,8 +8,8 @@ The performance Node SDK uses [Hyperledger Fabric Client (HFC) SDK](http://hyper
 
 ##Code Base
 
-- fabric commit level: b0e902ea482a5dd4f5a82b8051052c2915811e59
-- fabric-sdk-node commit level: a7f57baca0ece7111f74f7b9174c2083df7cda86
+- fabric commit level: d26b8b4aa8e382555f3e6b518a3ef9d5bbfc8091
+- fabric-sdk-node commit level: 87301d8c832f7e76b96c899da27a6f26c05ef113
 
 ##Setup
 
@@ -142,11 +142,13 @@ where:
 
 + **ccType**: chaincode type (**to be tested**)
 
-  - auction: The first argument in the query and invoke request is incremented by 1 for every transaction.  And, the invoke payload is made of a random string with various size between payLoadMin and payLoadMax defined in ccOptions.
+  - ccchecker: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  The prefix of the key is based on each thread ID, ex, all keys issued from thread 4 will have prefix of **key3_**. And, the second argument (payload) in an invoke is made of a random string.  The ccchecker go file is available on github, see [ccchecker](https://github.com/hyperledger/fabric/blob/master/examples/ccchecker/chaincodes/newkeyperinvoke/)
+ 
+  - auction: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  And, the invoke second argument (payload) is made of a random string with various size between payLoadMin and payLoadMax defined in ccOptions.
   - general: The arguments of transaction request are taken from the user input json file without any changes.
 
 + **ccOpt**: chaincode options (**to be tested**)
-  - keyStart: the starting transaction key index, this is used when the ccType is auction which requires a unique key for each invoke.
+  - keyStart: the starting transaction key index, this is used when the ccType is non general which requires a unique key for each invoke.
   - payLoadMin: minimum size in bytes of the payload. The payload is made of random string with various size between payLoadMin and payLoadMax.
   - payLoadMax: maximum size in bytes of the payload
 

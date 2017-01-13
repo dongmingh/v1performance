@@ -1,8 +1,8 @@
 {
-    "chaincodeID": "MyTest",
+    "chaincodeID": "MyCCChecker",
     "transMode": "Simple",
     "transType": "Invoke",
-    "invokeType": "Query",
+    "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
     "nThread": "4",
@@ -21,25 +21,25 @@
         "recHist": "HIST",
         "constFreq": "1000"
     },
-    "ccType": "general",
+    "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "5000",
+        "keyStart": "500",
         "payLoadMin": "1024",
         "payLoadMax": "2048"
     },
     "deploy": {
-        "chaincodePath": "github.com/example_cc",
+        "chaincodePath": "github.com/ccchecker",
         "fcn": "init",
-        "args": ["a","0","b","0"]
+        "args": []
     },
     "invoke": {
         "query": {
             "fcn": "invoke",
-            "args": ["query", "b"]
+            "args": ["get", "a"]
         },
         "move": {
             "fcn": "invoke",
-            "args": ["move", "a","b","1"]
+            "args": ["put", "a","1"]
         }
     },
     "SCFile": [
