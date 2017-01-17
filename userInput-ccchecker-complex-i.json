@@ -1,13 +1,13 @@
 {
     "chaincodeID": "MyCCChecker",
-    "transMode": "Simple",
+    "transMode": "Mix",
     "transType": "Invoke",
-    "invokeType": "Query",
+    "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
-    "nThread": "4",
-    "nRequest": "10",
-    "runDur": "60",
+    "nThread": "10",
+    "nRequest": "0",
+    "runDur": "600",
     "burstOpt": {
         "burstFreq0":  "500",
         "burstDur0":  "3000",
@@ -24,8 +24,8 @@
     "ccType": "ccchecker",
     "ccOpt": {
         "keyStart": "0",
-        "payLoadMin": "1024",
-        "payLoadMax": "2048"
+        "payLoadMin": "10240",
+        "payLoadMax": "512000"
     },
     "deploy": {
         "chaincodePath": "github.com/ccchecker",

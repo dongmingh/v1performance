@@ -1,13 +1,13 @@
 {
     "chaincodeID": "MyCCChecker",
-    "transMode": "Simple",
+    "transMode": "Constant",
     "transType": "Invoke",
-    "invokeType": "Query",
+    "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
-    "nThread": "4",
-    "nRequest": "10",
-    "runDur": "60",
+    "nThread": "1",
+    "nRequest": "0",
+    "runDur": "259200",
     "burstOpt": {
         "burstFreq0":  "500",
         "burstDur0":  "3000",

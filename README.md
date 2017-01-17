@@ -11,31 +11,32 @@ The performance Node SDK uses [Hyperledger Fabric Client (HFC) SDK](http://hyper
 - fabric commit level: d26b8b4aa8e382555f3e6b518a3ef9d5bbfc8091
 - fabric-sdk-node commit level: 87301d8c832f7e76b96c899da27a6f26c05ef113
 
+
 ##Setup
 
 
 1. git clone https://github.com/hyperledger/fabric-sdk-node.git
 2. cd fabric-sdk-node
 3. git reset --hard a7f57baca0ece7111f74f7b9174c2083df7cda86
-4. download all scripts (1 bash shell script and 2 js scripts) and 1 json file into directory fabric-sdk-node/test/unit
+4. download all scripts (1 bash shell script and 2 js scripts) and all json files into directory fabric-sdk-node/test/unit
 5. create a sub directory, SCFiles, under fabric-sdk-node/test/unit
-6. add Service Credentials file for each LPAR to the SCFiles directory, see config-local.json in directory SCFiles as an example
-7. modify userInput-example02.json according to the desired test and the Service Credentials files
+6. add Service Credentials file for each fabric network to the SCFiles directory, see config-local.json in directory SCFiles as an example
+7. modify userInput-ccchecer.json according to the desired test and the Service Credentials files
 
 
 ##Usage
 
-`./perf_driver.sh <user input json file> <nLPARs>`
+`./perf_driver.sh <user input json file> <nNetwork>`
 
 - user input json file: the json file contains all user specified parameters for the test, see below for description.
-- nLPARs: number of LPARs
+- nNetwork: number of fabric network
 
 
 ####Examples
 
-- ./perf_driver.sh userInput-example02.json 1
+- ./perf_driver.sh userInput-ccchecker.json 1
 
-The above command will execute the performance test on 1 LPAR with all parameters specified in userInput-example02.json
+The above command will execute the performance test on one network with all parameters specified in userInput-ccchecker.json
 
 
 
@@ -77,22 +78,22 @@ The above command will execute the performance test on 1 LPAR with all parameter
             "payLoadMax": "2048"
         },
         "deploy": {
-            "chaincodePath": "github.com/chaincode_example02",
+            "chaincodePath": "github.com/ccchecker",
             "fcn": "init",
-            "args": ["a","100","b","200"]
+            "args": []
         },
         "invoke": {
-            "move": {
-                "fcn": "query",
-                "args": ["a"]
-            },
             "query": {
                 "fcn": "invoke",
-                "args": ["a","b","1"]
+                "args": ["get", "a"]
+            },
+            "move": {
+                "fcn": "invoke",
+                "args": ["put", "a", "string-msg"]
             }
         },   
 	    "SCFile": [
-            {"ServiceCredentials":"SCFiles/config-35.json"},
+            {"ServiceCredentials":"SCFiles/config-local.json"},
 	        {"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
 		    {"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
 	 	    {"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"},
@@ -116,38 +117,38 @@ where:
   - Move: move transaction
   - Query: query transaction
 
-+ **nPeer**: number of peers, this number has to match with the peer network
++ **nPeer**: number of peers, this number has to match with the number of peers in the network
 
 + **nThread**: number of threads for the test
 
-+ **nRequest**: number of transactions for each thread
++ **nRequest**: number of transactions to be executed for each thread
 
-+ **runDur**: run duration in seconds when nRequest is 0
++ **runDur**: run duration in seconds to be executed if nRequest is 0
 
-+ **burstOpt**: the frequencies and duration for Burst transaction mode traffic. Currently, two transaction rates are supported. The traffic will issue one transaction every burstFreq0 ms for burstDur0 ms, then one transaction every burstFreq1 ms for burstDur1 ms, then the pattern repeats. These parameters are valid only if the transMode is set to Burst.
++ **burstOpt**: the frequencies and duration for Burst transaction mode traffic. Currently, two transaction rates are supported. The traffic will issue one transaction every burstFreq0 ms for burstDur0 ms, then one transaction every burstFreq1 ms for burstDur1 ms, then the pattern repeats. These parameters are valid only if the transMode is set to **Burst**.
   - burstFreq0: frequency in ms for the first transaction rate
   - burstDur0:  duration in ms for the first transaction rate
   - burstFreq1: frequency in ms for the second transaction rate
   - burstDur1:  duration in ms for the second transaction rate
 
 
-+ **mixOpt**: each invoke is followed by a query on every thread. This parameter is valid only the transMode is set to Mix.
++ **mixOpt**: each invoke is followed by a query on every thread. This parameter is valid only the transMode is set to **Mix**.
 
   - mixFreq: frequency in ms for the transaction rate. This value should be set based on the characteristics of the chaincode to avoid the failure of the immediate query.
 
-+ **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to Constant.
++ **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to **Constant**.
   
   - recHist: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
   - constFreq: frequency in ms for the transaction rate.
 
-+ **ccType**: chaincode type (**to be tested**)
++ **ccType**: chaincode type
 
-  - ccchecker: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  The prefix of the key is based on each thread ID, ex, all keys issued from thread 4 will have prefix of **key3_**. And, the second argument (payload) in an invoke is made of a random string.  The ccchecker go file is available on github, see [ccchecker](https://github.com/hyperledger/fabric/blob/master/examples/ccchecker/chaincodes/newkeyperinvoke/)
+  - ccchecker: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  The prefix of the key is based on each thread ID, ex, all keys issued from thread 4 will have prefix of **key3_**. And, the second argument (payload) in an invoke (Move) is a string.
  
-  - auction: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  And, the invoke second argument (payload) is made of a random string with various size between payLoadMin and payLoadMax defined in ccOptions.
+  - auction: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  And, the invoke second argument (payload) is made of a random string with various size between payLoadMin and payLoadMax defined in ccOpt. (**to be tested**)
   - general: The arguments of transaction request are taken from the user input json file without any changes.
 
-+ **ccOpt**: chaincode options (**to be tested**)
++ **ccOpt**: chaincode options
   - keyStart: the starting transaction key index, this is used when the ccType is non general which requires a unique key for each invoke.
   - payLoadMin: minimum size in bytes of the payload. The payload is made of random string with various size between payLoadMin and payLoadMax.
   - payLoadMax: maximum size in bytes of the payload
@@ -158,21 +159,26 @@ where:
   - query: query content
   - move: move content
 
-+ **SCFile**: the service credentials list, one per LPAR
++ **SCFile**: the service credentials list, one per network
 
 
 
 ##Service Credentials
 
-The service credentials for each LPAR can be either downloaded or created by copy and paste from Bluemix if the network is on bluemix.  For the local network, user will need to create a json file similar to the config-local.json in SCFiles directory. 
+The service credentials for each network can be either downloaded or created by copy and paste from Bluemix if the network is on bluemix.  For the local network, the user needs to create a json file similar to the config-local.json in SCFiles directory. 
 
-#Chaincodes
+##Chaincodes
 
 The following chaincodes are tested and supported:
 
 * example02 chaincode
 
-* auction chaincode (**to be tested**)
+* ccchecker chaincode:  This chaincode supports variable payload sizes. Take the following steps to install this chaincode:
+  - cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com
+  - mkdir ccchecker
+  - doanload newkeyperinvoke.go into ccchecker directory
+
+
 
 
 
@@ -188,14 +194,58 @@ All threads will execute the same transaction concurrently. Two kinds of executi
 
 ##Output
 
-The output includes LPAR id, thread id, transaction type, total transactions, completed transactions, failed transactions, starting time, ending time, and elapsed time.
+The output includes network id, thread id, transaction type, total transactions, completed transactions, failed transactions, starting time, ending time, and elapsed time.
 
-The following is an example of invoke queries test output. The test contains 4 threads on one LPAR.  The output shows that LPAR 0 thread 0 executed 100 queries with no failure in 1487 ms, LPAR 0 thread 2 executed 100 queries with no failure in 1498 ms etc. 
+The following is an example of invoke queries test output. The test contains 4 threads on one network.  The output shows that network 0 thread 0 executed 100 queries with no failure in 1487 ms, network 0 thread 2 executed 100 queries with no failure in 1498 ms etc. 
 
-    [LPARid:id=0:0] completed 100 Invoke(Query) in 1487 ms, timestamp: start 1481250240860 end 1481250242347
-    [LPARid:id=0:2] completed 100 Invoke(Query) in 1498 ms, timestamp: start 1481250240861 end 1481250242359
-    [LPARid:id=0:1] completed 100 Invoke(Query) in 1525 ms, timestamp: start 1481250240861 end 1481250242386
-    [LPARid:id=0:3] completed 100 Invoke(Query) in 1800 ms, timestamp: start 1481250240861 end 1481250242661
+    [Nid:id=0:0] completed 100 Invoke(Query) in 1487 ms, timestamp: start 1481250240860 end 1481250242347
+    [Nid:id=0:2] completed 100 Invoke(Query) in 1498 ms, timestamp: start 1481250240861 end 1481250242359
+    [Nid:id=0:1] completed 100 Invoke(Query) in 1525 ms, timestamp: start 1481250240861 end 1481250242386
+    [Nid:id=0:3] completed 100 Invoke(Query) in 1800 ms, timestamp: start 1481250240861 end 1481250242661
 
 
+
+##Examples
+
+####Latency
+
+The following command will execute 1000 invokes (Move) with 1 thread on one network using ccchecker chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Move).
+
+    perf_driver.sh userInput-ccchecker-latency-i.json 1
+
+The following command will execute 1000 invokes (Query) with 1 thread on one network using ccchecker chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Query).
+
+    perf_driver.sh userInput-ccchecker-latency-q.json 1
+
+
+####Stress
+
+The following command will execute invokes (Move) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
+
+    perf_driver.sh userInput-ccchecker-stress-i.json 1
+
+
+The following command will execute invokes (Query) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
+
+    perf_driver.sh userInput-ccchecker-stress-q.json 1
+
+####Long run
+
+The following command will execute invokes (Move) of various payload size ranging from 1kb-2kb with 1 threads on one network using ccchecker chaincode for 72 hours at 1 transaction per second.
+
+    perf_driver.sh userInput-ccchecker-longrun-i.json 1
+
+
+####Concurrency
+
+The following command will execute invokes (Move) of 1kb payload with 50 threads on one 4-peer network using ccchecker chaincode for 10 minutes.
+
+    perf_driver.sh userInput-ccchecker-concurrency-i.json 1
+
+
+####Complex
+
+The following command will execute invokes (Move) of various payload size ranging from 10kb-500kb with 10 threads on one 4-peer network using ccchecker chaincode for 10 minutes. Each invoke (Move) is followed by an invoke (Query).
+
+    perf_driver.sh userInput-ccchecker-complex-i.json 1
 

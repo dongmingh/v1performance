@@ -16,9 +16,9 @@
 
 /*
  *   usage:
- *      node perf-main.js <ui file> <LPARid>
+ *      node perf-main.js <ui file> <Nid>
  *        - ui file: user input file
- *        - LPARid: LPAR id
+ *        - Nid: Network id
  */
 // This is an end-to-end test that focuses on exercising all parts of the fabric APIs
 // in a happy-path scenario
@@ -69,13 +69,13 @@ testUtil.setupChaincodeDeploy();
 
 
 // input: userinput json file
-var LPARid = parseInt(process.argv[2]);
+var Nid = parseInt(process.argv[2]);
 var uiFile = process.argv[3];
 var tStart = parseInt(process.argv[4]);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
-console.log('input parameters: LPARid=%d, uiFile=%s, tStart=%d', LPARid, uiFile, tStart);
+console.log('input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, uiFile, tStart);
 
-var svcFile = uiContent.SCFile[LPARid].ServiceCredentials;
+var svcFile = uiContent.SCFile[Nid].ServiceCredentials;
 var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
 var peers = network.credentials.peers;
 var users = network.credentials.users;
@@ -86,7 +86,7 @@ var orderer = network.credentials.orderer;
 //set Member Services URL
 var cop_id = Object.keys(network.credentials.cop);
 var cop_url = 'http://' + cop[cop_id].discovery_host + ':' + cop[cop_id].discovery_port;
-console.log('[LPARid=%d] cop url: ', LPARid, cop_url);
+console.log('[Nid=%d] cop url: ', Nid, cop_url);
 
 function userEnroll(uid) {
     console.log('user %d: ', uid, users[uid].username, users[uid].secret);
@@ -168,7 +168,7 @@ function deploy_chaincode() {
     }
     for (i=0; i<nOrderer; i++) {
         tmp = 'grpc://' + orderer[i].discovery_host + ":" + orderer[i].discovery_port;
-        console.log('[LPARid=%d] orderer url: ', LPARid, tmp);
+        console.log('[Nid=%d] orderer url: ', Nid, tmp);
         chain.addOrderer(new Orderer(tmp));
     }
 
@@ -222,20 +222,20 @@ function deploy_chaincode() {
             }
         },
         function(err) {
-            console.log('[LPARid=%d] Failed to send deployment proposal due to error: ', LPARid, err.stack ? err.stack : err);
+            console.log('[Nid=%d] Failed to send deployment proposal due to error: ', Nid, err.stack ? err.stack : err);
         })
     .then(
         function(response) {
             if (response.Status === 'SUCCESS') {
-                console.log('[LPARid=%d] Successfully ordered deployment endorsement... wait now for the committer to catch up', LPARid);
+                console.log('[Nid=%d] Successfully ordered deployment endorsement... wait now for the committer to catch up', Nid);
                 return sleep(20000);
             } else {
-                console.log('[LPARid=%d] Failed to order the deployment endorsement. Error code: ', LPARid, response.status);
+                console.log('[Nid=%d] Failed to order the deployment endorsement. Error code: ', Nid, response.status);
             }
 
         },
         function(err) {
-            console.log('[LPARid=%d] Failed to send deployment e due to error: ', LPARid, err.stack ? err.stack : err);
+            console.log('[Nid=%d] Failed to send deployment e due to error: ', Nid, err.stack ? err.stack : err);
         }
     );
 }
@@ -248,19 +248,19 @@ function performance_main() {
         testUtil.getSubmitter(client)
         .then(
             function(admin) {
-                console.log('[LPARid=%d] Successfully enrolled user \'admin\'', LPARid);
+                console.log('[Nid=%d] Successfully enrolled user \'admin\'', Nid);
                 webUser = admin;
                 deploy_chaincode();
             },
             function(err) {
-                console.log('[LPARid=%d] Failed to wait due to error: ', LPARid, err.stack ? err.stack : err);
+                console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
                 return;
             }
         );
     } else if ( transType.toUpperCase() == 'INVOKE' ) {
         // spawn off processes for transactions
         for (var j = 0; j < nThread; j++) {
-            var workerProcess = child_process.spawn('node', ['./perf-execRequest.js', j, LPARid, uiFile, tStart]);
+            var workerProcess = child_process.spawn('node', ['./perf-execRequest.js', j, Nid, uiFile, tStart]);
 
             workerProcess.stdout.on('data', function (data) {
                 console.log('stdout: ' + data);
@@ -275,7 +275,7 @@ function performance_main() {
             });
         }
     } else {
-        console.log('[LPARid=%d] invalid transType: %s', LPARid, transType);
+        console.log('[Nid=%d] invalid transType: %s', Nid, transType);
     }
 }
 

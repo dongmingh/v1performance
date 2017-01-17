@@ -6,8 +6,8 @@
     "nOrderer": "1",
     "nPeer": "4",
     "nThread": "4",
-    "nRequest": "10",
-    "runDur": "60",
+    "nRequest": "0",
+    "runDur": "600",
     "burstOpt": {
         "burstFreq0":  "500",
         "burstDur0":  "3000",

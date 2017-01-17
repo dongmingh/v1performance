@@ -16,7 +16,7 @@
 
 /*
  *   usage:
- *      node perf.js <action> <recurrence>
+ *      node perf-execRequest.js pid Nid uiFile tStart
  *        - action: deploy, invoke, query
  *        - recurrence: integer number
  */
@@ -45,6 +45,7 @@ var utils = require('hfc/lib/utils.js');
 var Peer = require('hfc/lib/Peer.js');
 var Orderer = require('hfc/lib/Orderer.js');
 var fs = require('fs');
+const crypto = require('crypto');
 
 var client = new hfc();
 var chain = client.newChain('testChain-e2e');
@@ -83,15 +84,15 @@ utils.setConfigSetting('crypto-keysize', 256);
 // with the key size 256 above), in order to match what the peer and COP use
 utils.setConfigSetting('crypto-hash-algo', 'SHA2');
 
+//input args
 var pid = parseInt(process.argv[2]);
-// input: userinput json file
-var LPARid = parseInt(process.argv[3]);
+var Nid = parseInt(process.argv[3]);
 var uiFile = process.argv[4];
 var tStart = parseInt(process.argv[5]);
-console.log('[LPARid:id=%d:%d] input parameters: LPARid=%d, uiFile=%s, tStart=%d', LPARid, pid, LPARid, uiFile, tStart);
+console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, pid, Nid, uiFile, tStart);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 
-var svcFile = uiContent.SCFile[LPARid].ServiceCredentials;
+var svcFile = uiContent.SCFile[Nid].ServiceCredentials;
 var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
 var peers = network.credentials.peers;
 var users = network.credentials.users;
@@ -106,12 +107,12 @@ var invokeType = uiContent.invokeType;
 var nRequest = parseInt(uiContent.nRequest);
 var nPeer = parseInt(uiContent.nPeer);
 var nOrderer = parseInt(uiContent.nOrderer);
-console.log('[LPARid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', LPARid, pid, nOrderer, nPeer, transMode, transType, invokeType, nRequest);
+console.log('[Nid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', Nid, pid, nOrderer, nPeer, transMode, transType, invokeType, nRequest);
 
 var runDur=0;
 if ( nRequest == 0 ) {
    runDur = parseInt(uiContent.runDur);
-   console.log('[LPARid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', LPARid, pid, nOrderer, nPeer, transMode, transType, invokeType, runDur);
+   console.log('[Nid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', Nid, pid, nOrderer, nPeer, transMode, transType, invokeType, runDur);
    // convert runDur to ms
    runDur = 1000*runDur;
 }
@@ -119,7 +120,7 @@ if ( nRequest == 0 ) {
 //add orderer
 for (i=0; i<nOrderer; i++) {
     tmp = 'grpc://' + orderer[i].discovery_host + ":" + orderer[i].discovery_port;
-    console.log('[LPARid=%d] orderer url: ', LPARid, tmp);
+    console.log('[Nid=%d] orderer url: ', Nid, tmp);
     chain.addOrderer(new Orderer(tmp));
 }
 
@@ -132,12 +133,23 @@ for (i=0; i<peers.length; i++) {
 }
 
 chain.addPeer(new Peer(g[pid % nPeer]));
-console.log('[LPARid:id=%d:%d] peer url: %s', LPARid, pid, g[pid % nPeer]);
+console.log('[Nid:id=%d:%d] peer url: %s', Nid, pid, g[pid % nPeer]);
 
 
 var ccType = uiContent.ccType;
-var keyStart = parseInt(uiContent.ccOpt.keyStart);
-var arg0 = keyStart;
+var keyStart=0;
+var payLoadMin=0;
+var payLoadMax=0;
+var arg0=0;
+
+if ( ccType == 'ccchecker') {
+    keyStart = parseInt(uiContent.ccOpt.keyStart);
+    payLoadMin = parseInt(uiContent.ccOpt.payLoadMin)/2;
+    payLoadMax = parseInt(uiContent.ccOpt.payLoadMax)/2;
+    arg0 = keyStart;
+    console.log('Nid:id=%d:%d, ccchecker chaincode setting: keyStart=%d payLoadMin=%d payLoadMax=%d',
+                 Nid, pid, keyStart, parseInt(uiContent.ccOpt.payLoadMin), parseInt(uiContent.ccOpt.payLoadMax));
+}
 console.log('ccType: %s, keyStart; %d', ccType, keyStart);
 //construct invoke request
 var testInvokeArgs = [];
@@ -150,7 +162,13 @@ function getMoveRequest() {
     if ( ccType == 'ccchecker') {
         arg0 ++;
         testInvokeArgs[1] = 'key'+pid+'_'+arg0;
-        testInvokeArgs[2] = pid+'_'+arg0;
+        // random payload
+        var r = Math.floor(Math.random() * (payLoadMax - payLoadMin)) + payLoadMin;
+
+        var buf = crypto.randomBytes(r);
+        testInvokeArgs[2] = buf.toString('hex');
+
+        //console.log('Nid:id=%d:%d, key: %s, r: %d', Nid, pid, testInvokeArgs[1], r);
     }
 
     request_invoke = {
@@ -205,11 +223,11 @@ function execTransMode() {
     testUtil.getSubmitter(client)
     .then(
         function(admin) {
-            console.log('[LPARid:id=%d:%d] Successfully enrolled user \'admin\'', LPARid, pid);
+            console.log('[Nid:id=%d:%d] Successfully enrolled user \'admin\'', Nid, pid);
             webUser = admin;
 
 	    tCurr = new Date().getTime();
-	    console.log('LPAR:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', LPARid, pid, tCurr, tStart, tStart-tCurr);
+	    console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
             // execute transactions
             setTimeout(function() {
                 if (transMode.toUpperCase() == 'SIMPLE') {
@@ -222,13 +240,13 @@ function execTransMode() {
                     execModeBurst();
                 } else {
                     // invalid transaction request
-                    console.log(util.format("LPAR:id=%d:%d, Transaction %j and/or mode %s invalid", LPARid, pid, transType, transMode));
+                    console.log(util.format("Nid:id=%d:%d, Transaction %j and/or mode %s invalid", Nid, pid, transType, transMode));
                     process.exit(1);
                 }
             }, tStart-tCurr);
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to wait due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to wait due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         }
     );
@@ -240,8 +258,8 @@ function isExecDone(trType){
     if ( trType.toUpperCase() == 'MOVE' ) {
         if ( nRequest > 0 ) {
            if ( (inv_m % (nRequest/10)) == 0 ) {
-              console.log(util.format("LPAR:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
-                                         LPARid, pid, trType, inv_m, tCurr-tLocal));
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+                                         Nid, pid, trType, inv_m, tCurr-tLocal));
            }
 
            if ( inv_m >= nRequest ) {
@@ -249,8 +267,8 @@ function isExecDone(trType){
            }
         } else {
            if ( (inv_m % 1000) == 0 ) {
-              console.log(util.format("LPAR:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
-                                         LPARid, pid, trType, inv_m, tCurr-tLocal));
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+                                         Nid, pid, trType, inv_m, tCurr-tLocal));
            }
 
            if ( tCurr > tEnd ) {
@@ -260,8 +278,8 @@ function isExecDone(trType){
     } else if ( trType.toUpperCase() == 'QUERY' ) {
         if ( nRequest > 0 ) {
            if ( (inv_q % (nRequest/10)) == 0 ) {
-              console.log(util.format("LPAR:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
-                                         LPARid, pid, trType, inv_q, tCurr-tLocal));
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+                                         Nid, pid, trType, inv_q, tCurr-tLocal));
            }
 
            if ( inv_q >= nRequest ) {
@@ -269,8 +287,8 @@ function isExecDone(trType){
            }
         } else {
            if ( (inv_q % 1000) == 0 ) {
-              console.log(util.format("LPAR:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
-                                         LPARid, pid, trType, inv_q, tCurr-tLocal));
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+                                         Nid, pid, trType, inv_q, tCurr-tLocal));
            }
 
            if ( tCurr > tEnd ) {
@@ -308,12 +326,12 @@ function invoke_move_simple(freq) {
                 return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
+                console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .then(
@@ -326,21 +344,21 @@ function invoke_move_simple(freq) {
                     },freq);
                 } else {
                     tCurr = new Date().getTime();
-                    console.log('[LPARid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', LPARid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     return;
                 }
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', LPARid, pid, response.status);
+                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
 
     );
@@ -365,19 +383,19 @@ function invoke_query_simple(freq) {
             } else {
                 tCurr = new Date().getTime();
                 for(let j = 0; j < response_payloads.length; j++) {
-                    console.log('[LPARid:id=%d:%d] query result:', LPARid, pid, response_payloads[j].toString('utf8'));
+                    console.log('[Nid:id=%d:%d] query result:', Nid, pid, response_payloads[j].toString('utf8'));
                 }
-                console.log('[LPARid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', LPARid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                 //return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send query due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
     );
 
@@ -391,16 +409,18 @@ function execModeSimple() {
         if ( runDur > 0 ) {
             tEnd = tLocal + runDur;
         }
-        console.log('[LPARid:id=%d:%d] tStart %d, tLocal %d', LPARid, pid, tStart, tLocal);
+        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
         if ( invokeType.toUpperCase() == 'MOVE' ) {
-//            var freq = 20000;
-            var freq = 0;
+            var freq = 20000;
+            if ( ccType == 'ccchecker' ) {
+                freq = 0;
+            }
             invoke_move_simple(freq);
         } else if ( invokeType.toUpperCase() == 'QUERY' ) {
             invoke_query_simple(0);
         }
     } else {
-        console.log('[LPARid:id=%d:%d] invalid transType= %s', LPARid, pid, transType);
+        console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
     }
 }
 
@@ -419,12 +439,12 @@ function invoke_move_const(freq) {
                 return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
+                console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .then(
@@ -433,7 +453,7 @@ function invoke_move_const(freq) {
                 // hist output
                 if ( recHist == 'HIST' ) {
                     tCurr = new Date().getTime();
-                    buff = LPARid +':'+ pid + ' ' + transType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
+                    buff = Nid +':'+ pid + ' ' + transType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
                     fs.appendFile(ofile, buff, function(err) {
                         if (err) {
                            return console.log(err);
@@ -448,21 +468,21 @@ function invoke_move_const(freq) {
                     },freq);
                 } else {
                     tCurr = new Date().getTime();
-                    console.log('[LPARid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', LPARid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     return;
                 }
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', LPARid, pid, response.status);
+                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
 
     );
@@ -479,7 +499,7 @@ function invoke_query_const(freq) {
             // output
             if ( recHist == 'HIST' ) {
                 tCurr = new Date().getTime();
-                buff = LPARid +':'+ pid + ' ' + transType[0] + ':' + inv_q + ' time:'+ tCurr + '\n';
+                buff = Nid +':'+ pid + ' ' + transType[0] + ':' + inv_q + ' time:'+ tCurr + '\n';
                 fs.appendFile(ofile, buff, function(err) {
                     if (err) {
                        return console.log(err);
@@ -494,19 +514,19 @@ function invoke_query_const(freq) {
             } else {
                 tCurr = new Date().getTime();
                 for(let j = 0; j < response_payloads.length; j++) {
-                    console.log('[LPARid:id=%d:%d] query result:', LPARid, pid, response_payloads[j].toString('utf8'));
+                    console.log('[Nid:id=%d:%d] query result:', Nid, pid, response_payloads[j].toString('utf8'));
                 }
-                console.log('[LPARid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', LPARid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                 //return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send query due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
     );
 
@@ -524,22 +544,24 @@ function execModeConstant() {
         if ( runDur > 0 ) {
             tEnd = tLocal + runDur;
         }
-        console.log('[LPARid:id=%d:%d] tStart %d, tLocal %d', LPARid, pid, tStart, tLocal);
+        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
         var freq = parseInt(uiContent.constantOpt.constFreq);
-        ofile = 'ConstantResults'+LPARid+'.txt';
+        ofile = 'ConstantResults'+Nid+'.txt';
         //var ConstantFile = fs.createWriteStream('ConstantResults.txt');
-        console.log('LPAR:id=%d:%d, Constant Freq: %d ms', LPARid, pid, freq);
+        console.log('Nid:id=%d:%d, Constant Freq: %d ms', Nid, pid, freq);
 
         if ( invokeType.toUpperCase() == 'MOVE' ) {
-            if ( freq < 20000 ) {
-                freq = 20000;
+            if ( ccType == 'general' ) {
+                if ( freq < 20000 ) {
+                    freq = 20000;
+                }
             }
             invoke_move_const(freq);
         } else if ( invokeType.toUpperCase() == 'QUERY' ) {
             invoke_query_const(freq);
         }
     } else {
-        console.log('[LPARid:id=%d:%d] invalid transType= %s', LPARid, pid, transType);
+        console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
     }
 }
 
@@ -548,7 +570,7 @@ function invoke_move_mix(freq) {
     inv_m++;
 
     tCurr = new Date().getTime();
-    console.log('LPAR:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', LPARid, pid, tCurr, freq);
+    console.log('Nid:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', Nid, pid, tCurr, freq);
 
     getMoveRequest();
     chain.sendTransactionProposal(request_invoke)
@@ -561,12 +583,12 @@ function invoke_move_mix(freq) {
                 return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
+                console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .then(
@@ -576,17 +598,17 @@ function invoke_move_mix(freq) {
                     invoke_query_mix(freq);
                 },freq);
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', LPARid, pid, response.status);
+                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
 
     );
@@ -596,7 +618,7 @@ function invoke_query_mix(freq) {
     inv_q++;
 
     tCurr = new Date().getTime();
-    console.log('LPAR:id=%d:%d, invoke_query_mix(): tCurr= %d', LPARid, pid, tCurr);
+    console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d', Nid, pid, tCurr);
 
     getQueryRequest();
     chain.queryByChaincode(request_query)
@@ -607,20 +629,20 @@ function invoke_query_mix(freq) {
                     invoke_move_mix(freq);
                 } else {
                     for(let j = 0; j < response_payloads.length; j++) {
-                        console.log('[LPARid:id=%d:%d] query result:', LPARid, pid, response_payloads[j].toString('utf8'));
+                        console.log('[Nid:id=%d:%d] query result:', Nid, pid, response_payloads[j].toString('utf8'));
                     }
                     tCurr = new Date().getTime();
-                    console.log('[LPARid:id=%d:%d] completed %d Invoke(move) and %d invoke(query) in %d ms, timestamp: start %d end %d', LPARid, pid, inv_m, inv_q, tCurr-tLocal, tLocal, tCurr);
+                    console.log('[Nid:id=%d:%d] completed %d Invoke(move) and %d invoke(query) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, inv_q, tCurr-tLocal, tLocal, tCurr);
                     return;
                 }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send query due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
     );
 
@@ -633,15 +655,17 @@ function execModeMix() {
         if ( runDur > 0 ) {
             tEnd = tLocal + runDur;
         }
-        console.log('[LPARid:id=%d:%d] tStart %d, tLocal %d', LPARid, pid, tStart, tLocal);
+        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
         var freq = parseInt(uiContent.mixOpt.mixFreq);
-        if ( freq < 20000 ) {
-            freq = 20000;
+        if ( ccType == 'general' ) {
+            if ( freq < 20000 ) {
+                freq = 20000;
+            }
         }
-        console.log('LPAR:id=%d:%d, Mix Freq: %d ms', LPARid, pid, freq);
+        console.log('Nid:id=%d:%d, Mix Freq: %d ms', Nid, pid, freq);
         invoke_move_mix(freq);
     } else {
-        console.log('[LPARid:id=%d:%d] invalid transType= %s', LPARid, pid, transType);
+        console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
     }
 }
 
@@ -660,7 +684,7 @@ var bFreq;
 function getBurstFreq() {
 
     tCurr = new Date().getTime();
-    console.log('LPAR:id=%d:%d, getBurstFreq(): tCurr= %d', LPARid, pid, tCurr);
+    console.log('Nid:id=%d:%d, getBurstFreq(): tCurr= %d', Nid, pid, tCurr);
 
     // set up burst traffic duration and frequency
     if ( tCurr < tUpd0 ) {
@@ -693,12 +717,12 @@ function invoke_move_burst() {
                 return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', LPARid, pid, status);
+                console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .then(
@@ -711,21 +735,21 @@ function invoke_move_burst() {
                     },bFreq);
                 } else {
                     tCurr = new Date().getTime();
-                    console.log('[LPARid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', LPARid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     return;
                 }
             } else {
-                console.log('[LPARid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', LPARid, pid, response.status);
+                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
                 return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send transaction proposal due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
 
     );
@@ -750,19 +774,19 @@ function invoke_query_burst() {
             } else {
                 tCurr = new Date().getTime();
                 for(let j = 0; j < response_payloads.length; j++) {
-                    console.log('[LPARid:id=%d:%d] query result:', LPARid, pid, response_payloads[j].toString('utf8'));
+                    console.log('[Nid:id=%d:%d] query result:', Nid, pid, response_payloads[j].toString('utf8'));
                 }
-                console.log('[LPARid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', LPARid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                 //return;
             }
         },
         function(err) {
-            console.log('[LPARid:id=%d:%d] Failed to send query due to error: ', LPARid, pid, err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
             return;
         })
     .catch(
         function(err) {
-            console.log('[LPARid:id=%d:%d] %s failed: ', LPARid, pid, transType,  err.stack ? err.stack : err);
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
         }
     );
 
@@ -777,8 +801,8 @@ function execModeBurst() {
     tFreq = [burstFreq0, burstFreq1];
     tDur  = [burstDur0, burstDur1];
 
-    console.log('LPAR:id=%d:%d, Burst setting: tDur =',LPARid, pid, tDur);
-    console.log('LPAR:id=%d:%d, Burst setting: tFreq=',LPARid, pid, tFreq);
+    console.log('Nid:id=%d:%d, Burst setting: tDur =',Nid, pid, tDur);
+    console.log('Nid:id=%d:%d, Burst setting: tFreq=',Nid, pid, tFreq);
 
     // get time
     tLocal = new Date().getTime();
@@ -793,15 +817,15 @@ function execModeBurst() {
         if ( runDur > 0 ) {
             tEnd = tLocal + runDur;
         }
-        console.log('[LPARid:id=%d:%d] tStart %d, tLocal %d', LPARid, pid, tStart, tLocal);
-        console.log('LPAR:id=%d:%d, Mix Freq: %d ms', LPARid, pid, bFreq);
+        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
+        console.log('Nid:id=%d:%d, Mix Freq: %d ms', Nid, pid, bFreq);
         if ( invokeType.toUpperCase() == 'MOVE' ) {
             invoke_move_burst();
         } else if ( invokeType.toUpperCase() == 'QUERY' ) {
             invoke_query_burst();
         }
     } else {
-        console.log('[LPARid:id=%d:%d] invalid transType= %s', LPARid, pid, transType);
+        console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
     }
 }
 
