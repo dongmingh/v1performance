@@ -30,12 +30,13 @@ var tape = require('tape');
 
 var log4js = require('log4js');
 var logger = log4js.getLogger('E2E');
-logger.setLevel('DEBUG');
+logger.setLevel('ERROR');
 
 var path = require('path');
 
 var hfc = require('hfc');
 hfc.setLogger(logger);
+var X509 = require('jsrsasign').X509;
 
 var util = require('util');
 var testUtil = require('./util.js');
@@ -43,6 +44,7 @@ var utils = require('hfc/lib/utils.js');
 var Peer = require('hfc/lib/Peer.js');
 var Orderer = require('hfc/lib/Orderer.js');
 var FabricCOPServices = require('hfc-cop/lib/FabricCOPImpl');
+var FabricCOPClient = FabricCOPServices.FabricCOPClient;
 var User = require('hfc/lib/User.js');
 var Client = require('hfc/lib/Client.js');
 
@@ -50,13 +52,7 @@ var keyValStorePath = testUtil.KVS;
 console.log('keyValStorePath', testUtil.KVS);
 
 var client = new hfc();
-var chain = client.newChain('testChain-e2e');
 utils.setConfigSetting('crypto-keysize', 256);
-client.setStateStore(hfc.newDefaultKeyValueStore({
-        path: keyValStorePath
-}));
-
-
 
 var fs = require('fs');
 const child_process = require('child_process');
@@ -87,32 +83,61 @@ var orderer = network.credentials.orderer;
 var cop_id = Object.keys(network.credentials.cop);
 var cop_url = 'http://' + cop[cop_id].discovery_host + ':' + cop[cop_id].discovery_port;
 console.log('[Nid=%d] cop url: ', Nid, cop_url);
+var csr = fs.readFileSync(path.resolve(__dirname, '../fixtures/fabriccop/enroll-csr.pem'));
+
+function setStaticCSR(uid) {
+    console.log('setStaticCSR ');
+    var COPClient = new FabricCOPClient({
+          protocol: 'http',
+          hostname: cop[cop_id].discovery_host,
+          port: cop[cop_id].discovery_port
+    });
+
+    COPClient.enroll( users[uid].username, users[uid].secret, csr.toString())
+    .then(
+        function (pem) {
+            var cert = new X509();
+            cert.readCertPEM(pem);
+            console.log('Successfully enrolled \'' + users[uid].username + '\'');
+            console.log('cert getSubjectString: ', cert.getSubjectString());
+        }),
+        function (err) {
+            console.log('failed to enroll \'' + users[uid].username + '\'');
+    };
+}
+
+//set COP
+function setDynamicCSR(uid) {
+    console.log('setDynamicCSR ');
+    var copService = new FabricCOPServices(cop_url);
+    copService.enroll({ 
+        enrollmentID: users[uid].username,
+        enrollmentSecret: users[uid].secret
+    })
+    .then(
+        function (enrollment) {
+            var cert = new X509();
+            cert.readCertPEM(enrollment.certificate);
+            console.log('SubjectString: ', cert.getSubjectString());
+            console.log('Successfully enrolled \'' + users[uid].username + '\'' );
+        },
+        function (err) {
+            console.log('Failed to enroll \'' + users[uid].username + '\'.  ' + err);
+        }
+    );
+}
 
 function userEnroll(uid) {
     console.log('user %d: ', uid, users[uid].username, users[uid].secret);
-    //set COP
-    var copService = new FabricCOPServices(cop_url);
-    copService.enroll({ 
-        enrollmentID: users[0].username, 
-        enrollmentSecret: users[0].secret
+    hfc.newDefaultKeyValueStore({
+        path: keyValStorePath
     })
     .then(
-        function(admin) {
-            var member = new User('admin', chain);
-            member.setEnrollment(admin.key, admin.certificate);
-            return client.setUserContext(member);
-        },
-        function(err) {
-            console.log('failed to enroll admin with COP server, error: ', +err);
-        }
-    ).then(
-        function(user) {
-            if (user.getName() == 'admin') {
-                console.log('successfully loaded admin from key value store');
-            }
-        },
-        function(err) {
-            console.log('failed to load the user admin from key value store, error: ', +err);
+        function(store) {
+            client.setStateStore(store);
+
+            //setStaticCSR(uid);
+            setDynamicCSR(uid);
         }
     );
 }
@@ -132,8 +157,8 @@ for (i=0; i<uiContent.deploy.args.length; i++) {
 
 //    console.log('chaincode path: ', testUtil.CHAINCODE_PATH);
 //    console.log('chaincode path: ', uiContent.deploy.chaincodePath);
-var chaincode_id = 'mycc1';
-var chain_id = '**TEST_CHAINID**';
+var chaincode_id = 'end2end';
+var chain_id = 'test_chainid';
 var tx_id = null;
 var nonce = null;
 
@@ -163,17 +188,20 @@ function deploy_chaincode() {
     //set Orderer URL
     var nOrderer = parseInt(uiContent.nOrderer);
     if ( nOrderer > orderer.length ) {
-        console.log('nOrderer: %d is greater than orderere.length: %d', nOrderer, orderer.length);
+        console.log('nOrderer: %d is greater than orderer.length: %d', nOrderer, orderer.length);
         process.exit();
     }
+        tmp = 'grpc://' + orderer[nOrderer-1].discovery_host + ":" + orderer[nOrderer-1].discovery_port;
+        console.log('[Nid=%d] orderer url: ', Nid, tmp);
+        chain.addOrderer(new Orderer(tmp));
+/*
     for (i=0; i<nOrderer; i++) {
         tmp = 'grpc://' + orderer[i].discovery_host + ":" + orderer[i].discovery_port;
         console.log('[Nid=%d] orderer url: ', Nid, tmp);
         chain.addOrderer(new Orderer(tmp));
     }
+*/
 
-    //enroll user
-    userEnroll(0);
 
     tx_id = utils.buildTransactionID({length:12});
     nonce = utils.getNonce();
@@ -226,7 +254,7 @@ function deploy_chaincode() {
         })
     .then(
         function(response) {
-            if (response.Status === 'SUCCESS') {
+            if (response.status === 'SUCCESS') {
                 console.log('[Nid=%d] Successfully ordered deployment endorsement... wait now for the committer to catch up', Nid);
                 return sleep(20000);
             } else {
@@ -240,12 +268,27 @@ function deploy_chaincode() {
     );
 }
 
+var chain;
 
 // performance main
 function performance_main() {
     // send proposal to endorser
     if ( transType.toUpperCase() == 'DEPLOY' ) {
-        testUtil.getSubmitter(client)
+        chain = client.newChain('testChain-e2e');
+        //console.log('getChain------------: ', client.getChain('testChain-e2e'));
+        userEnroll(2);
+
+        sleep(2000);
+
+/*
+        hfc.newDefaultKeyValueStore({
+            path: keyValStorePath
+        }).then(
+            function (store) {
+                client.setStateStore(store);
+*/
+
+        testUtil.getSubmitter(client, null, true)
         .then(
             function(admin) {
                 console.log('[Nid=%d] Successfully enrolled user \'admin\'', Nid);
@@ -257,6 +300,7 @@ function performance_main() {
                 return;
             }
         );
+        //});
     } else if ( transType.toUpperCase() == 'INVOKE' ) {
         // spawn off processes for transactions
         for (var j = 0; j < nThread; j++) {

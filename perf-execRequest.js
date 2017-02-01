@@ -44,6 +44,9 @@ var testUtil = require('./util.js');
 var utils = require('hfc/lib/utils.js');
 var Peer = require('hfc/lib/Peer.js');
 var Orderer = require('hfc/lib/Orderer.js');
+var FabricCOPServices = require('hfc-cop/lib/FabricCOPImpl');
+var User = require('hfc/lib/User.js');
+var Client = require('hfc/lib/Client.js');
 var fs = require('fs');
 const crypto = require('crypto');
 
@@ -51,9 +54,6 @@ var client = new hfc();
 var chain = client.newChain('testChain-e2e');
 utils.setConfigSetting('crypto-keysize', 256);
 var keyValStorePath = testUtil.KVS;
-client.setStateStore(hfc.newDefaultKeyValueStore({
-        path: keyValStorePath
-}));
 
 // local vars
 var webUser;
@@ -69,8 +69,8 @@ var QDone=0;
 var recHist;
 var buff;
 var ofile;
-var chaincode_id = 'mycc1';
-var chain_id = '**TEST_CHAINID**';
+var chaincode_id = 'end2end';
+var chain_id = 'test_chainid';
 var tx_id = null;
 var nonce = null;
 
@@ -99,6 +99,10 @@ var users = network.credentials.users;
 var cop = network.credentials.cop;
 var orderer = network.credentials.orderer;
 
+var cop_id = Object.keys(network.credentials.cop);
+var cop_url = 'http://' + cop[cop_id].discovery_host + ':' + cop[cop_id].discovery_port;
+console.log('[Nid=%d] cop url: ', Nid, cop_url);
+
 //user parameters
 //var chaincode_id = uiContent.chaincodeID;
 var transMode = uiContent.transMode;
@@ -118,11 +122,16 @@ if ( nRequest == 0 ) {
 }
 
 //add orderer
+    tmp = 'grpc://' + orderer[nOrderer-1].discovery_host + ":" + orderer[nOrderer-1].discovery_port;
+    console.log('[Nid=%d] orderer url: ', Nid, tmp);
+    chain.addOrderer(new Orderer(tmp));
+/*
 for (i=0; i<nOrderer; i++) {
     tmp = 'grpc://' + orderer[i].discovery_host + ":" + orderer[i].discovery_port;
     console.log('[Nid=%d] orderer url: ', Nid, tmp);
     chain.addOrderer(new Orderer(tmp));
 }
+*/
 
 
 //var g = ['grpc://10.120.223.35:7051', 'grpc://10.120.223.35:7052', 'grpc://10.120.223.35:7053'];
@@ -150,7 +159,7 @@ if ( ccType == 'ccchecker') {
     console.log('Nid:id=%d:%d, ccchecker chaincode setting: keyStart=%d payLoadMin=%d payLoadMax=%d',
                  Nid, pid, keyStart, parseInt(uiContent.ccOpt.payLoadMin), parseInt(uiContent.ccOpt.payLoadMax));
 }
-console.log('ccType: %s, keyStart; %d', ccType, keyStart);
+console.log('ccType: %s, keyStart: %d', ccType, keyStart);
 //construct invoke request
 var testInvokeArgs = [];
 for (i=0; i<uiContent.invoke.move.args.length; i++) {
@@ -220,37 +229,43 @@ function execTransMode() {
     inv_q = 0;
 
     //enroll user
-    testUtil.getSubmitter(client)
-    .then(
-        function(admin) {
-            console.log('[Nid:id=%d:%d] Successfully enrolled user \'admin\'', Nid, pid);
-            webUser = admin;
+    hfc.newDefaultKeyValueStore({
+        path: keyValStorePath
+    }).then(
+        function (store) {
+            client.setStateStore(store);
 
-	    tCurr = new Date().getTime();
-	    console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
-            // execute transactions
-            setTimeout(function() {
-                if (transMode.toUpperCase() == 'SIMPLE') {
-                    execModeSimple();
-                } else if (transMode.toUpperCase() == 'CONSTANT') {
-                    execModeConstant();
-                } else if (transMode.toUpperCase() == 'MIX') {
-                    execModeMix();
-                } else if (transMode.toUpperCase() == 'BURST') {
-                    execModeBurst();
-                } else {
-                    // invalid transaction request
-                    console.log(util.format("Nid:id=%d:%d, Transaction %j and/or mode %s invalid", Nid, pid, transType, transMode));
-                    process.exit(1);
+            testUtil.getSubmitter(client, null, true)
+            .then(
+                function(admin) {
+                    console.log('[Nid:id=%d:%d] Successfully loaded user \'admin\'', Nid, pid);
+                    webUser = admin;
+
+	            tCurr = new Date().getTime();
+	            console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
+                    // execute transactions
+                    setTimeout(function() {
+                        if (transMode.toUpperCase() == 'SIMPLE') {
+                            execModeSimple();
+                        } else if (transMode.toUpperCase() == 'CONSTANT') {
+                            execModeConstant();
+                        } else if (transMode.toUpperCase() == 'MIX') {
+                            execModeMix();
+                        } else if (transMode.toUpperCase() == 'BURST') {
+                            execModeBurst();
+                        } else {
+                            // invalid transaction request
+                            console.log(util.format("Nid:id=%d:%d, Transaction %j and/or mode %s invalid", Nid, pid, transType, transMode));
+                            process.exit(1);
+                        }
+                    }, tStart-tCurr);
+                },
+                function(err) {
+                    console.log('[Nid:id=%d:%d] Failed to wait due to error: ', Nid, pid, err.stack ? err.stack : err);
+                    return;
                 }
-            }, tStart-tCurr);
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to wait due to error: ', Nid, pid, err.stack ? err.stack : err);
-            return;
-        }
-    );
-
+            );
+        });
 }
 
 function isExecDone(trType){
@@ -336,7 +351,7 @@ function invoke_move_simple(freq) {
         })
     .then(
         function(response) {
-            if (response.Status === 'SUCCESS') {
+            if (response.status === 'SUCCESS') {
                 isExecDone('Move');
                 if ( IDone != 1 ) {
                     setTimeout(function(){
@@ -449,7 +464,7 @@ function invoke_move_const(freq) {
         })
     .then(
         function(response) {
-            if (response.Status === 'SUCCESS') {
+            if (response.status === 'SUCCESS') {
                 // hist output
                 if ( recHist == 'HIST' ) {
                     tCurr = new Date().getTime();
@@ -593,7 +608,7 @@ function invoke_move_mix(freq) {
         })
     .then(
         function(response) {
-            if (response.Status === 'SUCCESS') {
+            if (response.status === 'SUCCESS') {
                 setTimeout(function(){
                     invoke_query_mix(freq);
                 },freq);
@@ -727,7 +742,7 @@ function invoke_move_burst() {
         })
     .then(
         function(response) {
-            if (response.Status === 'SUCCESS') {
+            if (response.status === 'SUCCESS') {
                 isExecDone('Move');
                 if ( IDone != 1 ) {
                     setTimeout(function(){
