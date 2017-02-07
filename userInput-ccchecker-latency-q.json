@@ -19,7 +19,8 @@
     },
     "constantOpt": {
         "recHist": "HIST",
-        "constFreq": "1000"
+        "constFreq": "1000",
+        "devFreq": "300"
     },
     "ccType": "ccchecker",
     "ccOpt": {

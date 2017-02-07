@@ -242,7 +242,7 @@ function execTransMode() {
                     webUser = admin;
 
 	            tCurr = new Date().getTime();
-	            console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
+	            console.log('[Nid:id=%d:%d] execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
                     // execute transactions
                     setTimeout(function() {
                         if (transMode.toUpperCase() == 'SIMPLE') {
@@ -273,7 +273,7 @@ function isExecDone(trType){
     if ( trType.toUpperCase() == 'MOVE' ) {
         if ( nRequest > 0 ) {
            if ( (inv_m % (nRequest/10)) == 0 ) {
-              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_m, tCurr-tLocal));
            }
 
@@ -282,18 +282,19 @@ function isExecDone(trType){
            }
         } else {
            if ( (inv_m % 1000) == 0 ) {
-              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_m, tCurr-tLocal));
            }
 
            if ( tCurr > tEnd ) {
+                console.log(util.format("[Nid:id=%d:%d] invoke completes: tCurr=%d, tEnd= %d", tCurr, tEnd));
                 IDone = 1;
            }
         }
     } else if ( trType.toUpperCase() == 'QUERY' ) {
         if ( nRequest > 0 ) {
            if ( (inv_q % (nRequest/10)) == 0 ) {
-              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_q, tCurr-tLocal));
            }
 
@@ -302,7 +303,7 @@ function isExecDone(trType){
            }
         } else {
            if ( (inv_q % 1000) == 0 ) {
-              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_q, tCurr-tLocal));
            }
 
@@ -439,6 +440,10 @@ function execModeSimple() {
     }
 }
 
+var devFreq = parseInt(uiContent.constantOpt.devFreq);
+function getRandom(min0, max0) {
+        return Math.floor(Math.random() * (max0-min0)) + min0;
+}
 // invoke_move_const
 function invoke_move_const(freq) {
     inv_m++;
@@ -478,9 +483,11 @@ function invoke_move_const(freq) {
 
                 isExecDone('Move');
                 if ( IDone != 1 ) {
+                    var freq_n=getRandom(freq-devFreq, freq+devFreq);
+                    //console.log(' getRandom(min0, max0): ', freq_n);
                     setTimeout(function(){
                         invoke_move_const(freq);
-                    },freq);
+                    },freq_n);
                 } else {
                     tCurr = new Date().getTime();
                     console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
@@ -523,9 +530,11 @@ function invoke_query_const(freq) {
             }
             isExecDone('Query');
             if ( QDone != 1 ) {
+                var freq_n=getRandom(freq-dev, freq+dev);
+                //console.log(' getRandom(min0, max0): ', freq_n);
                 setTimeout(function(){
                     invoke_query_const(freq);
-                },freq);
+                },freq_n);
             } else {
                 tCurr = new Date().getTime();
                 for(let j = 0; j < response_payloads.length; j++) {
@@ -556,10 +565,10 @@ function execModeConstant() {
         console.log('recHist: ', recHist);
 
         tLocal = new Date().getTime();
-        if ( runDur > 0 ) {
+        if ( nRequest == 0 ) {
             tEnd = tLocal + runDur;
         }
-        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
+        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d tEnd %d', Nid, pid, tStart, tLocal, tEnd);
         var freq = parseInt(uiContent.constantOpt.constFreq);
         ofile = 'ConstantResults'+Nid+'.txt';
         //var ConstantFile = fs.createWriteStream('ConstantResults.txt');
@@ -585,7 +594,7 @@ function invoke_move_mix(freq) {
     inv_m++;
 
     tCurr = new Date().getTime();
-    console.log('Nid:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', Nid, pid, tCurr, freq);
+    //console.log('Nid:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', Nid, pid, tCurr, freq);
 
     getMoveRequest();
     chain.sendTransactionProposal(request_invoke)
@@ -633,7 +642,7 @@ function invoke_query_mix(freq) {
     inv_q++;
 
     tCurr = new Date().getTime();
-    console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d', Nid, pid, tCurr);
+    //console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d', Nid, pid, tCurr);
 
     getQueryRequest();
     chain.queryByChaincode(request_query)
@@ -677,7 +686,7 @@ function execModeMix() {
                 freq = 20000;
             }
         }
-        console.log('Nid:id=%d:%d, Mix Freq: %d ms', Nid, pid, freq);
+        console.log('[Nid:id=%d:%d] Mix Freq: %d ms', Nid, pid, freq);
         invoke_move_mix(freq);
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
@@ -833,7 +842,7 @@ function execModeBurst() {
             tEnd = tLocal + runDur;
         }
         console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
-        console.log('Nid:id=%d:%d, Mix Freq: %d ms', Nid, pid, bFreq);
+        console.log('[Nid:id=%d:%d] Mix Freq: %d ms', Nid, pid, bFreq);
         if ( invokeType.toUpperCase() == 'MOVE' ) {
             invoke_move_burst();
         } else if ( invokeType.toUpperCase() == 'QUERY' ) {

@@ -71,7 +71,8 @@ The above command will execute the performance test on one network with all para
         },
         "constantOpt": {
             "recHIST": "HIST",
-            "constFreq": "1000"
+            "constFreq": "1000",
+            "devFreq": 300
         },
         "ccType": "general",
         "ccOpt": {
@@ -142,6 +143,7 @@ where:
   
   - recHist: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
   - constFreq: frequency in ms for the transaction rate.
+  - devFreq: deviation of frequency in ms for the transaction rate. A random frequency is calculated between constFrq-devFreq and constFrq+devFreq for the next transaction.  All transactions are sent at constant rate if this number is set to 0.
 
 + **ccType**: chaincode type
 
