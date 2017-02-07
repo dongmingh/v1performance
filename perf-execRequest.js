@@ -530,7 +530,7 @@ function invoke_query_const(freq) {
             }
             isExecDone('Query');
             if ( QDone != 1 ) {
-                var freq_n=getRandom(freq-dev, freq+dev);
+                var freq_n=getRandom(freq-devFreq, freq+devFreq);
                 //console.log(' getRandom(min0, max0): ', freq_n);
                 setTimeout(function(){
                     invoke_query_const(freq);
