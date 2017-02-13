@@ -40,7 +40,7 @@ hfc.setLogger(logger);
 //var grpc = require('grpc');
 
 var util = require('util');
-var testUtil = require('./util.js');
+var testUtil = require('./perf-util.js');
 var utils = require('fabric-client/lib/utils.js');
 var Peer = require('fabric-client/lib/Peer.js');
 var Orderer = require('fabric-client/lib/Orderer.js');
@@ -248,19 +248,19 @@ function execTransMode() {
             client.setStateStore(store);
                     console.log('[Nid:id=%d:%d] Successfully setStateStore', Nid, pid);
 
+            var uid = 2;
             //testUtil.getSubmitter(client)
-            testUtil.getSubmitter(client, null, true)
+            testUtil.getSubmitter(users[uid].username, users[uid].secret, client, true)
             .then(
                 function(admin) {
 
-
-    eh = new EventHub();
-    eh.setPeerAddr(evtHub_url);
-    eh.connect();
-    console.log('[Nid:id=%d:%d] eventHub connect: %s', Nid, pid, evtHub_url);
-
                     console.log('[Nid:id=%d:%d] Successfully loaded user \'admin\'', Nid, pid);
                     webUser = admin;
+
+                    eh = new EventHub();
+                    eh.setPeerAddr(evtHub_url);
+                    eh.connect();
+                    console.log('[Nid:id=%d:%d] eventHub connect: %s', Nid, pid, evtHub_url);
 
 	            tCurr = new Date().getTime();
 	            console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
@@ -346,15 +346,22 @@ function getTxRequest(results) {
     };
 }
 
+var evtRcv=0;
 function eventRegister(tx) {
     var txId = tx.toString();
     var txPromise = new Promise((resolve, reject) => {
         var handle = setTimeout(reject, 30000);
 
         eh.registerTxEvent(txId, (tx) => {
-            console.log('The chaincode invoke (move) transaction has been successfully committed');
             clearTimeout(handle);
+            evtRcv++;
             eh.unregisterTxEvent(txId);
+            //console.log('[Nid:id=%d:%d] The chaincode invoke (move) transaction has been successfully committed', Nid, pid, evtRcv);
+            if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
+                    tCurr = new Date().getTime();
+                    console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    eh.disconnect();
+            }
 
         });
     });
@@ -387,6 +394,7 @@ function invoke_move_simple(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .then(
@@ -404,16 +412,19 @@ function invoke_move_simple(freq) {
                 }
             } else {
                 console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
+                eh.disconnect();
                 return;
             }
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
 
     );
@@ -446,11 +457,13 @@ function invoke_query_simple(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
     );
 
@@ -476,6 +489,7 @@ function execModeSimple() {
         }
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
+        eh.disconnect();
     }
 }
 
@@ -506,6 +520,7 @@ function invoke_move_const(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .then(
@@ -536,16 +551,19 @@ function invoke_move_const(freq) {
                 }
             } else {
                 console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
+                eh.disconnect();
                 return;
             }
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
 
     );
@@ -587,11 +605,13 @@ function invoke_query_const(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
     );
 
@@ -627,6 +647,7 @@ function execModeConstant() {
         }
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
+        eh.disconnect();
     }
 }
 
@@ -656,6 +677,7 @@ function invoke_move_mix(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .then(
@@ -671,11 +693,13 @@ function invoke_move_mix(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
 
     );
@@ -705,11 +729,13 @@ function invoke_query_mix(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
     );
 
@@ -733,6 +759,7 @@ function execModeMix() {
         invoke_move_mix(freq);
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
+        eh.disconnect();
     }
 }
 
@@ -787,11 +814,13 @@ function invoke_move_burst() {
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
+                eh.disconnect();
                 return;
             }
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .then(
@@ -809,16 +838,19 @@ function invoke_move_burst() {
                 }
             } else {
                 console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
+                eh.disconnect();
                 return;
             }
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
 
     );
@@ -851,11 +883,13 @@ function invoke_query_burst() {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
         }
     );
 
@@ -895,6 +929,7 @@ function execModeBurst() {
         }
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
+        eh.disconnect();
     }
 }
 

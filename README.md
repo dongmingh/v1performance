@@ -21,7 +21,7 @@ The performance Node SDK uses [Hyperledger Fabric Client (HFC) SDK](http://hyper
 3. git reset --hard d32cdd2c3dc97f907f23432a0668b506ac7b0271
 4. run command `npm install`
 5. run command `gulp ca`
-6. download all scripts (1 bash shell script and 2 js scripts) and all json files into directory fabric-sdk-node/test/unit
+6. download all scripts (1 bash shell script and 3 js scripts) and all json files into directory fabric-sdk-node/test/unit
 7. create a sub directory, SCFiles, under fabric-sdk-node/test/unit
 8. add Service Credentials file for each fabric network to the SCFiles directory, see config-local.json in directory SCFiles as an example
 9. modify userInput-ccchecer.json according to the desired test and the Service Credentials files

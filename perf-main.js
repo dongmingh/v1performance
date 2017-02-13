@@ -39,7 +39,7 @@ hfc.setLogger(logger);
 var X509 = require('jsrsasign').X509;
 
 var util = require('util');
-var testUtil = require('./util.js');
+var testUtil = require('./perf-util.js');
 var utils = require('fabric-client/lib/utils.js');
 var Peer = require('fabric-client/lib/Peer.js');
 var Orderer = require('fabric-client/lib/Orderer.js');
@@ -311,7 +311,8 @@ function performance_main() {
     // send proposal to endorser
     if ( transType.toUpperCase() == 'DEPLOY' ) {
         chain = client.newChain('testChain-e2e');
-        userEnroll(2);
+        var uid = 2;
+        userEnroll(uid);
 
         sleep(2000);
 
@@ -323,7 +324,8 @@ function performance_main() {
                 client.setStateStore(store);
 */
 
-        testUtil.getSubmitter(client, null, true)
+        //testUtil.getSubmitter(client, null, true)
+        testUtil.getSubmitter(users[uid].username, users[uid].secret, client, true)
         .then(
             function(admin) {
                 console.log('[Nid=%d] Successfully enrolled user \'admin\'', Nid);
