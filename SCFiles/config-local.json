@@ -3,35 +3,41 @@
     "peers": [
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 7051
+        "discovery_port": 7061
       },
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 7052
+        "discovery_port": 7062
       },
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 7053
+        "discovery_port": 7063
       },
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 7054
+        "discovery_port": 7064
       }
     ],
+    "evtHub": {
+      "localhost_evt": {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 7053
+      }
+    },
     "cop": {
       "localhost_cop": {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 8888
+        "discovery_port": 7054
       }
     },
     "orderer": [
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 5151
+        "discovery_port": 7050
       },
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 5152
+        "discovery_port": 7051
       }
     ],
     "users": [

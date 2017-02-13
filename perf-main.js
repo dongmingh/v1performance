@@ -24,7 +24,7 @@
 // in a happy-path scenario
 'use strict';
 
-var tape = require('tape');
+//var tape = require('tape');
 //var _test = require('tape-promise');
 //var test = _test(tape);
 
@@ -34,22 +34,23 @@ logger.setLevel('ERROR');
 
 var path = require('path');
 
-var hfc = require('hfc');
+var hfc = require('fabric-client');
 hfc.setLogger(logger);
 var X509 = require('jsrsasign').X509;
 
 var util = require('util');
 var testUtil = require('./util.js');
-var utils = require('hfc/lib/utils.js');
-var Peer = require('hfc/lib/Peer.js');
-var Orderer = require('hfc/lib/Orderer.js');
-var FabricCOPServices = require('hfc-cop/lib/FabricCOPImpl');
-var FabricCOPClient = FabricCOPServices.FabricCOPClient;
-var User = require('hfc/lib/User.js');
-var Client = require('hfc/lib/Client.js');
+var utils = require('fabric-client/lib/utils.js');
+var Peer = require('fabric-client/lib/Peer.js');
+var Orderer = require('fabric-client/lib/Orderer.js');
+var EventHub = require('fabric-client/lib/EventHub.js');
+var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
+var FabricCAClient = FabricCAServices.FabricCAClient;
+var User = require('fabric-client/lib/User.js');
+var Client = require('fabric-client/lib/Client.js');
 
 var keyValStorePath = testUtil.KVS;
-console.log('keyValStorePath', testUtil.KVS);
+console.log('keyValStorePath', keyValStorePath);
 
 var client = new hfc();
 utils.setConfigSetting('crypto-keysize', 256);
@@ -75,31 +76,36 @@ var svcFile = uiContent.SCFile[Nid].ServiceCredentials;
 var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
 var peers = network.credentials.peers;
 var users = network.credentials.users;
-var cop = network.credentials.cop;
+var ca = network.credentials.ca;
 var orderer = network.credentials.orderer;
 
 //var chaincode_id = uiContent.chaincodeID; 
 //set Member Services URL
-var cop_id = Object.keys(network.credentials.cop);
-var cop_url = 'http://' + cop[cop_id].discovery_host + ':' + cop[cop_id].discovery_port;
-console.log('[Nid=%d] cop url: ', Nid, cop_url);
-var csr = fs.readFileSync(path.resolve(__dirname, '../fixtures/fabriccop/enroll-csr.pem'));
+var ca_id = Object.keys(network.credentials.ca);
+var ca_url = 'http://' + ca[ca_id].discovery_host + ':' + ca[ca_id].discovery_port;
+console.log('[Nid=%d] ca url: ', Nid, ca_url);
+var csr = fs.readFileSync(path.resolve(__dirname, '/root/gopath/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/fabriccop/enroll-csr.pem'));
+
+var evtHub = network.credentials.evtHub;
+var evtHub_id = Object.keys(network.credentials.evtHub);
+var evtHub_url = 'grpc://' + evtHub[evtHub_id].discovery_host + ':' + evtHub[evtHub_id].discovery_port;
+console.log('[Nid=%d] evtHub url: ', Nid, evtHub_url);
 
 function setStaticCSR(uid) {
     console.log('setStaticCSR ');
-    var COPClient = new FabricCOPClient({
+    var CAClient = new FabricCAClient({
           protocol: 'http',
-          hostname: cop[cop_id].discovery_host,
-          port: cop[cop_id].discovery_port
+          hostname: ca[ca_id].discovery_host,
+          port: ca[ca_id].discovery_port
     });
 
-    COPClient.enroll( users[uid].username, users[uid].secret, csr.toString())
+    CAClient.enroll( users[uid].username, users[uid].secret, csr.toString())
     .then(
         function (pem) {
             var cert = new X509();
             cert.readCertPEM(pem);
-            console.log('Successfully enrolled \'' + users[uid].username + '\'');
             console.log('cert getSubjectString: ', cert.getSubjectString());
+            console.log('setStaticCSR: Successfully enrolled \'' + users[uid].username + '\'');
         }),
         function (err) {
             console.log('failed to enroll \'' + users[uid].username + '\'');
@@ -109,17 +115,18 @@ function setStaticCSR(uid) {
 //set COP
 function setDynamicCSR(uid) {
     console.log('setDynamicCSR ');
-    var copService = new FabricCOPServices(cop_url);
-    copService.enroll({ 
+    var caService = new FabricCAServices(ca_url);
+    var member;
+    caService.enroll({ 
         enrollmentID: users[uid].username,
         enrollmentSecret: users[uid].secret
-    })
-    .then(
+    }
+    ).then(
         function (enrollment) {
             var cert = new X509();
             cert.readCertPEM(enrollment.certificate);
             console.log('SubjectString: ', cert.getSubjectString());
-            console.log('Successfully enrolled \'' + users[uid].username + '\'' );
+            console.log('setDynamicCSR: Successfully enrolled \'' + users[uid].username + '\'' );
         },
         function (err) {
             console.log('Failed to enroll \'' + users[uid].username + '\'.  ' + err);
@@ -158,7 +165,7 @@ for (i=0; i<uiContent.deploy.args.length; i++) {
 //    console.log('chaincode path: ', testUtil.CHAINCODE_PATH);
 //    console.log('chaincode path: ', uiContent.deploy.chaincodePath);
 var chaincode_id = 'end2end';
-var chain_id = 'test_chainid';
+var chain_id = 'testchainid';
 var tx_id = null;
 var nonce = null;
 
@@ -203,6 +210,12 @@ function deploy_chaincode() {
 */
 
 
+    // setup event hub to get notified when transactions are committed
+    eh = new EventHub();
+    eh.setPeerAddr(evtHub_url);
+    eh.connect();
+    console.log('[Nid=%d] eventHub connect: %s', Nid, evtHub_url);
+
     tx_id = utils.buildTransactionID({length:12});
     nonce = utils.getNonce();
     var request_deploy = {
@@ -212,13 +225,10 @@ function deploy_chaincode() {
         args: testDeployArgs,
         chainId: chain_id,
         txId: tx_id,
-        nonce: nonce,
-        'dockerfile-contents' :
-        'from hyperledger/fabric-ccenv\n' +
-        'COPY . $GOPATH/src/build-chaincode/\n' +
-        'WORKDIR $GOPATH\n\n' +
-        'RUN go install build-chaincode && mv $GOPATH/bin/build-chaincode $GOPATH/bin/%s'
+        nonce: nonce
     };
+
+    //console.log('request_deploy: ', request_deploy);
 
     chain.sendDeploymentProposal(request_deploy)
     .then(
@@ -244,13 +254,38 @@ function deploy_chaincode() {
                     proposal: proposal,
                     header: header
                 };
+
+                var deployId = tx_id.toString();
+                var txPromise = new Promise((resolve, reject) => {
+                    var handle = setTimeout(reject, 30000);
+
+                    eh.registerTxEvent(deployId, (tx) => {
+                        console.log('The chaincode deploy transaction has been successfully committed');
+                        clearTimeout(handle);
+                        eh.unregisterTxEvent(deployId);
+
+                    });
+                });
+
+
                 return chain.sendTransaction(request);
+/*
+                var sendPromise = chain.sendTransaction(request);
+                return Promise.all([sendPromise, txPromise]).then((results) => {
+                    return results[0]; // the first returned value is from the 'sendPromise' which is from the 'sendTransaction()' call
+                }).catch((err) => {
+                    console.log('Failed to send deploy transaction and get notifications within the timeout period. ' + err.stack ? err.stack : err);
+                    eh.disconnect();
+                });
+*/
             } else {
                 console.log('Failed to send Proposal or receive valid response. Response null or status is not 200. exiting...');
+                eh.disconnect();
             }
         },
         function(err) {
             console.log('[Nid=%d] Failed to send deployment proposal due to error: ', Nid, err.stack ? err.stack : err);
+            eh.disconnect();
         })
     .then(
         function(response) {
@@ -269,13 +304,13 @@ function deploy_chaincode() {
 }
 
 var chain;
+var eh;
 
 // performance main
 function performance_main() {
     // send proposal to endorser
     if ( transType.toUpperCase() == 'DEPLOY' ) {
         chain = client.newChain('testChain-e2e');
-        //console.log('getChain------------: ', client.getChain('testChain-e2e'));
         userEnroll(2);
 
         sleep(2000);
@@ -294,9 +329,13 @@ function performance_main() {
                 console.log('[Nid=%d] Successfully enrolled user \'admin\'', Nid);
                 webUser = admin;
                 deploy_chaincode();
+                sleep(30000);
+                eh.disconnect();
             },
             function(err) {
                 console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
+                eh.disconnect();
+
                 return;
             }
         );
@@ -325,4 +364,11 @@ function performance_main() {
 
 function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function evtDisconnect() {
+    if (eh && eh.isconnected()) {
+        logger.info('Disconnecting the event hub');
+        eh.disconnect();
+    }
 }

@@ -24,7 +24,7 @@
 // in a happy-path scenario
 'use strict';
 
-var tape = require('tape');
+//var tape = require('tape');
 //var _test = require('tape-promise');
 //var test = _test(tape);
 
@@ -34,25 +34,27 @@ logger.setLevel('ERROR');
 
 var path = require('path');
 
-var hfc = require('hfc');
+var hfc = require('fabric-client');
 hfc.setLogger(logger);
 
 //var grpc = require('grpc');
 
 var util = require('util');
 var testUtil = require('./util.js');
-var utils = require('hfc/lib/utils.js');
-var Peer = require('hfc/lib/Peer.js');
-var Orderer = require('hfc/lib/Orderer.js');
-var FabricCOPServices = require('hfc-cop/lib/FabricCOPImpl');
-var User = require('hfc/lib/User.js');
-var Client = require('hfc/lib/Client.js');
+var utils = require('fabric-client/lib/utils.js');
+var Peer = require('fabric-client/lib/Peer.js');
+var Orderer = require('fabric-client/lib/Orderer.js');
+var EventHub = require('fabric-client/lib/EventHub.js');
+var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
+var FabricCAClient = FabricCAServices.FabricCAClient;
+var User = require('fabric-client/lib/User.js');
+var Client = require('fabric-client/lib/Client.js');
+
 var fs = require('fs');
 const crypto = require('crypto');
 
 var client = new hfc();
 var chain = client.newChain('testChain-e2e');
-utils.setConfigSetting('crypto-keysize', 256);
 var keyValStorePath = testUtil.KVS;
 
 // local vars
@@ -70,7 +72,7 @@ var recHist;
 var buff;
 var ofile;
 var chaincode_id = 'end2end';
-var chain_id = 'test_chainid';
+var chain_id = 'testchainid';
 var tx_id = null;
 var nonce = null;
 
@@ -96,12 +98,17 @@ var svcFile = uiContent.SCFile[Nid].ServiceCredentials;
 var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
 var peers = network.credentials.peers;
 var users = network.credentials.users;
-var cop = network.credentials.cop;
+var ca = network.credentials.ca;
 var orderer = network.credentials.orderer;
 
-var cop_id = Object.keys(network.credentials.cop);
-var cop_url = 'http://' + cop[cop_id].discovery_host + ':' + cop[cop_id].discovery_port;
-console.log('[Nid=%d] cop url: ', Nid, cop_url);
+var ca_id = Object.keys(network.credentials.ca);
+var ca_url = 'http://' + ca[ca_id].discovery_host + ':' + ca[ca_id].discovery_port;
+console.log('[Nid=%d] ca url: ', Nid, ca_url);
+
+var evtHub = network.credentials.evtHub;
+var evtHub_id = Object.keys(network.credentials.evtHub);
+var evtHub_url = 'grpc://' + evtHub[evtHub_id].discovery_host + ':' + evtHub[evtHub_id].discovery_port;
+console.log('[Nid=%d] evtHub url: ', Nid, evtHub_url);
 
 //user parameters
 //var chaincode_id = uiContent.chaincodeID;
@@ -180,13 +187,16 @@ function getMoveRequest() {
         //console.log('Nid:id=%d:%d, key: %s, r: %d', Nid, pid, testInvokeArgs[1], r);
     }
 
+    tx_id = utils.buildTransactionID({length:12});
+    nonce = utils.getNonce();
+
     request_invoke = {
         chaincodeId : chaincode_id,
         chainId: chain_id,
-        txId: utils.buildTransactionID(),
-        nonce: utils.getNonce(),
         fcn: uiContent.invoke.move.fcn,
-        args: testInvokeArgs
+        args: testInvokeArgs,
+        txId: tx_id,
+        nonce: nonce
     };
 
    //console.log('request_invoke: ', request_invoke);
@@ -222,6 +232,8 @@ function getQueryRequest() {
  */
     execTransMode();
 
+var eh;
+
 function execTransMode() {
 
     // init vars
@@ -234,15 +246,24 @@ function execTransMode() {
     }).then(
         function (store) {
             client.setStateStore(store);
+                    console.log('[Nid:id=%d:%d] Successfully setStateStore', Nid, pid);
 
+            //testUtil.getSubmitter(client)
             testUtil.getSubmitter(client, null, true)
             .then(
                 function(admin) {
+
+
+    eh = new EventHub();
+    eh.setPeerAddr(evtHub_url);
+    eh.connect();
+    console.log('[Nid:id=%d:%d] eventHub connect: %s', Nid, pid, evtHub_url);
+
                     console.log('[Nid:id=%d:%d] Successfully loaded user \'admin\'', Nid, pid);
                     webUser = admin;
 
 	            tCurr = new Date().getTime();
-	            console.log('[Nid:id=%d:%d] execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
+	            console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
                     // execute transactions
                     setTimeout(function() {
                         if (transMode.toUpperCase() == 'SIMPLE') {
@@ -273,7 +294,7 @@ function isExecDone(trType){
     if ( trType.toUpperCase() == 'MOVE' ) {
         if ( nRequest > 0 ) {
            if ( (inv_m % (nRequest/10)) == 0 ) {
-              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_m, tCurr-tLocal));
            }
 
@@ -282,19 +303,18 @@ function isExecDone(trType){
            }
         } else {
            if ( (inv_m % 1000) == 0 ) {
-              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_m, tCurr-tLocal));
            }
 
            if ( tCurr > tEnd ) {
-                console.log(util.format("[Nid:id=%d:%d] invoke completes: tCurr=%d, tEnd= %d", tCurr, tEnd));
                 IDone = 1;
            }
         }
     } else if ( trType.toUpperCase() == 'QUERY' ) {
         if ( nRequest > 0 ) {
            if ( (inv_q % (nRequest/10)) == 0 ) {
-              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_q, tCurr-tLocal));
            }
 
@@ -303,7 +323,7 @@ function isExecDone(trType){
            }
         } else {
            if ( (inv_q % 1000) == 0 ) {
-              console.log(util.format("[Nid:id=%d:%d] invokes(%s) sent: number=%d, elapsed time= %d",
+              console.log(util.format("Nid:id=%d:%d, invokes(%s) sent: number=%d, elapsed time= %d",
                                          Nid, pid, trType, inv_q, tCurr-tLocal));
            }
 
@@ -326,21 +346,40 @@ function getTxRequest(results) {
     };
 }
 
+function eventRegister(tx) {
+    var txId = tx.toString();
+    var txPromise = new Promise((resolve, reject) => {
+        var handle = setTimeout(reject, 30000);
+
+        eh.registerTxEvent(txId, (tx) => {
+            console.log('The chaincode invoke (move) transaction has been successfully committed');
+            clearTimeout(handle);
+            eh.unregisterTxEvent(txId);
+
+        });
+    });
+
+}
+
 // invoke_move_simple
 function invoke_move_simple(freq) {
     inv_m++;
 
     getMoveRequest();
+
+//            console.log('request_invoke: ' , request_invoke);
     chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
+
             //var proposal = results[1];
-            //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
+            console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             getTxRequest(results);
+            eventRegister(request_invoke.txId);
+
             if (proposalResponses[0].response.status === 200) {
                 return chain.sendTransaction(txRequest);
-                //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
                 return;
@@ -455,6 +494,8 @@ function invoke_move_const(freq) {
             var proposalResponses = results[0];
             //var proposal = results[1];
             getTxRequest(results);
+            eventRegister(request_invoke.txId);
+
             if (proposalResponses[0].response.status === 200) {
                 return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
@@ -565,10 +606,10 @@ function execModeConstant() {
         console.log('recHist: ', recHist);
 
         tLocal = new Date().getTime();
-        if ( nRequest == 0 ) {
+        if ( runDur > 0 ) {
             tEnd = tLocal + runDur;
         }
-        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d tEnd %d', Nid, pid, tStart, tLocal, tEnd);
+        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
         var freq = parseInt(uiContent.constantOpt.constFreq);
         ofile = 'ConstantResults'+Nid+'.txt';
         //var ConstantFile = fs.createWriteStream('ConstantResults.txt');
@@ -594,7 +635,7 @@ function invoke_move_mix(freq) {
     inv_m++;
 
     tCurr = new Date().getTime();
-    //console.log('Nid:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', Nid, pid, tCurr, freq);
+    console.log('Nid:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', Nid, pid, tCurr, freq);
 
     getMoveRequest();
     chain.sendTransactionProposal(request_invoke)
@@ -603,6 +644,8 @@ function invoke_move_mix(freq) {
             var proposalResponses = results[0];
             //var proposal = results[1];
             getTxRequest(results);
+            eventRegister(request_invoke.txId);
+
             if (proposalResponses[0].response.status === 200) {
                 return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
@@ -642,7 +685,7 @@ function invoke_query_mix(freq) {
     inv_q++;
 
     tCurr = new Date().getTime();
-    //console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d', Nid, pid, tCurr);
+    console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d', Nid, pid, tCurr);
 
     getQueryRequest();
     chain.queryByChaincode(request_query)
@@ -686,7 +729,7 @@ function execModeMix() {
                 freq = 20000;
             }
         }
-        console.log('[Nid:id=%d:%d] Mix Freq: %d ms', Nid, pid, freq);
+        console.log('Nid:id=%d:%d, Mix Freq: %d ms', Nid, pid, freq);
         invoke_move_mix(freq);
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
@@ -737,6 +780,8 @@ function invoke_move_burst() {
             var proposalResponses = results[0];
             //var proposal = results[1];
             getTxRequest(results);
+            eventRegister(request_invoke.txId);
+
             if (proposalResponses[0].response.status === 200) {
                 return chain.sendTransaction(txRequest);
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
@@ -842,7 +887,7 @@ function execModeBurst() {
             tEnd = tLocal + runDur;
         }
         console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
-        console.log('[Nid:id=%d:%d] Mix Freq: %d ms', Nid, pid, bFreq);
+        console.log('Nid:id=%d:%d, Mix Freq: %d ms', Nid, pid, bFreq);
         if ( invokeType.toUpperCase() == 'MOVE' ) {
             invoke_move_burst();
         } else if ( invokeType.toUpperCase() == 'QUERY' ) {
