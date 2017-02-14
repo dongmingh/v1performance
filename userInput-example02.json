@@ -1,5 +1,6 @@
 {
-    "chaincodeID": "MyTest",
+    "chaincodeID": "end2end",
+    "chainID": "testchainid",
     "transMode": "Simple",
     "transType": "Invoke",
     "invokeType": "Query",

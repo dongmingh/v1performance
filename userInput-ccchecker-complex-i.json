@@ -1,5 +1,6 @@
 {
-    "chaincodeID": "MyCCChecker",
+    "chaincodeID": "end2end",
+    "chainID": "testchainid",
     "transMode": "Mix",
     "transType": "Invoke",
     "invokeType": "Move",

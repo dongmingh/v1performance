@@ -79,7 +79,6 @@ var users = network.credentials.users;
 var ca = network.credentials.ca;
 var orderer = network.credentials.orderer;
 
-//var chaincode_id = uiContent.chaincodeID; 
 //set Member Services URL
 var ca_id = Object.keys(network.credentials.ca);
 var ca_url = 'http://' + ca[ca_id].discovery_host + ':' + ca[ca_id].discovery_port;
@@ -164,8 +163,6 @@ for (i=0; i<uiContent.deploy.args.length; i++) {
 
 //    console.log('chaincode path: ', testUtil.CHAINCODE_PATH);
 //    console.log('chaincode path: ', uiContent.deploy.chaincodePath);
-var chaincode_id = 'end2end';
-var chain_id = 'testchainid';
 var tx_id = null;
 var nonce = null;
 
@@ -215,6 +212,10 @@ function deploy_chaincode() {
     eh.setPeerAddr(evtHub_url);
     eh.connect();
     console.log('[Nid=%d] eventHub connect: %s', Nid, evtHub_url);
+
+    var chaincode_id = uiContent.chaincodeID;
+    var chain_id = uiContent.chainID;
+    console.log('[Nid=%d] chaincode_id: %s, chain_id: %s', Nid, chaincode_id, chain_id);
 
     tx_id = utils.buildTransactionID({length:12});
     nonce = utils.getNonce();

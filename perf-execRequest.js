@@ -71,8 +71,8 @@ var QDone=0;
 var recHist;
 var buff;
 var ofile;
-var chaincode_id = 'end2end';
-var chain_id = 'testchainid';
+var chaincode_id;
+var chain_id;
 var tx_id = null;
 var nonce = null;
 
@@ -93,6 +93,10 @@ var uiFile = process.argv[4];
 var tStart = parseInt(process.argv[5]);
 console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, pid, Nid, uiFile, tStart);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
+
+var chaincode_id = uiContent.chaincodeID;
+var chain_id = uiContent.chainID;
+console.log('[Nid:id=%d:%d] chaincode_id: %s, chain_id: %s', Nid, pid, chaincode_id, chain_id);
 
 var svcFile = uiContent.SCFile[Nid].ServiceCredentials;
 var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
@@ -350,7 +354,7 @@ var evtRcv=0;
 function eventRegister(tx) {
     var txId = tx.toString();
     var txPromise = new Promise((resolve, reject) => {
-        var handle = setTimeout(reject, 30000);
+        var handle = setTimeout(reject, 300000);
 
         eh.registerTxEvent(txId, (tx) => {
             clearTimeout(handle);
@@ -374,14 +378,11 @@ function invoke_move_simple(freq) {
 
     getMoveRequest();
 
-//            console.log('request_invoke: ' , request_invoke);
     chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
 
-            //var proposal = results[1];
-            console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             getTxRequest(results);
             eventRegister(request_invoke.txId);
 
@@ -400,6 +401,7 @@ function invoke_move_simple(freq) {
     .then(
         function(response) {
             if (response.status === 'SUCCESS') {
+
                 isExecDone('Move');
                 if ( IDone != 1 ) {
                     setTimeout(function(){
@@ -410,6 +412,7 @@ function invoke_move_simple(freq) {
                     console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     return;
                 }
+
             } else {
                 console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
                 eh.disconnect();
@@ -452,7 +455,6 @@ function invoke_query_simple(freq) {
                     console.log('[Nid:id=%d:%d] query result:', Nid, pid, response_payloads[j].toString('utf8'));
                 }
                 console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                //return;
             }
         },
         function(err) {
@@ -494,7 +496,7 @@ function execModeSimple() {
 }
 
 var devFreq = parseInt(uiContent.constantOpt.devFreq);
-function getRandom(min0, max0) {
+function getRandomNum(min0, max0) {
         return Math.floor(Math.random() * (max0-min0)) + min0;
 }
 // invoke_move_const
@@ -515,6 +517,7 @@ function invoke_move_const(freq) {
                 //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
+                eh.disconnect();
                 return;
             }
         },
@@ -526,6 +529,7 @@ function invoke_move_const(freq) {
     .then(
         function(response) {
             if (response.status === 'SUCCESS') {
+
                 // hist output
                 if ( recHist == 'HIST' ) {
                     tCurr = new Date().getTime();
@@ -539,8 +543,10 @@ function invoke_move_const(freq) {
 
                 isExecDone('Move');
                 if ( IDone != 1 ) {
-                    var freq_n=getRandom(freq-devFreq, freq+devFreq);
-                    //console.log(' getRandom(min0, max0): ', freq_n);
+                    var freq_n=freq;
+                    if ( devFreq > 0 ) {
+                        freq_n=getRandomNum(freq-devFreq, freq+devFreq);
+                    }
                     setTimeout(function(){
                         invoke_move_const(freq);
                     },freq_n);
@@ -549,6 +555,7 @@ function invoke_move_const(freq) {
                     console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     return;
                 }
+
             } else {
                 console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
                 eh.disconnect();
@@ -589,8 +596,7 @@ function invoke_query_const(freq) {
             }
             isExecDone('Query');
             if ( QDone != 1 ) {
-                var freq_n=getRandom(freq-devFreq, freq+devFreq);
-                //console.log(' getRandom(min0, max0): ', freq_n);
+                var freq_n=getRandomNum(freq-devFreq, freq+devFreq);
                 setTimeout(function(){
                     invoke_query_const(freq);
                 },freq_n);
@@ -632,7 +638,7 @@ function execModeConstant() {
         console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
         var freq = parseInt(uiContent.constantOpt.constFreq);
         ofile = 'ConstantResults'+Nid+'.txt';
-        //var ConstantFile = fs.createWriteStream('ConstantResults.txt');
+
         console.log('Nid:id=%d:%d, Constant Freq: %d ms', Nid, pid, freq);
 
         if ( invokeType.toUpperCase() == 'MOVE' ) {
@@ -663,13 +669,11 @@ function invoke_move_mix(freq) {
     .then(
         function(results) {
             var proposalResponses = results[0];
-            //var proposal = results[1];
             getTxRequest(results);
             eventRegister(request_invoke.txId);
 
             if (proposalResponses[0].response.status === 200) {
                 return chain.sendTransaction(txRequest);
-                //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
                 return;
@@ -805,13 +809,11 @@ function invoke_move_burst() {
     .then(
         function(results) {
             var proposalResponses = results[0];
-            //var proposal = results[1];
             getTxRequest(results);
             eventRegister(request_invoke.txId);
 
             if (proposalResponses[0].response.status === 200) {
                 return chain.sendTransaction(txRequest);
-                //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
             } else {
                 console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
                 eh.disconnect();
