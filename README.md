@@ -54,6 +54,8 @@ The above command will execute the performance test on one network with all para
 
 
     {
+        "chaincodeID": "end2end",
+        "chainID": "testchainid",
         "transMode": "Simple",
         "transType": "Invoke",
         "invokeType": "Move",
@@ -107,6 +109,10 @@ The above command will execute the performance test on one network with all para
     
 where:
 
++ **chaincodeID**: chaincode ID for the run.  DO NOT CHANGE.
+
++ **chainID**: chain ID for the run.  DO NOT CHANGE.
+ 
 + **transMode**: transaction mode
   -  Simple: one transaction type and rate only, the subsequent transaction is sent when the response, success or failure, of the previous transaction is received
   -  Burst: various traffic rates, see burstOpt for detailed
@@ -179,13 +185,16 @@ The following chaincodes are tested and supported:
 
 * example02 chaincode
 
-* ccchecker chaincode:  This chaincode supports variable payload sizes. Take the following steps to install this chaincode:
+* ccchecker chaincode:  This chaincode supports variable payload sizes. See userInput-ccchecker.json for example of userInput file. Take the following steps to install this chaincode:
   - cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com
   - mkdir ccchecker
-  - doanload newkeyperinvoke.go into ccchecker directory
+  - download newkeyperinvoke.go into ccchecker directory
 
 
-
+* sample chaincode: This chaincode supports variable (randomized) payload sizes and performs encryption and decryption on the payload. Specify ccType as ccchecker when using this chaincode.  See userInput-samplecc.json for example of userInput file. Take the following steps to install this chaincode:
+  - cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com
+  - mkdir sample_cc
+  - download chaincode_sample.go into sample_cc directory
 
 
 ##Transaction Execution
