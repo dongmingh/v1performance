@@ -195,17 +195,9 @@ function deploy_chaincode() {
         console.log('nOrderer: %d is greater than orderer.length: %d', nOrderer, orderer.length);
         process.exit();
     }
-        tmp = 'grpc://' + orderer[nOrderer-1].discovery_host + ":" + orderer[nOrderer-1].discovery_port;
-        console.log('[Nid=%d] orderer url: ', Nid, tmp);
-        chain.addOrderer(new Orderer(tmp));
-/*
-    for (i=0; i<nOrderer; i++) {
-        tmp = 'grpc://' + orderer[i].discovery_host + ":" + orderer[i].discovery_port;
-        console.log('[Nid=%d] orderer url: ', Nid, tmp);
-        chain.addOrderer(new Orderer(tmp));
-    }
-*/
-
+    tmp = 'grpc://' + orderer[0].discovery_host + ":" + orderer[0].discovery_port;
+    console.log('[Nid=%d] orderer url: ', Nid, tmp);
+    chain.addOrderer(new Orderer(tmp));
 
     // setup event hub to get notified when transactions are committed
     eh = new EventHub();

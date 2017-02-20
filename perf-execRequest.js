@@ -107,12 +107,12 @@ var orderer = network.credentials.orderer;
 
 var ca_id = Object.keys(network.credentials.ca);
 var ca_url = 'http://' + ca[ca_id].discovery_host + ':' + ca[ca_id].discovery_port;
-console.log('[Nid=%d] ca url: ', Nid, ca_url);
+console.log('[Nid:id=%d:%d] ca url: ', Nid, pid, ca_url);
 
 var evtHub = network.credentials.evtHub;
 var evtHub_id = Object.keys(network.credentials.evtHub);
 var evtHub_url = 'grpc://' + evtHub[evtHub_id].discovery_host + ':' + evtHub[evtHub_id].discovery_port;
-console.log('[Nid=%d] evtHub url: ', Nid, evtHub_url);
+console.log('[Nid:id=%d:%d] evtHub url: ', Nid, pid, evtHub_url);
 
 //user parameters
 //var chaincode_id = uiContent.chaincodeID;
@@ -133,17 +133,9 @@ if ( nRequest == 0 ) {
 }
 
 //add orderer
-    tmp = 'grpc://' + orderer[nOrderer-1].discovery_host + ":" + orderer[nOrderer-1].discovery_port;
-    console.log('[Nid=%d] orderer url: ', Nid, tmp);
-    chain.addOrderer(new Orderer(tmp));
-/*
-for (i=0; i<nOrderer; i++) {
-    tmp = 'grpc://' + orderer[i].discovery_host + ":" + orderer[i].discovery_port;
-    console.log('[Nid=%d] orderer url: ', Nid, tmp);
-    chain.addOrderer(new Orderer(tmp));
-}
-*/
-
+tmp = 'grpc://' + orderer[pid % nOrderer].discovery_host + ":" + orderer[pid % nOrderer].discovery_port;
+console.log('[Nid:id=%d:%d] orderer url: ', Nid, pid, tmp);
+chain.addOrderer(new Orderer(tmp));
 
 //var g = ['grpc://10.120.223.35:7051', 'grpc://10.120.223.35:7052', 'grpc://10.120.223.35:7053'];
 var g = [];
@@ -203,7 +195,11 @@ function getMoveRequest() {
         nonce: nonce
     };
 
-   //console.log('request_invoke: ', request_invoke);
+
+//    if ( inv_m == nRequest ) {
+//        console.log('request_invoke: ', request_invoke);
+//    }
+
 }
 
 //construct query request
@@ -361,10 +357,14 @@ function eventRegister(tx) {
             evtRcv++;
             eh.unregisterTxEvent(txId);
             //console.log('[Nid:id=%d:%d] The chaincode invoke (move) transaction has been successfully committed', Nid, pid, evtRcv);
-            if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
-                    tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                    eh.disconnect();
+            //sanity check: query the vary last invoke, no need for MIX mode transactions
+            if ( (transMode.toUpperCase() != 'MIX') && ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
+                tCurr = new Date().getTime();
+                console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                arg0 = keyStart + inv_m - 1;
+                inv_q = inv_m - 1;
+                invoke_query_simple(0);
+            eh.disconnect();
             }
 
         });
@@ -452,6 +452,7 @@ function invoke_query_simple(freq) {
             } else {
                 tCurr = new Date().getTime();
                 for(let j = 0; j < response_payloads.length; j++) {
+                    //console.log('[Nid:id=%d:%d key:%d] invoke_query_simple query result:', Nid, pid, inv_q, response_payloads[j].toString('utf8'));
                     console.log('[Nid:id=%d:%d] query result:', Nid, pid, response_payloads[j].toString('utf8'));
                 }
                 console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
@@ -686,6 +687,7 @@ function invoke_move_mix(freq) {
         })
     .then(
         function(response) {
+                //isExecDone('Move');
             if (response.status === 'SUCCESS') {
                 setTimeout(function(){
                     invoke_query_mix(freq);

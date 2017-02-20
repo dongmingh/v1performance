@@ -1,10 +1,9 @@
 
-
-#Performance Node SDK - Hyperledger Fabric v1.0
+#Performance Traffic Engine - PTE
 
 ----------
 
-The performance Node SDK uses [Hyperledger Fabric Client (HFC) SDK](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup/) to interact with a [Hyperledger fabric](https://github.com/hyperledger/fabric) network.
+The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup/) to interact with a [Hyperledger fabric](https://github.com/hyperledger/fabric) network.
 
 ##Code Base
 
@@ -59,6 +58,7 @@ The above command will execute the performance test on one network with all para
         "transMode": "Simple",
         "transType": "Invoke",
         "invokeType": "Move",
+        "nOrderer": "1",
 	    "nPeers": "4",
         "nThread": "4",
         "nRequest": "0",
@@ -127,7 +127,9 @@ where:
   - Move: move transaction
   - Query: query transaction
 
-+ **nPeer**: number of peers, this number has to match with the number of peers in the network
++ **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.  One orderer is assigned to one thread with round robin.  If this number is 1, then the first orderer listed in the config json is assigned to all threads.
+
++ **nPeer**: number of peers for traffic,, this number has to match with the number of peers in the network.  Each thread is assigned with a peer with round robin.
 
 + **nThread**: number of threads for the test
 
