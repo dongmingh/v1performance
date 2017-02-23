@@ -1,13 +1,15 @@
 {
     "chaincodeID": "end2end",
+    "chaincodeVer": "v0",
     "chainID": "testchainid",
+    "logLevel": "ERROR",
     "transMode": "Simple",
     "transType": "Invoke",
-    "invokeType": "Query",
+    "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
     "nThread": "4",
-    "nRequest": "100",
+    "nRequest": "1000",
     "runDur": "600",
     "burstOpt": {
         "burstFreq0":  "500",

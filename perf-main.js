@@ -30,7 +30,7 @@
 
 var log4js = require('log4js');
 var logger = log4js.getLogger('E2E');
-logger.setLevel('ERROR');
+logger.setLevel('DEBUG');
 
 var path = require('path');
 
@@ -166,6 +166,7 @@ for (i=0; i<uiContent.deploy.args.length; i++) {
 var tx_id = null;
 var nonce = null;
 
+var the_user;
 
 // test begins ....
 performance_main();
@@ -206,24 +207,67 @@ function deploy_chaincode() {
     console.log('[Nid=%d] eventHub connect: %s', Nid, evtHub_url);
 
     var chaincode_id = uiContent.chaincodeID;
+    var chaincode_ver = uiContent.chaincodeVer;
     var chain_id = uiContent.chainID;
-    console.log('[Nid=%d] chaincode_id: %s, chain_id: %s', Nid, chaincode_id, chain_id);
+    console.log('[Nid=%d] chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
 
-    tx_id = utils.buildTransactionID({length:12});
     nonce = utils.getNonce();
-    var request_deploy = {
+    tx_id = chain.buildTransactionID(nonce, the_user);
+    nonce = utils.getNonce();
+    var request_install = {
         chaincodePath: uiContent.deploy.chaincodePath,
         chaincodeId: chaincode_id,
-        fcn: uiContent.deploy.fcn,
-        args: testDeployArgs,
-        chainId: chain_id,
+        chaincodeVersion: chaincode_ver,
         txId: tx_id,
         nonce: nonce
     };
 
-    //console.log('request_deploy: ', request_deploy);
+    console.log('request_install: ', request_install);
 
-    chain.sendDeploymentProposal(request_deploy)
+    chain.sendInstallProposal(request_install)
+    .then(
+        function(results) {
+            var proposalResponses = results[0];
+            var proposal = results[1];
+            var header   = results[2];
+            var all_good = true;
+            for(var i in proposalResponses) {
+                let one_good = false;
+                if (proposalResponses && proposalResponses[0].response && proposalResponses[0].response.status === 200) {
+                    one_good = true;
+                    logger.info('install proposal was good');
+                } else {
+                    logger.error('install proposal was bad');
+                }
+                all_good = all_good & one_good;
+            }
+                if (all_good) {
+                    console.log(util.format('Successfully sent install Proposal and received ProposalResponse: Status - %s', proposalResponses[0].response.status));
+                } else {
+                    console.log('Failed to send install Proposal or receive valid response. Response null or status is not 200. exiting...');
+                    process.exit();
+                }
+
+            nonce = utils.getNonce();
+            tx_id = chain.buildTransactionID(nonce, the_user);
+            var request_deploy = {
+                chaincodePath: uiContent.deploy.chaincodePath,
+                chaincodeId: chaincode_id,
+                chaincodeVersion: chaincode_ver,
+                fcn: uiContent.deploy.fcn,
+                args: testDeployArgs,
+                chainId: chain_id,
+                txId: tx_id,
+                nonce: nonce
+            };
+
+            console.log('request_deploy: ', request_deploy);
+            return chain.sendDeploymentProposal(request_deploy);
+        },
+        function(err) {
+            console.log('Failed to send install proposal due to error: ' + err.stack ? err.stack : err);
+            process.exit();
+        })
     .then(
         function(results) {
             var proposalResponses = results[0];
@@ -306,6 +350,7 @@ function performance_main() {
         chain = client.newChain('testChain-e2e');
         var uid = 2;
         userEnroll(uid);
+        console.log('complete userEnrollment');
 
         sleep(2000);
 
@@ -322,7 +367,7 @@ function performance_main() {
         .then(
             function(admin) {
                 console.log('[Nid=%d] Successfully enrolled user \'admin\'', Nid);
-                webUser = admin;
+                the_user = admin;
                 deploy_chaincode();
                 sleep(30000);
                 eh.disconnect();

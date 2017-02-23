@@ -7,9 +7,9 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Code Base
 
-- fabric commit level: 319d0ac6f7032edbed65bdc3a8cf831836e7d00c
-- fabric-sdk-node commit level: d32cdd2c3dc97f907f23432a0668b506ac7b0271
-- fabric-ca commit level: c4e83c10292d53fa0f1a1688899a594fe4ece26b
+- fabric commit level: 2fc6bc606bc5f732d9b04ce28e1d28dfbd220173
+- fabric-sdk-node commit level: 0344555f9671117941e5337e589e5692c49e4683
+- fabric-ca commit level: 18babf81a771b53dcd86d3149f4eb888bb80a7c7
 
 
 ##Setup
@@ -54,7 +54,9 @@ The above command will execute the performance test on one network with all para
 
     {
         "chaincodeID": "end2end",
+        "chaincodeVer": "v0",
         "chainID": "testchainid",
+        "logLevel": "ERROR",
         "transMode": "Simple",
         "transType": "Invoke",
         "invokeType": "Move",
@@ -111,7 +113,11 @@ where:
 
 + **chaincodeID**: chaincode ID for the run.  DO NOT CHANGE.
 
++ **chaincodeVer**: chaincode version.
+
 + **chainID**: chain ID for the run.  DO NOT CHANGE.
+
++ **legLevel**: logging level for the run.  Options are ERROR, DEBUG, or INFO.  Set to **ERROR** for performance test.  The default value is **ERROR**.
  
 + **transMode**: transaction mode
   -  Simple: one transaction type and rate only, the subsequent transaction is sent when the response, success or failure, of the previous transaction is received
@@ -152,7 +158,7 @@ where:
   
   - recHist: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
   - constFreq: frequency in ms for the transaction rate.
-  - devFreq: deviation of frequency in ms for the transaction rate. A random frequency is calculated between constFrq-devFreq and constFrq+devFreq for the next transaction.  All transactions are sent at constant rate if this number is set to 0.
+  - devFreq: deviation of frequency in ms for the transaction rate. A random frequency is calculated between constFrq-devFreq and constFrq+devFreq for the next transaction.  The value is set to default value, 0, if this value is not set in the user input json file.  All transactions are sent at constant rate if this number is set to 0.
 
 + **ccType**: chaincode type
 

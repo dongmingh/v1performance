@@ -15,13 +15,13 @@
  */
 
 var path = require('path');
-var fs = require('fs');
+var fs = require('fs-extra');
 var os = require('os');
 
 var jsrsa = require('jsrsasign');
 var KEYUTIL = jsrsa.KEYUTIL;
 
-var caService = require('fabric-ca-client/lib/FabricCAClientImpl.js');
+var copService = require('fabric-ca-client/lib/FabricCAClientImpl.js');
 var User = require('fabric-client/lib/User.js');
 var CryptoSuite = require('fabric-client/lib/impl/CryptoSuite_ECDSA_AES.js');
 var KeyStore = require('fabric-client/lib/impl/CryptoKeyStore.js');
@@ -38,21 +38,53 @@ module.exports.setupChaincodeDeploy = function() {
 	process.env.GOPATH = path.join(__dirname, '../fixtures');
 };
 
+// specifically set the values to defaults because they may have been overridden when
+// running in the overall test bucket ('gulp test')
+module.exports.resetDefaults = function() {
+	global.hfc.config = undefined;
+};
+
+module.exports.cleanupDir = function(keyValStorePath) {
+	var absPath = path.join(process.cwd(), keyValStorePath);
+	var exists = module.exports.existsSync(absPath);
+	if (exists) {
+		fs.removeSync(absPath);
+	}
+};
+
+
+// utility function to check if directory or file exists
+// uses entire / absolute path from root
+module.exports.existsSync = function(absolutePath /*string*/) {
+	try  {
+		var stat = fs.statSync(absolutePath);
+		if (stat.isDirectory() || stat.isFile()) {
+			return true;
+		} else
+			return false;
+	}
+	catch (e) {
+		return false;
+	}
+};
+
+module.exports.readFile = readFile;
+
 function getSubmitter(username, password, client, loadFromConfig) {
 	return client.getUserContext(username)
 	.then((user) => {
 		return new Promise((resolve, reject) => {
 			if (user && user.isEnrolled()) {
-				//t.pass('Successfully loaded member from persistence');
+				console.log('util: Successfully loaded member from persistence');
 				return resolve(user);
 			}
 
 			if (!loadFromConfig) {
 				// need to enroll it with CA server
-				var ca = new caService('http://localhost:7054');
+				var cop = new copService('http://localhost:7054');
 
 				var member;
-				return ca.enroll({
+				return cop.enroll({
 					enrollmentID: username,
 					enrollmentSecret: password
 				}).then((enrollment) => {
@@ -78,7 +110,7 @@ function getSubmitter(username, password, client, loadFromConfig) {
 				//       \_ admin.pem  <<== this is the signed certificate saved in PEM file
 
 				// first load the private key and save in the BCCSP's key store
-				var privKeyPEM = path.join(__dirname, '../fixtures/msp/keystore/admin.pem');
+				var privKeyPEM = path.join(__dirname, '../fixtures/msp/local/keystore/admin.pem');
 				var pemData, member;
 				return readFile(privKeyPEM)
 				.then((data) => {
@@ -95,7 +127,7 @@ function getSubmitter(username, password, client, loadFromConfig) {
 					return store.putKey(testKey);
 				}).then((value) => {
 					// next save the certificate in a serialized user enrollment in the state store
-					var certPEM = path.join(__dirname, '../fixtures/msp/signcerts/admin.pem');
+					var certPEM = path.join(__dirname, '../fixtures/msp/local/signcerts/admin.pem');
 					return readFile(certPEM);
 				}).then((data) => {
 					member = new User(username, client);
@@ -125,5 +157,5 @@ function readFile(path) {
 }
 
 module.exports.getSubmitter = function(username, password, client, loadFromConfig) {
-	return getSubmitter('admin', 'adminpw', client, loadFromConfig);
+	return getSubmitter(username, password, client, loadFromConfig);
 };

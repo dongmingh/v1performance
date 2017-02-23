@@ -1,6 +1,8 @@
 {
     "chaincodeID": "end2end",
+    "chaincodeVer": "v0",
     "chainID": "testchainid",
+    "logLevel": "ERROR",
     "transMode": "Simple",
     "transType": "Invoke",
     "invokeType": "Move",
