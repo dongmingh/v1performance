@@ -496,7 +496,7 @@ function execModeSimple() {
     }
 }
 
-var devFreq = parseInt(uiContent.constantOpt.devFreq);
+var devFreq;
 function getRandomNum(min0, max0) {
         return Math.floor(Math.random() * (max0-min0)) + min0;
 }
@@ -640,7 +640,14 @@ function execModeConstant() {
         var freq = parseInt(uiContent.constantOpt.constFreq);
         ofile = 'ConstantResults'+Nid+'.txt';
 
-        console.log('Nid:id=%d:%d, Constant Freq: %d ms', Nid, pid, freq);
+        if (typeof( uiContent.constantOpt.devFreq ) == 'undefined') {
+            console.log('devFreq undefined, set to 0');
+	    devFreq = 0;
+        } else {
+            devFreq = parseInt(uiContent.constantOpt.devFreq);
+        }
+
+        console.log('Nid:id=%d:%d, Constant Freq: %d ms, variance Freq: %d ms', Nid, pid, freq, devFreq);
 
         if ( invokeType.toUpperCase() == 'MOVE' ) {
             if ( ccType == 'general' ) {
