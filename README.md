@@ -17,7 +17,7 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 1. git clone https://github.com/hyperledger/fabric-sdk-node.git
 2. cd fabric-sdk-node
-3. git reset --hard d32cdd2c3dc97f907f23432a0668b506ac7b0271
+3. git reset --hard 425028f3f64b33d2ebaba57b276fca56c4b801ad
 4. run command `npm install`
 5. run command `gulp ca`
 6. download all scripts (1 bash shell script and 3 js scripts) and all json files into directory fabric-sdk-node/test/unit
