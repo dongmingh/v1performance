@@ -262,7 +262,7 @@ function deploy_chaincode() {
             };
 
             console.log('request_deploy: ', request_deploy);
-            return chain.sendDeploymentProposal(request_deploy);
+            return chain.sendInstantiateProposal(request_deploy);
         },
         function(err) {
             console.log('Failed to send install proposal due to error: ' + err.stack ? err.stack : err);
