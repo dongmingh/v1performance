@@ -72,7 +72,7 @@ var tStart = parseInt(process.argv[4]);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 console.log('input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, uiFile, tStart);
 
-var svcFile = uiContent.SCFile[Nid].ServiceCredentials;
+var svcFile = uiContent.SCFile[0].ServiceCredentials;
 var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
 var peers = network.credentials.peers;
 var users = network.credentials.users;

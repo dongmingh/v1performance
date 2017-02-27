@@ -71,6 +71,7 @@ var QDone=0;
 var recHist;
 var buff;
 var ofile;
+var invokeCheck;
 var chaincode_id;
 var chaincode_ver;
 var chain_id;
@@ -95,6 +96,9 @@ var tStart = parseInt(process.argv[5]);
 console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, pid, Nid, uiFile, tStart);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 
+invokeCheck = uiContent.invokeCheck;
+console.log('[Nid:id=%d:%d] invokeCheck: ', Nid, pid, invokeCheck);
+
 chaincode_id = uiContent.chaincodeID;
 chaincode_ver = uiContent.chaincodeVer;
 chain_id = uiContent.chainID;
@@ -110,7 +114,7 @@ var logLevel;
 console.log('[Nid:id=%d:%d] logLevel: %s', Nid, pid, logLevel);
 logger.setLevel(logLevel);
 
-var svcFile = uiContent.SCFile[Nid].ServiceCredentials;
+var svcFile = uiContent.SCFile[0].ServiceCredentials;
 var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
 var peers = network.credentials.peers;
 var users = network.credentials.users;
@@ -211,7 +215,9 @@ function getMoveRequest() {
 
 
     if ( inv_m == nRequest ) {
-        console.log('request_invoke: ', request_invoke);
+        if (invokeCheck.toUpperCase() == 'TRUE') {
+            console.log('request_invoke: ', request_invoke);
+        }
     }
 
 }
@@ -378,13 +384,15 @@ function eventRegister(tx) {
             eh.unregisterTxEvent(txId);
 
             //sanity check: query the vary last invoke, no need for MIX mode transactions
-            if ( (transMode.toUpperCase() != 'MIX') && ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
+            if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                 tCurr = new Date().getTime();
                 console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                arg0 = keyStart + inv_m - 1;
-                inv_q = inv_m - 1;
-                invoke_query_simple(0);
-            eh.disconnect();
+                if (invokeCheck.toUpperCase() == 'TRUE') {
+                    arg0 = keyStart + inv_m - 1;
+                    inv_q = inv_m - 1;
+                    invoke_query_simple(0);
+                }
+                eh.disconnect();
             }
 
         });
@@ -786,6 +794,8 @@ function execModeMix() {
 
     // send proposal to endorser
     if ( transType.toUpperCase() == 'INVOKE' ) {
+        // no need to check since a query is issued after every invoke
+        invokeCheck = 'no';
         tLocal = new Date().getTime();
         if ( runDur > 0 ) {
             tEnd = tLocal + runDur;

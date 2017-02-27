@@ -1,66 +1,101 @@
 #!/bin/bash
 
 #
-# usage: ./perf_driver.sh <user input json file> <nNetwork>
-# example: ./perf_driver.sh userInput-example02.json 2
-#          ./perf_driver.sh userInput-ccchecker 1
+# usage: ./perf_driver.sh <user input file>
+# example: ./perf_driver.sh runCases.txt
+#
+#    runCases.txt:
+#    node userInputs/userInput-samplecc-i.json
+#    node userInputs/userInput-samplecc-q.json
 #
 
-userinput=$1
-nNetwork=$2
+inFile=$1
+EXENODE=perf-main.js
+nNetwork=0
 
-echo "user input: $userinput, nNetwork=$nNetwork"
+while read line
+do
+   #echo $line
+   tt=$(echo $line | awk '{print $1}')
+   #echo " tt  $tt"
+   sdkType=$(echo $tt | awk '{print tolower($tt)}')
+   #echo "tt $tt sdkType $sdkType"
+   userinput=$(echo $line | awk '{print $2}')
 
-CWD=$PWD
-echo "current directory: $CWD"
-# clone vendor
-###if [ -d $ccPath/vendor/github.com/hyperledger/fabric ]; then
-###    echo 'vendor dir exists'
-###else
-###    echo 'get vendor ...'
-###    mkdir $ccPath/vendor
-###    mkdir $ccPath/vendor/github.com
-###    mkdir $ccPath/vendor/github.com/hyperledger
-###    cd $ccPath/vendor/github.com/hyperledger
-###    git clone https://github.com/hyperledger/fabric.git
-###    cd $CWD
-###fi
+   case $sdkType in
+     node)
+       echo "sdk type spported: $sdkType"
+       nodeArray[${#nodeArray[@]}]=$userinput
+       ;;
 
-echo "pwd= $PWD"
+     python)
+       echo "sdk type unspported: $sdkType"
+       pythonArray[${#pythonArray[@]}]=$userinput
+       ;;
 
-#
-# download certificate file
-#
-###if [ $bcHost = "bluemix" ]
-###then
-###
-###    echo "********************** downloading certificate.pem **********************"
-###    node perf-certificate.js $userinput $ccPath
-###    #sleep 5
-###    echo "bcHost $bcHost"
-###fi
+     java)
+       echo "sdk type unspported: $sdkType"
+       javaArray[${#javaArray[@]}]=$userinput
+       ;;
 
-#
-# set up the start execution time
-#
-    #tWait=$[nNetwork*4000+200000]
+     *)
+       echo "sdk type unknown: $sdkType"
+       ;;
+
+   esac
+
+done < $1
+
+echo "Node Array: ${nodeArray[@]}, ${nodeArray[*]}"
+
+# node requests
+function nodeProc {
+    nNetwork=${#nodeArray[@]}
     tWait=$[nNetwork*4000+10000]
     tCurr=`date +%s%N | cut -b1-13`
-
     tStart=$[tCurr+tWait]
-    #echo "timestamp: execution start= $tStart, current= $tCurr, wait= $tWait"
+    echo "nNetwork: $nNetwork, tStart: $tStart"
 
-#
-# execute performance test
-#
+    BCN=0
+    for i in ${nodeArray[@]}; do
+        echo "execution: $i"
+        node $EXENODE $BCN $i $tStart &
+        let BCN+=1
+    done
+}
 
-for ((networkID=0; networkID<$nNetwork; networkID++))
-do
-    tCurr=`date +%s%N | cut -b1-13`
-	t1=$[tStart-tCurr]
-    echo  "******************** sending Network $networkID requests: now=$tCurr, starting time=$tStart, time to wait=$t1 ********************"
-	node perf-main.js $networkID $userinput $tStart &
-    sleep 2   # 2 seconds
-done
+# node requests
+function pythonProc {
+    echo "python has not supported yet."
+}
+
+# node requests
+function javaProc {
+    echo "java has not supported yet."
+}
+
+# node
+if [ ${#nodeArray[@]} > 0 ]; then
+    echo "executing ${#nodeArray[@]} node requests"
+    nodeProc
+else
+    echo "no node requests"
+fi
+
+# python
+if [ ${#pythonArray[@]} > 0 ]; then
+    echo "executing ${#pythonArray[@]} python requests"
+    pythonProc
+else
+    echo "no python requests"
+fi
+
+# java
+if [ ${#javaArray[@]} > 0 ]; then
+    echo "executing ${#javaArray[@]} java requests"
+    javaProc
+else
+    echo "no java requests"
+fi
 
 exit

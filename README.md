@@ -23,30 +23,41 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 6. download all scripts (1 bash shell script and 3 js scripts) and all json files into directory fabric-sdk-node/test/unit
 7. create a sub directory, SCFiles, under fabric-sdk-node/test/unit
 8. add Service Credentials file for each fabric network to the SCFiles directory, see config-local.json in directory SCFiles as an example
-9. modify userInput-ccchecer.json according to the desired test and the Service Credentials files
-
-
-##Usage
-
-`./perf_driver.sh <user input json file> <nNetwork>`
-
-- user input json file: the json file contains all user specified parameters for the test, see below for description.
-- nNetwork: number of fabric network
-
-
-####Examples
-
-- ./perf_driver.sh userInput-ccchecker.json 1
-
-The above command will execute the performance test on one network with all parameters specified in userInput-ccchecker.json
-
-
+9. modify runCases.txt, userInput-ccchecer.json, and SCFile according to the desired test
 
 ##Scripts
 
 - perf_driver.sh: the performance driver
 - perf-main.js: the performance main js
 - perf-execRequest.js: A Node js executing transaction requests
+- perf-util.js: the PTE utility js
+
+
+##Usage
+
+`./perf_driver.sh <run cases file>`
+
+- run cases file: the file contains all user specified test cases
+
+
+
+####Examples
+
+- ./perf_driver.sh runCases.txt
+
+The above command will execute the transaction tests listed in the runCases.txt.
+
+
+
+##Run Cases File
+
+This file contains all test cases to be executed.  Each line is a test case and includes two parameters: SDK type and user input file.  Below is an example of the runCases.txt containing two test cases using Node SDK:
+
+    node userInput-samplecc-i.json
+    node userInput-samplecc-q.json
+
+Available SDK types are node, python and java. Only node SDK is supported currently.
+
 
 
 ##User Input File
@@ -57,6 +68,7 @@ The above command will execute the performance test on one network with all para
         "chaincodeVer": "v0",
         "chainID": "testchainid",
         "logLevel": "ERROR",
+        "invokeCheck": "TRUE",
         "transMode": "Simple",
         "transType": "Invoke",
         "invokeType": "Move",
@@ -101,11 +113,7 @@ The above command will execute the performance test on one network with all para
             }
         },   
 	    "SCFile": [
-            {"ServiceCredentials":"SCFiles/config-local.json"},
-	        {"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
-		    {"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
-	 	    {"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"},
-		    {"ServiceCredentials":"SCFiles/ServiceCredentials0003.json"}
+            {"ServiceCredentials":"SCFiles/config-local.json"}
 	    ]
     }
     
@@ -118,6 +126,8 @@ where:
 + **chainID**: chain ID for the run.  DO NOT CHANGE.
 
 + **legLevel**: logging level for the run.  Options are ERROR, DEBUG, or INFO.  Set to **ERROR** for performance test.  The default value is **ERROR**.
+
++ **invokeCheck**: if this is `TRUE`, then a query will be issued for the last invoke upon the receiving of the event of the very last invoke.  This value is ignored for query test.
  
 + **transMode**: transaction mode
   -  Simple: one transaction type and rate only, the subsequent transaction is sent when the response, success or failure, of the previous transaction is received
@@ -179,27 +189,36 @@ where:
   - query: query content
   - move: move content
 
-+ **SCFile**: the service credentials list, one per network
++ **SCFile**: the service credentials json.
 
 
 
 ##Service Credentials
 
-The service credentials for each network can be either downloaded or created by copy and paste from Bluemix if the network is on bluemix.  For the local network, the user needs to create a json file similar to the config-local.json in SCFiles directory. 
+The service credentials contain the following information of the network:
+
+  - list of each peer's host and port
+  - event hub's host and port
+  - list of each orderer's host and port
+  - ca's host and port
+  - list of each user's name and secret
+
+The service credentials for each network can be either downloaded or created by copy and paste from Bluemix if the network resides on Bluemix.  For the local network, the user needs to create a json file similar to the config-local.json in SCFiles directory. 
+
 
 ##Chaincodes
 
 The following chaincodes are tested and supported:
 
-* example02 chaincode
+* **example02 chaincode**: This is a simple chaincode with limited capability.  This chaincode is not suitable for performance benchmark.
 
-* ccchecker chaincode:  This chaincode supports variable payload sizes. See userInput-ccchecker.json for example of userInput file. Take the following steps to install this chaincode:
+* **ccchecker chaincode**:  This chaincode supports variable payload sizes. See userInput-ccchecker.json for example of userInput file. Take the following steps to install this chaincode:
   - cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com
   - mkdir ccchecker
   - download newkeyperinvoke.go into ccchecker directory
 
 
-* sample chaincode: This chaincode supports variable (randomized) payload sizes and performs encryption and decryption on the payload. Specify ccType as ccchecker when using this chaincode.  See userInput-samplecc.json for example of userInput file. Take the following steps to install this chaincode:
+* **sample chaincode**: This chaincode supports variable (randomized) payload sizes and performs encryption and decryption on the payload. Specify ccType as ccchecker when using this chaincode.  See userInput-samplecc.json for example of userInput file. Take the following steps to install this chaincode:
   - cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com
   - mkdir sample_cc
   - download chaincode_sample.go into sample_cc directory
@@ -213,6 +232,14 @@ All threads will execute the same transaction concurrently. Two kinds of executi
     
 + By run time duration: Each thread executes the same transaction concurrently for the specified time duration specified by runDur in the user input file, note that nRequest must be 0.
 
+
+##Use Cases
+
+PTE can be used for various test scenarios.  This all depend on the settings of run cases file, user input files, SCFiles.  For example,
+ 
++ For density test, set each SCFile to a unique network, then the test is executed on multiple networks with unique workload specified in the user input file concurrently.
+
++ For stress test on a network,  set all SCFiles to same network, then the test is executed on one network but with the workload specified in each user input file concurrently.
 
 
 ##Output
@@ -230,45 +257,77 @@ The following is an example of invoke queries test output. The test contains 4 t
 
 ##Examples
 
+The following test cases execute the same command
+
+    perf_driver.sh runCases.txt
+
+with a specific runCases.txt.
+
 ####Latency
 
-The following command will execute 1000 invokes (Move) with 1 thread on one network using ccchecker chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Move).
+That the runCases.txt contains:
 
-    perf_driver.sh userInput-ccchecker-latency-i.json 1
+    node userInput-ccchecker-latency-i.json
 
-The following command will execute 1000 invokes (Query) with 1 thread on one network using ccchecker chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Query).
-
-    perf_driver.sh userInput-ccchecker-latency-q.json 1
+will execute 1000 invokes (Move) with 1 thread on one network using ccchecker chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Move).
 
 
-####Stress
+####Stress (invoke)
 
-The following command will execute invokes (Move) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
+That the runCases.txt contains:
+
+    node userInput-ccchecker-stress-i.json
+
+will execute invokes (Move) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
 
     perf_driver.sh userInput-ccchecker-stress-i.json 1
 
 
-The following command will execute invokes (Query) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
+####Stress (query)
 
-    perf_driver.sh userInput-ccchecker-stress-q.json 1
+That the runCases.txt contains:
+
+    node userInput-ccchecker-stress-q.json
+
+will execute invokes (Query) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
+
+
+####Stress (mix)
+
+Let the runCases.txt contain
+
+    node userInput-ccchecker-stress-i.json
+    node userInput-ccchecker-stress-q.json
+
+If both SCFiles are set to the same network, then this
+will execute invokes (Move) with 4 threads and invoke (Query) on one 4-peer network using ccchecker chaincode for 600 seconds concurrently 
+
+If the SCFiles are set to different network, then network specified in userInput-ccchecker-stress-i.json will execute invoke (Move) and the network specified in userInput-ccchecker-stress-q.json will execute invoke (Query) concurrently.
+
 
 ####Long run
 
-The following command will execute invokes (Move) of various payload size ranging from 1kb-2kb with 1 threads on one network using ccchecker chaincode for 72 hours at 1 transaction per second.
+That the runCases.txt contains:
 
-    perf_driver.sh userInput-ccchecker-longrun-i.json 1
+    node userInput-ccchecker-longrun-i.json
+
+will execute invokes (Move) of various payload size ranging from 1kb-2kb with 1 threads on one network using ccchecker chaincode for 72 hours at 1 transaction per second.
 
 
 ####Concurrency
 
-The following command will execute invokes (Move) of 1kb payload with 50 threads on one 4-peer network using ccchecker chaincode for 10 minutes.
+That the runCases.txt contains:
 
-    perf_driver.sh userInput-ccchecker-concurrency-i.json 1
+    node userInput-ccchecker-concurrency-i.json
+
+will execute invokes (Move) of 1kb payload with 50 threads on one 4-peer network using ccchecker chaincode for 10 minutes.
 
 
 ####Complex
 
-The following command will execute invokes (Move) of various payload size ranging from 10kb-500kb with 10 threads on one 4-peer network using ccchecker chaincode for 10 minutes. Each invoke (Move) is followed by an invoke (Query).
+That the runCases.txt contains:
 
-    perf_driver.sh userInput-ccchecker-complex-i.json 1
+    node userInput-ccchecker-complex-i.json
+
+will execute invokes (Move) of various payload size ranging from 10kb-500kb with 10 threads on one 4-peer network using ccchecker chaincode for 10 minutes. Each invoke (Move) is followed by an invoke (Query).
 

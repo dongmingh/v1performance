@@ -3,6 +3,7 @@
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
+    "invokeCheck": "FALSE",
     "transMode": "Simple",
     "transType": "Invoke",
     "invokeType": "Move",
