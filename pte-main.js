@@ -16,7 +16,7 @@
 
 /*
  *   usage:
- *      node perf-main.js <ui file> <Nid>
+ *      node pte-main.js <ui file> <Nid>
  *        - ui file: user input file
  *        - Nid: Network id
  */
@@ -39,7 +39,7 @@ hfc.setLogger(logger);
 var X509 = require('jsrsasign').X509;
 
 var util = require('util');
-var testUtil = require('./perf-util.js');
+var testUtil = require('./pte-util.js');
 var utils = require('fabric-client/lib/utils.js');
 var Peer = require('fabric-client/lib/Peer.js');
 var Orderer = require('fabric-client/lib/Orderer.js');
@@ -383,7 +383,7 @@ function performance_main() {
     } else if ( transType.toUpperCase() == 'INVOKE' ) {
         // spawn off processes for transactions
         for (var j = 0; j < nThread; j++) {
-            var workerProcess = child_process.spawn('node', ['./perf-execRequest.js', j, Nid, uiFile, tStart]);
+            var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart]);
 
             workerProcess.stdout.on('data', function (data) {
                 console.log('stdout: ' + data);

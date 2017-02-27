@@ -16,7 +16,7 @@
 
 /*
  *   usage:
- *      node perf-execRequest.js pid Nid uiFile tStart
+ *      node pte-execRequest.js pid Nid uiFile tStart
  *        - action: deploy, invoke, query
  *        - recurrence: integer number
  */
@@ -40,7 +40,7 @@ hfc.setLogger(logger);
 //var grpc = require('grpc');
 
 var util = require('util');
-var testUtil = require('./perf-util.js');
+var testUtil = require('./pte-util.js');
 var utils = require('fabric-client/lib/utils.js');
 var Peer = require('fabric-client/lib/Peer.js');
 var Orderer = require('fabric-client/lib/Orderer.js');

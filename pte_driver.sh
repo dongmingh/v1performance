@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #
-# usage: ./perf_driver.sh <user input file>
-# example: ./perf_driver.sh runCases.txt
+# usage: ./pte_driver.sh <user input file>
+# example: ./pte_driver.sh runCases.txt
 #
 #    runCases.txt:
 #    node userInputs/userInput-samplecc-i.json
@@ -10,7 +10,7 @@
 #
 
 inFile=$1
-EXENODE=perf-main.js
+EXENODE=pte-main.js
 nNetwork=0
 
 while read line
