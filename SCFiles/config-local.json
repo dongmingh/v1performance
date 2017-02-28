@@ -24,8 +24,8 @@
         "discovery_port": 7053
       }
     },
-    "cop": {
-      "localhost_cop": {
+    "ca": {
+      "localhost_ca": {
         "discovery_host": "10.120.223.35",
         "discovery_port": 7054
       }
@@ -33,11 +33,19 @@
     "orderer": [
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 7050
+        "discovery_port": 5005
       },
       {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 7051
+        "discovery_port": 5006
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 5007
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 5008
       }
     ],
     "users": [
