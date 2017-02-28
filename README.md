@@ -7,8 +7,8 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Code Base
 
-- fabric commit level: 2fc6bc606bc5f732d9b04ce28e1d28dfbd220173
-- fabric-sdk-node commit level: 425028f3f64b33d2ebaba57b276fca56c4b801ad
+- fabric commit level: 21ce6b23cf9129b98a1c22a3128d30b762f96c81
+- fabric-sdk-node commit level: b0203bef54c21acd2a3182ca995affce95ecb117
 - fabric-ca commit level: 972143ed3e7889adc8855ffd12477139433af709
 
 
@@ -27,15 +27,15 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Scripts
 
-- perf_driver.sh: the performance driver
-- perf-main.js: the performance main js
-- perf-execRequest.js: A Node js executing transaction requests
-- perf-util.js: the PTE utility js
+- pte_driver.sh: the performance driver
+- pte-main.js: the performance main js
+- pte-execRequest.js: A Node js executing transaction requests
+- pte-util.js: the PTE utility js
 
 
 ##Usage
 
-`./perf_driver.sh <run cases file>`
+`./pte_driver.sh <run cases file>`
 
 - run cases file: the file contains all user specified test cases
 
@@ -43,7 +43,7 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ####Examples
 
-- ./perf_driver.sh runCases.txt
+- ./pte_driver.sh runCases.txt
 
 The above command will execute the transaction tests listed in the runCases.txt.
 
@@ -259,7 +259,7 @@ The following is an example of invoke queries test output. The test contains 4 t
 
 The following test cases execute the same command
 
-    perf_driver.sh runCases.txt
+    pte_driver.sh runCases.txt
 
 with a specific runCases.txt.
 
@@ -280,7 +280,7 @@ That the runCases.txt contains:
 
 will execute invokes (Move) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
 
-    perf_driver.sh userInput-ccchecker-stress-i.json 1
+    node userInput-ccchecker-stress-i.json
 
 
 ####Stress (query)
