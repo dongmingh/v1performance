@@ -30,7 +30,7 @@
 
 var log4js = require('log4js');
 var logger = log4js.getLogger('E2E');
-logger.setLevel('DEBUG');
+logger.setLevel('ERROR');
 
 var path = require('path');
 
@@ -86,9 +86,9 @@ console.log('[Nid=%d] ca url: ', Nid, ca_url);
 var csr = fs.readFileSync(path.resolve(__dirname, '/root/gopath/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/fabriccop/enroll-csr.pem'));
 
 var evtHub = network.credentials.evtHub;
-var evtHub_id = Object.keys(network.credentials.evtHub);
-var evtHub_url = 'grpc://' + evtHub[evtHub_id].discovery_host + ':' + evtHub[evtHub_id].discovery_port;
-console.log('[Nid=%d] evtHub url: ', Nid, evtHub_url);
+for (i=0; i<evtHub.length; i++) {
+    console.log('[Nid=%d] evtHub url: ', Nid, evtHub[i]);
+}
 
 function setStaticCSR(uid) {
     console.log('setStaticCSR ');
@@ -167,6 +167,7 @@ var tx_id = null;
 var nonce = null;
 
 var the_user;
+var eh=[];
 
 // test begins ....
 performance_main();
@@ -188,6 +189,14 @@ function deploy_chaincode() {
     for (i=0; i<g_len; i++) {
         console.log('peer ', g[i]);
         chain.addPeer(new Peer(g[i]));
+
+        // setup event hub to get notified when transactions are committed
+        eh[i] = new EventHub();
+        var evtHub_url = 'grpc://' + evtHub[i].discovery_host + ':' + evtHub[i].discovery_port;
+        eh[i].setPeerAddr(evtHub_url);
+        eh[i].connect();
+        console.log('[Nid=%d] eventHub connect: %s', Nid, evtHub_url);
+
     }
 
     //set Orderer URL
@@ -199,12 +208,6 @@ function deploy_chaincode() {
     tmp = 'grpc://' + orderer[0].discovery_host + ":" + orderer[0].discovery_port;
     console.log('[Nid=%d] orderer url: ', Nid, tmp);
     chain.addOrderer(new Orderer(tmp));
-
-    // setup event hub to get notified when transactions are committed
-    eh = new EventHub();
-    eh.setPeerAddr(evtHub_url);
-    eh.connect();
-    console.log('[Nid=%d] eventHub connect: %s', Nid, evtHub_url);
 
     var chaincode_id = uiContent.chaincodeID;
     var chaincode_ver = uiContent.chaincodeVer;
@@ -293,16 +296,19 @@ function deploy_chaincode() {
                 };
 
                 var deployId = tx_id.toString();
-                var txPromise = new Promise((resolve, reject) => {
-                    var handle = setTimeout(reject, 30000);
+                for ( i=0; i< nThread; i++) {
+                    var eh_deploy = eh[i];
+                    var txPromise = new Promise((resolve, reject) => {
+                        var handle = setTimeout(reject, 30000);
 
-                    eh.registerTxEvent(deployId, (tx) => {
-                        console.log('The chaincode deploy transaction has been successfully committed');
-                        clearTimeout(handle);
-                        eh.unregisterTxEvent(deployId);
+                            eh_deploy.registerTxEvent(deployId, (tx) => {
+                                console.log('The chaincode deploy transaction has been successfully committed');
+                                clearTimeout(handle);
+                                eh_deploy.unregisterTxEvent(deployId);
 
+                            });
                     });
-                });
+                }
 
 
                 return chain.sendTransaction(request);
@@ -317,12 +323,10 @@ function deploy_chaincode() {
 */
             } else {
                 console.log('Failed to send Proposal or receive valid response. Response null or status is not 200. exiting...');
-                eh.disconnect();
             }
         },
         function(err) {
             console.log('[Nid=%d] Failed to send deployment proposal due to error: ', Nid, err.stack ? err.stack : err);
-            eh.disconnect();
         })
     .then(
         function(response) {
@@ -341,7 +345,6 @@ function deploy_chaincode() {
 }
 
 var chain;
-var eh;
 
 // performance main
 function performance_main() {
@@ -370,11 +373,9 @@ function performance_main() {
                 the_user = admin;
                 deploy_chaincode();
                 sleep(30000);
-                eh.disconnect();
             },
             function(err) {
                 console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
-                eh.disconnect();
 
                 return;
             }

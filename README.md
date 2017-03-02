@@ -8,7 +8,7 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 ##Code Base
 
 - fabric commit level: 21ce6b23cf9129b98a1c22a3128d30b762f96c81
-- fabric-sdk-node commit level: b0203bef54c21acd2a3182ca995affce95ecb117
+- fabric-sdk-node commit level: 4702e5bc9217d1508b75afc412934a261487ef09
 - fabric-ca commit level: 972143ed3e7889adc8855ffd12477139433af709
 
 
@@ -17,7 +17,7 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 1. git clone https://github.com/hyperledger/fabric-sdk-node.git
 2. cd fabric-sdk-node
-3. git reset --hard b0203bef54c21acd2a3182ca995affce95ecb117
+3. git reset --hard <fabric-sdk-node commit level>
 4. run command `npm install`
 5. run command `gulp ca`
 6. download all scripts (1 bash shell script and 3 js scripts) and all json files into directory fabric-sdk-node/test/unit
@@ -27,8 +27,8 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Scripts
 
-- pte_driver.sh: the performance driver
-- pte-main.js: the performance main js
+- pte_driver.sh: the performance traffic engine
+- pte-main.js: the PTE main js
 - pte-execRequest.js: A Node js executing transaction requests
 - pte-util.js: the PTE utility js
 
@@ -236,7 +236,9 @@ All threads will execute the same transaction concurrently. Two kinds of executi
 ##Use Cases
 
 PTE can be used for various test scenarios.  This all depend on the settings of run cases file, user input files, SCFiles.  For example,
- 
+
++ For different chaincode deployment or transactions, each user input file is set to a chaincode for deployment and set different transaction request for transactions.
+
 + For density test, set each SCFile to a unique network, then the test is executed on multiple networks with unique workload specified in the user input file concurrently.
 
 + For stress test on a network,  set all SCFiles to same network, then the test is executed on one network but with the workload specified in each user input file concurrently.

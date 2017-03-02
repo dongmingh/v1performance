@@ -18,12 +18,24 @@
         "discovery_port": 7064
       }
     ],
-    "evtHub": {
-      "localhost_evt": {
+    "evtHub": [
+      {
         "discovery_host": "10.120.223.35",
-        "discovery_port": 7053
+        "discovery_port": 6051
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 6052
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 6053
+      },
+      {
+        "discovery_host": "10.120.223.35",
+        "discovery_port": 6054
       }
-    },
+    ],
     "ca": {
       "localhost_ca": {
         "discovery_host": "10.120.223.35",

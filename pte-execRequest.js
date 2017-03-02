@@ -30,7 +30,7 @@
 
 var log4js = require('log4js');
 var logger = log4js.getLogger('E2E');
-//logger.setLevel('DEBUG');
+logger.setLevel('ERROR');
 
 var path = require('path');
 
@@ -126,9 +126,6 @@ var ca_url = 'http://' + ca[ca_id].discovery_host + ':' + ca[ca_id].discovery_po
 console.log('[Nid:id=%d:%d] ca url: ', Nid, pid, ca_url);
 
 var evtHub = network.credentials.evtHub;
-var evtHub_id = Object.keys(network.credentials.evtHub);
-var evtHub_url = 'grpc://' + evtHub[evtHub_id].discovery_host + ':' + evtHub[evtHub_id].discovery_port;
-console.log('[Nid:id=%d:%d] evtHub url: ', Nid, pid, evtHub_url);
 
 //user parameters
 //var chaincode_id = uiContent.chaincodeID;
@@ -283,6 +280,7 @@ function execTransMode() {
                     console.log('[Nid:id=%d:%d] Successfully loaded user \'admin\'', Nid, pid);
                     the_user = admin;
 
+                    var evtHub_url = 'grpc://' + evtHub[pid % nPeer].discovery_host + ':' + evtHub[pid % nPeer].discovery_port;
                     eh = new EventHub();
                     eh.setPeerAddr(evtHub_url);
                     eh.connect();
