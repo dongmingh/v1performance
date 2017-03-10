@@ -298,6 +298,8 @@ function execTransMode() {
                             execModeMix();
                         } else if (transMode.toUpperCase() == 'BURST') {
                             execModeBurst();
+                        } else if (transMode.toUpperCase() == 'LATENCY') {
+                            execModeLatency();
                         } else {
                             // invalid transaction request
                             console.log(util.format("Nid:id=%d:%d, Transaction %j and/or mode %s invalid", Nid, pid, transType, transMode));
@@ -396,6 +398,103 @@ function eventRegister(tx) {
         });
     });
 
+}
+
+//eventRegister_latency
+function eventRegister_latency(tx) {
+    var txId = tx.toString();
+    var txPromise = new Promise((resolve, reject) => {
+        var handle = setTimeout(reject, 600000);
+
+        eh.registerTxEvent(txId, (tx) => {
+            clearTimeout(handle);
+            evtRcv++;
+            eh.unregisterTxEvent(txId);
+
+            //sanity check: query the vary last invoke, no need for MIX mode transactions
+            if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
+                tCurr = new Date().getTime();
+                console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                if (invokeCheck.toUpperCase() == 'TRUE') {
+                    arg0 = keyStart + inv_m - 1;
+                    inv_q = inv_m - 1;
+                    invoke_query_simple(0);
+                }
+                eh.disconnect();
+            } else if ( IDone != 1 ) {
+//                tCurr = new Date().getTime();
+//                console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                invoke_move_latency();
+            }
+
+        });
+    });
+
+}
+// invoke_move_latency
+function invoke_move_latency() {
+    inv_m++;
+
+//    tCurr = new Date().getTime();
+//    console.log('[Nid:id=%d:%d] invoke_move_latency: sending %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+    getMoveRequest();
+
+    chain.sendTransactionProposal(request_invoke)
+    .then(
+        function(results) {
+            var proposalResponses = results[0];
+
+            getTxRequest(results);
+            isExecDone('Move');
+            eventRegister_latency(request_invoke.txId);
+
+            for(var i in proposalResponses) {
+                if (proposalResponses[i].response.status === 200) {
+                    //console.log('[Nid:id=%d:%d:%d] Successfully obtained transaction endorsement.', Nid, pid,i);
+                    return chain.sendTransaction(txRequest);
+                } else {
+                    console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
+                    return;
+                }
+            }
+        },
+        function(err) {
+            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+            eh.disconnect();
+            return;
+        })
+    .catch(
+        function(err) {
+            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
+            eh.disconnect();
+        }
+
+    );
+}
+
+
+function execModeLatency() {
+
+    // send proposal to endorser
+    if ( transType.toUpperCase() == 'INVOKE' ) {
+        tLocal = new Date().getTime();
+        if ( runDur > 0 ) {
+            tEnd = tLocal + runDur;
+        }
+        console.log('[Nid:id=%d:%d] tStart %d, tLocal %d', Nid, pid, tStart, tLocal);
+        if ( invokeType.toUpperCase() == 'MOVE' ) {
+            var freq = 20000;
+            if ( ccType == 'ccchecker' ) {
+                freq = 0;
+            }
+            invoke_move_latency();
+        } else if ( invokeType.toUpperCase() == 'QUERY' ) {
+            invoke_query_simple(0);
+        }
+    } else {
+        console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
+        eh.disconnect();
+    }
 }
 
 // invoke_move_simple

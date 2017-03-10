@@ -168,6 +168,7 @@ var nonce = null;
 
 var the_user;
 var eh=[];
+var g_len = nThread;
 
 // test begins ....
 performance_main();
@@ -181,7 +182,6 @@ function deploy_chaincode() {
         g.push(tmp);
     }
 
-    var g_len = nThread;
     if ( nThread > peers.length ) {
         g_len = peers.length;
     }
@@ -296,7 +296,7 @@ function deploy_chaincode() {
                 };
 
                 var deployId = tx_id.toString();
-                for ( i=0; i< nThread; i++) {
+                for ( i=0; i< g_len; i++) {
                     var eh_deploy = eh[i];
                     var txPromise = new Promise((resolve, reject) => {
                         var handle = setTimeout(reject, 30000);

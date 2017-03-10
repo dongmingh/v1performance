@@ -130,10 +130,11 @@ where:
 + **invokeCheck**: if this is `TRUE`, then a query will be issued for the last invoke upon the receiving of the event of the very last invoke.  This value is ignored for query test.
  
 + **transMode**: transaction mode
-  -  Simple: one transaction type and rate only, the subsequent transaction is sent when the response, success or failure, of the previous transaction is received
+  -  Simple: one transaction type and rate only, the subsequent transaction is sent when the response of sending transaction (not the event handler), success or failure, of the previous transaction is received
   -  Burst: various traffic rates, see burstOpt for detailed
   -  Mix: mix invoke and query transactions, see mixOpt for detailed
   -  Constant: the transactions are sent by the specified rate, see constantOpt for detailed
+  -  Latency: one transaction type and rate only, the subsequent transaction is sent when the event message (ledger update is completed) of the previous transaction is received
 
 + **transType**: transaction type
   - Deploy: deploy transaction
