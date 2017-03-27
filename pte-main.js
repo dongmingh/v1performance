@@ -30,7 +30,7 @@
 
 var log4js = require('log4js');
 var logger = log4js.getLogger('E2E');
-logger.setLevel('ERROR');
+logger.setLevel('DEBUG');
 
 var path = require('path');
 
@@ -38,6 +38,8 @@ var hfc = require('fabric-client');
 hfc.setLogger(logger);
 var X509 = require('jsrsasign').X509;
 
+var fs = require('fs');
+var grpc = require('grpc');
 var util = require('util');
 var testUtil = require('./pte-util.js');
 var utils = require('fabric-client/lib/utils.js');
@@ -48,14 +50,17 @@ var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
 var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
+var _commonProto = grpc.load(path.join(__dirname, '../../fabric-client/lib/protos/common/common.proto')).common;
 
-var keyValStorePath = testUtil.KVS;
-console.log('keyValStorePath', keyValStorePath);
+var gopath=process.env.GOPATH;
+console.log('GOPATH: ', gopath);
 
-var client = new hfc();
+//var keyValStorePath = testUtil.KVS;
+//console.log('keyValStorePath', keyValStorePath);
+
+//var client = new hfc();
 utils.setConfigSetting('crypto-keysize', 256);
 
-var fs = require('fs');
 const child_process = require('child_process');
 
 var webUser = null;
@@ -71,24 +76,24 @@ var uiFile = process.argv[3];
 var tStart = parseInt(process.argv[4]);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 console.log('input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, uiFile, tStart);
+var TLS=uiContent.TLS;
+var channelOpt=uiContent.channelOpt;
+var channelName=channelOpt.name;
+var channelOrgName = [];
+for (i=0; i<channelOpt.orgName.length; i++) {
+    channelOrgName.push(channelOpt.orgName[i]);
+}
+console.log('TLS: %s', TLS.toUpperCase());
+console.log('channelName: %s', channelName);
+console.log('channelOrgName.length: %d, channelOrgName: %s', channelOrgName.length, channelOrgName);
 
 var svcFile = uiContent.SCFile[0].ServiceCredentials;
-var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
-var peers = network.credentials.peers;
-var users = network.credentials.users;
-var ca = network.credentials.ca;
-var orderer = network.credentials.orderer;
+console.log('svcFile; ', svcFile);
+hfc.addConfigFile(path.join(__dirname, svcFile));
+var ORGS = hfc.getConfigSetting('test-network');
 
-//set Member Services URL
-var ca_id = Object.keys(network.credentials.ca);
-var ca_url = 'http://' + ca[ca_id].discovery_host + ':' + ca[ca_id].discovery_port;
-console.log('[Nid=%d] ca url: ', Nid, ca_url);
-var csr = fs.readFileSync(path.resolve(__dirname, '/root/gopath/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/fabriccop/enroll-csr.pem'));
-
-var evtHub = network.credentials.evtHub;
-for (i=0; i<evtHub.length; i++) {
-    console.log('[Nid=%d] evtHub url: ', Nid, evtHub[i]);
-}
+var users =  hfc.getConfigSetting('users');
+//var csr = fs.readFileSync(path.resolve(__dirname, gopath+'/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/fabriccop/enroll-csr.pem'));
 
 function setStaticCSR(uid) {
     console.log('setStaticCSR ');
@@ -114,39 +119,27 @@ function setStaticCSR(uid) {
 //set COP
 function setDynamicCSR(uid) {
     console.log('setDynamicCSR ');
+    var ca_url=ORGS.Org1.ca;
+    console.log('ca_url: ', ca_url);
     var caService = new FabricCAServices(ca_url);
     var member;
     caService.enroll({ 
-        enrollmentID: users[uid].username,
-        enrollmentSecret: users[uid].secret
+        enrollmentID: users.username,
+        enrollmentSecret: users.secret
     }
     ).then(
         function (enrollment) {
             var cert = new X509();
             cert.readCertPEM(enrollment.certificate);
             console.log('SubjectString: ', cert.getSubjectString());
-            console.log('setDynamicCSR: Successfully enrolled \'' + users[uid].username + '\'' );
+            console.log('setDynamicCSR: Successfully enrolled \'' + users.username + '\'' );
         },
         function (err) {
-            console.log('Failed to enroll \'' + users[uid].username + '\'.  ' + err);
+            console.log('Failed to enroll \'' + users.username + '\'.  ' + err);
         }
     );
 }
 
-function userEnroll(uid) {
-    console.log('user %d: ', uid, users[uid].username, users[uid].secret);
-    hfc.newDefaultKeyValueStore({
-        path: keyValStorePath
-    })
-    .then(
-        function(store) {
-            client.setStateStore(store);
-
-            //setStaticCSR(uid);
-            setDynamicCSR(uid);
-        }
-    );
-}
 
 
 var transType = uiContent.transType;
@@ -161,58 +154,328 @@ for (i=0; i<uiContent.deploy.args.length; i++) {
     testDeployArgs.push(uiContent.deploy.args[i]);
 }
 
-//    console.log('chaincode path: ', testUtil.CHAINCODE_PATH);
-//    console.log('chaincode path: ', uiContent.deploy.chaincodePath);
 var tx_id = null;
 var nonce = null;
 
-var the_user;
-var eh=[];
+var the_user = null;
 var g_len = nThread;
+
+var cfgtxFile;
+var allEventhubs = [];
+var org;
+var orgName;
+
+var targets = [];
+var eventHubs=[];
+
+function channelAddOrderer(chain, client, org) {
+    console.log('[channelAddOrderer] chain name: ', chain.getName());
+    if (TLS.toUpperCase() == 'ENABLED') {
+        var caRootsPath = ORGS.orderer.tls_cacerts;
+        let data = fs.readFileSync(path.join(__dirname, caRootsPath));
+        let caroots = Buffer.from(data).toString();
+
+        chain.addOrderer(
+            new Orderer(
+                ORGS.orderer.url,
+                {
+                    'pem': caroots,
+                    'ssl-target-name-override': ORGS.orderer['server-hostname']
+                }
+            )
+        );
+    } else {
+        chain.addOrderer( new Orderer(ORGS.orderer.url));
+        console.log('[channelAddOrderer] orderer url: ', ORGS.orderer.url);
+    }
+    //console.log('[channelAddOrderer] orderer in the chain: ', chain.getOrderers());
+}
+
+function channelAddAllPeer(chain, client) {
+    console.log('[channelAddAllPeer] chain name: ', chain.getName());
+    var peerTmp;
+    var eh;
+    for (let key1 in ORGS) {
+        if (ORGS.hasOwnProperty(key1)) {
+            for (let key in ORGS[key1]) {
+            if (key.indexOf('peer') === 0) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[key1][key].tls_cacerts));
+                    peerTmp = new Peer(
+                        ORGS[key1][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[key1][key].server-hostname
+                        }
+                    );
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                } else {
+                    //console.log('[channelAddAllPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
+                    peerTmp = new Peer( ORGS[key1][key].requests);
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                }
+
+                    eh=new EventHub();
+                    if (TLS.toUpperCase() == 'ENABLED') {
+                        eh.setPeerAddr(
+                            ORGS[key1][key].events,
+                            {
+                                pem: Buffer.from(data).toString(),
+                                'ssl-target-name-override': ORGS[key1][key].server-hostname
+                            }
+                        );
+                    } else {
+                        eh.setPeerAddr(ORGS[key1][key].events);
+                    }
+                    eh.connect();
+                    eventHubs.push(eh);
+                    console.log('[channelAddAllPeer] requests: %s, events: %s ', ORGS[key1][key].requests, ORGS[key1][key].events);
+                }
+            }
+        }
+    }
+    //console.log('[channelAddAllPeer] add peer: ', chain.getPeers());
+    //console.log('[channelAddAllPeer] event: ', eventHubs);
+}
+
+function channelRemoveAllPeer(chain, client) {
+    console.log('[channelRemoveAllPeer] chain name: ', chain.getName());
+    var peerTmp;
+    var eh;
+    for (let key1 in ORGS) {
+        if (ORGS.hasOwnProperty(key1)) {
+            for (let key in ORGS[key1]) {
+            if (key.indexOf('peer') === 0) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[key1][key].tls_cacerts));
+                    peerTmp = new Peer(
+                        ORGS[key1][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[key1][key].server-hostname
+                        }
+                    );
+                    if (chain.isValidPeer(peerTmp)) {
+                        console.log('[channelRemoveAllPeer] chain remove peer: ', ORGS[key1][key].requests);
+                        chain.removePeer(peerTmp);
+                    }
+                } else {
+                    //console.log('[channelRemoveAllPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
+                    peerTmp = new Peer( ORGS[key1][key].requests);
+                    if (chain.isValidPeer(peerTmp)) {
+                        console.log('[channelRemoveAllPeer] chain remove peer: ', ORGS[key1][key].requests);
+                        chain.removePeer(peerTmp);
+                    }
+                }
+
+            }
+            }
+        }
+    }
+    console.log('[channelRemoveAllPeer] add peer: ', chain.getPeers());
+}
+
+function channelAddAnchorPeer(chain, client, org) {
+    console.log('[channelAddAnchorPeer] chain name: ', chain.getName());
+    var peerTmp;
+    var eh;
+    for (let key in ORGS) {
+        if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[key].peer1['tls_cacerts']));
+                    peerTmp = new Peer(
+                        ORGS[key].peer1.requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[key].peer1['server-hostname']
+                        }
+                    );
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                } else {
+                    //console.log('[channelAddAnchorPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
+                    peerTmp = new Peer( ORGS[key].peer1.requests);
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                }
+
+                eh=new EventHub();
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    eh.setPeerAddr(
+                        ORGS[key].peer1.events,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[key].peer1['server-hostname']
+                        }
+                    );
+                } else {
+                    eh.setPeerAddr(ORGS[key].peer1.events);
+                }
+                eh.connect();
+                eventHubs.push(eh);
+                console.log('[channelAddAnchorPeer] requests: %s, events: %s ', ORGS[key].peer1.requests, ORGS[key].peer1.events);
+        }
+    }
+    console.log('[channelAddAnchorPeer] get peer: ', chain.getPeers());
+    console.log('[channelAddAnchorPeer] event: ', eventHubs);
+}
+
+function channelAddPeer(chain, client, org) {
+    console.log('[channelAddPeer] chain name: ', chain.getName());
+    var peerTmp;
+    var eh;
+    for (let key in ORGS[org]) {
+        if (ORGS[org].hasOwnProperty(key)) {
+            if (key.indexOf('peer') === 0) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
+                    peerTmp = new Peer(
+                        ORGS[org][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                        }
+                    );
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                } else {
+                    //console.log('[channelAddPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
+                    peerTmp = new Peer( ORGS[org][key].requests);
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                }
+            }
+        }
+    }
+    //console.log('[channelAddPeer] add peer: ', chain.getPeers());
+    //console.log('[channelAddPeer] event: ', eventHubs);
+}
+
+function channelRemovePeer(chain, client, org) {
+    console.log('[channelRemovePeer] chain name: ', chain.getName());
+    var peerTmp;
+    var eh;
+    for (let key in ORGS[org]) {
+        if (ORGS[org].hasOwnProperty(key)) {
+            if (key.indexOf('peer') === 0) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
+                    peerTmp = new Peer(
+                        ORGS[org][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                        }
+                    );
+                    chain.removePeer(peerTmp);
+                } else {
+                    //console.log('[channelAddPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
+                    peerTmp = new Peer( ORGS[org][key].requests);
+                    targets.push(peerTmp);
+                    chain.removePeer(peerTmp);
+                }
+            }
+        }
+    }
+    //console.log('[channelAddPeer] add peer: ', chain.getPeers());
+    //console.log('[channelAddPeer] event: ', eventHubs);
+}
+
+function channelAddPeerEvent(chain, client, org) {
+    console.log('[channelAddPeerEvent] chain name: ', chain.getName());
+            var eh;
+            var peerTmp;
+            for (let key in ORGS[org]) {
+                //console.log('key: ', key);
+                if (ORGS[org].hasOwnProperty(key)) {
+                    if (key.indexOf('peer') === 0) {
+                        if (TLS.toUpperCase() == 'ENABLED') {
+                            let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
+                            peerTmp = new Peer(
+                                ORGS[org][key].requests,
+                                {
+                                    pem: Buffer.from(data).toString(),
+                                    'ssl-target-name-override': ORGS[key]['server-hostname']
+                                }
+                            );
+                        } else {
+                            peerTmp = new Peer( ORGS[org][key].requests);
+                            console.log('[channelAddPeerEvent] peer: ', ORGS[org][key].requests);
+                        }
+                        targets.push(peerTmp);
+                        chain.addPeer(peerTmp);
+
+                        eh=new EventHub();
+                        if (TLS.toUpperCase() == 'ENABLED') {
+                            eh.setPeerAddr(
+                                ORGS[org][key].events,
+                                {
+                                    pem: Buffer.from(data).toString(),
+                                    'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                                }
+                            );
+                        } else {
+                            eh.setPeerAddr(ORGS[org][key].events);
+                        }
+                        eh.connect();
+                        eventHubs.push(eh);
+                        console.log('[channelAddPeerEvent] requests: %s, events: %s ', ORGS[org][key].requests, ORGS[org][key].events);
+                    }
+                }
+                //console.log('[channelAddPeerEvent] add peer: ', chain.getPeers());
+                //console.log('[channelAddPeerEvent] event: ', eventHubs);
+            }
+}
+function channelAddEvent(chain, client, org) {
+    console.log('[channelAddEvent] chain name: ', chain.getName());
+            var eh;
+            var peerTmp;
+            for (let key in ORGS[org]) {
+                //console.log('key: ', key);
+                if (ORGS[org].hasOwnProperty(key)) {
+                    if (key.indexOf('peer') === 0) {
+
+                        eh=new EventHub();
+                        if (TLS.toUpperCase() == 'ENABLED') {
+                            eh.setPeerAddr(
+                                ORGS[org][key].events,
+                                {
+                                    pem: Buffer.from(data).toString(),
+                                    'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                                }
+                            );
+                        } else {
+                            eh.setPeerAddr(ORGS[org][key].events);
+                        }
+                        eh.connect();
+                        eventHubs.push(eh);
+                        console.log('[channelAddEvent] requests: %s, events: %s ', ORGS[org][key].requests, ORGS[org][key].events);
+                    }
+                }
+                console.log('[channelAddEvent] event: ', eventHubs);
+            }
+}
 
 // test begins ....
 performance_main();
 
 // deploy_chaincode
-function deploy_chaincode() {
+function chaincodeInstall(chain, client, org) {
     //grpc endpoints
-    var g = [];
-    for (i=0; i<peers.length; i++) {
-        tmp = 'grpc://' + peers[i].discovery_host + ":" + peers[i].discovery_port;
-        g.push(tmp);
-    }
+    console.log('chaincodeInstall: ', org);
+    orgName = ORGS[org].name;
 
-    if ( nThread > peers.length ) {
-        g_len = peers.length;
-    }
+    channelAddOrderer(chain, client, org);
 
-    for (i=0; i<g_len; i++) {
-        console.log('peer ', g[i]);
-        chain.addPeer(new Peer(g[i]));
-
-        // setup event hub to get notified when transactions are committed
-        eh[i] = new EventHub();
-        var evtHub_url = 'grpc://' + evtHub[i].discovery_host + ':' + evtHub[i].discovery_port;
-        eh[i].setPeerAddr(evtHub_url);
-        eh[i].connect();
-        console.log('[Nid=%d] eventHub connect: %s', Nid, evtHub_url);
-
-    }
-
-    //set Orderer URL
-    var nOrderer = parseInt(uiContent.nOrderer);
-    if ( nOrderer > orderer.length ) {
-        console.log('nOrderer: %d is greater than orderer.length: %d', nOrderer, orderer.length);
-        process.exit();
-    }
-    tmp = 'grpc://' + orderer[0].discovery_host + ":" + orderer[0].discovery_port;
-    console.log('[Nid=%d] orderer url: ', Nid, tmp);
-    chain.addOrderer(new Orderer(tmp));
+    //channelAddAllPeer(chain, client);
+    channelAddPeer(chain, client, org);
 
     var chaincode_id = uiContent.chaincodeID;
     var chaincode_ver = uiContent.chaincodeVer;
     var chain_id = uiContent.chainID;
-    console.log('[Nid=%d] chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
+    console.log('[chaincodeInstall:Nid=%d] chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
 
     nonce = utils.getNonce();
     tx_id = chain.buildTransactionID(nonce, the_user);
@@ -227,6 +490,7 @@ function deploy_chaincode() {
 
     console.log('request_install: ', request_install);
 
+    //sendInstallProposal
     chain.sendInstallProposal(request_install)
     .then(
         function(results) {
@@ -244,31 +508,66 @@ function deploy_chaincode() {
                 }
                 all_good = all_good & one_good;
             }
-                if (all_good) {
-                    console.log(util.format('Successfully sent install Proposal and received ProposalResponse: Status - %s', proposalResponses[0].response.status));
-                } else {
-                    console.log('Failed to send install Proposal or receive valid response. Response null or status is not 200. exiting...');
-                    process.exit();
-                }
+            if (all_good) {
+                console.log(util.format('Successfully sent install Proposal and received ProposalResponse: Status - %s', proposalResponses[0].response.status));
+                evtDisconnect();
+                process.exit();
+            } else {
+                console.log('Failed to send install Proposal or receive valid response. Response null or status is not 200. exiting...');
+                evtDisconnect();
+                process.exit();
+            }
+
+            //channelAddEvent(chain, client, org);
+            //console.log('Successfully add Event');
+
+            // read the config block from the orderer for the chain
+            // and initialize the verify MSPs based on the participating
+            // organizations
+            //remove existing peer
+
+        }, (err) => {
+            console.log('Failed to enroll user \'admin\'. ' + err);
+            evtDisconnect();
+            process.exit();
+
+        });
+}
+
+function chaincodeInstantiate(chain, client, org) {
+        console.log('[chaincodeInstantiate] org= %s, org name=%s', org, orgName);
+        console.log('[chaincodeInstantiate] chain name: ', chain.getName());
+
+        channelAddOrderer(chain, client, org);
+        channelAddAnchorPeer(chain, client, org);
+
+        chain.initialize()
+        .then((success) => {
+            console.log('[chaincodeInstantiate:Nid=%d] Successfully initialize chain[%s]', Nid, chain.getName());
+            var chaincode_id = uiContent.chaincodeID;
+            var chaincode_ver = uiContent.chaincodeVer;
+            var chain_id = uiContent.chainID;
 
             nonce = utils.getNonce();
             tx_id = chain.buildTransactionID(nonce, the_user);
-            var request_deploy = {
+            var request_instantiate = {
                 chaincodePath: uiContent.deploy.chaincodePath,
                 chaincodeId: chaincode_id,
                 chaincodeVersion: chaincode_ver,
                 fcn: uiContent.deploy.fcn,
                 args: testDeployArgs,
-                chainId: chain_id,
+                chainId: channelName,
                 txId: tx_id,
                 nonce: nonce
             };
 
-            console.log('request_deploy: ', request_deploy);
-            return chain.sendInstantiateProposal(request_deploy);
+            // sendInstantiateProposal
+            console.log('request_instantiate: ', request_instantiate);
+            return chain.sendInstantiateProposal(request_instantiate);
         },
         function(err) {
-            console.log('Failed to send install proposal due to error: ' + err.stack ? err.stack : err);
+            console.log('Failed to initialize chain[%s] due to error: ', chain.getName(),  err.stack ? err.stack : err);
+            evtDisconnect();
             process.exit();
         })
     .then(
@@ -281,14 +580,16 @@ function deploy_chaincode() {
                 let one_good = false;
                 if (proposalResponses && proposalResponses[0].response && proposalResponses[0].response.status === 200) {
                     one_good = true;
-                    logger.info('deploy proposal was good');
+                    logger.info('chaincode instantiation was good');
                 } else {
-                    logger.error('deploy proposal was bad');
+                    logger.error('chaincode instantiation was bad');
                 }
                 all_good = all_good & one_good;
             }
             if (all_good) {
                 console.log(util.format('Successfully sent Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - "%s", endorsement signature: %s', proposalResponses[0].response.status, proposalResponses[0].response.message, proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature));
+
+
                 var request = {
                     proposalResponses: proposalResponses,
                     proposal: proposal,
@@ -296,111 +597,338 @@ function deploy_chaincode() {
                 };
 
                 var deployId = tx_id.toString();
-                for ( i=0; i< g_len; i++) {
-                    var eh_deploy = eh[i];
-                    var txPromise = new Promise((resolve, reject) => {
-                        var handle = setTimeout(reject, 30000);
+                var eventPromises = [];
+                eventHubs.forEach((eh) => {
+                    let txPromise = new Promise((resolve, reject) => {
+                        let handle = setTimeout(reject, 30000);
 
-                            eh_deploy.registerTxEvent(deployId, (tx) => {
-                                console.log('The chaincode deploy transaction has been successfully committed');
-                                clearTimeout(handle);
-                                eh_deploy.unregisterTxEvent(deployId);
+                        eh.registerTxEvent(deployId.toString(), (tx, code) => {
+                            console.log('[chaincodeInstantiate] The chaincode instantiate transaction has been committed on peer '+ eh.ep.addr);
+                            clearTimeout(handle);
+                            eh.unregisterTxEvent(deployId);
 
-                            });
+                            if (code !== 'VALID') {
+                                console.log('[chaincodeInstantiate] The chaincode instantiate transaction was invalid, code = ' + code);
+                                evtDisconnect();
+                                reject();
+                            } else {
+                                console.log('[chaincodeInstantiate] The chaincode instantiate transaction was valid.');
+                                evtDisconnect();
+                                resolve();
+                            }
+                        });
                     });
-                }
 
+                    eventPromises.push(txPromise);
+                });
 
-                return chain.sendTransaction(request);
-/*
                 var sendPromise = chain.sendTransaction(request);
-                return Promise.all([sendPromise, txPromise]).then((results) => {
+                return Promise.all([sendPromise].concat(eventPromises))
+
+                .then((results) => {
+
+                    console.log('[chaincodeInstantiate] Event promise all complete and testing complete');
                     return results[0]; // the first returned value is from the 'sendPromise' which is from the 'sendTransaction()' call
                 }).catch((err) => {
-                    console.log('Failed to send deploy transaction and get notifications within the timeout period. ' + err.stack ? err.stack : err);
-                    eh.disconnect();
+                    console.log('Failed to send instantiate transaction and get notifications within the timeout period.');
+                    evtDisconnect();
+                    throw new Error('Failed to send instantiate transaction and get notifications within the timeout period.');
+
                 });
-*/
             } else {
-                console.log('Failed to send Proposal or receive valid response. Response null or status is not 200. exiting...');
+                console.log('Failed to send instantiate Proposal or receive valid response. Response null or status is not 200. exiting...');
+                evtDisconnect();
+                throw new Error('Failed to send instantiate Proposal or receive valid response. Response null or status is not 200. exiting...');
             }
         },
         function(err) {
-            console.log('[Nid=%d] Failed to send deployment proposal due to error: ', Nid, err.stack ? err.stack : err);
+
+                console.log('Failed to send instantiate proposal due to error: ' + err.stack ? err.stack : err);
+                evtDisconnect();
+                throw new Error('Failed to send instantiate proposal due to error: ' + err.stack ? err.stack : err);
         })
-    .then(
-        function(response) {
+    .then((response) => {
             if (response.status === 'SUCCESS') {
-                console.log('[Nid=%d] Successfully ordered deployment endorsement... wait now for the committer to catch up', Nid);
+                console.log('[Nid=%d] Successfully instantiate transaction. ', Nid);
                 return sleep(20000);
             } else {
-                console.log('[Nid=%d] Failed to order the deployment endorsement. Error code: ', Nid, response.status);
+                console.log('[Nid=%d] Failed to instantiate transaction. Error code: ', Nid, response.status);
+                evtDisconnect();
             }
 
-        },
-        function(err) {
-            console.log('[Nid=%d] Failed to send deployment e due to error: ', Nid, err.stack ? err.stack : err);
+        }, (err) => {
+            console.log('[Nid=%d] Failed to instantiate transaction due to error: ', Nid, err.stack ? err.stack : err);
+            evtDisconnect();
         }
     );
 }
 
-var chain;
+function createOneChannel(chain, client, org) {
+        orgName = ORGS[org].name;
+        console.log('[createOneChannel] org= %s, org name=%s', org, orgName);
+        console.log('[createOneChannel] chain name: ', chain.getName());
+        console.log('[createOneChannel] user name: ', users.username, users.secret);
+
+        channelAddOrderer(chain, client, org);
+
+            // Acting as a client in org when creating the channel
+
+            hfc.newDefaultKeyValueStore({
+                path: testUtil.storePathForOrg(orgName)
+            })
+            .then((store) => {
+                client.setStateStore(store);
+                return testUtil.getSubmitter(users.username, users.secret, client, false, org)
+            })
+            .then((admin) => {
+                console.log('[createOneChannel] Successfully enrolled user \'admin\'');
+                the_user = admin;
+
+                //FIXME: temporary fix until mspid is configured into Chain
+                //the_user.mspImpl._id = ORGS[org].mspid;
+
+                // readin the envelope to send to the orderer
+                cfgtxFile=gopath+'/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/'+channelName+'.tx';
+                console.log('cfgtxFile:', cfgtxFile);
+                return readFile(cfgtxFile);
+            }, (err) => {
+                console.log('Failed to enroll user \'admin\'. ' + err);
+                process.exit();
+            })
+            .then((data) => {
+                console.log('Successfully read file: %s', cfgtxFile);
+                var request = {
+                        envelope : data
+                };
+                // send to orderer
+                console.log('chain orderer: ', chain.getOrderers());
+                console.log('request: ',request);
+                return chain.createChannel(request);
+            }, (err) => {
+                console.log('Failed to read file for channel template: ' + err);
+                process.exit();
+            })
+            .then((response) => {
+                logger.debug(' response ::%j',response);
+
+                if (response && response.status === 'SUCCESS') {
+                        console.log('Successfully created the channel: %s.', channelName);
+                        return sleep(5000);
+                } else {
+                        console.log('Failed to create the channel. ');
+                        process.exit();
+                }
+            }, (err) => {
+                console.log('Failed to initialize the channel: ' + err.stack ? err.stack : err);
+                process.exit();
+            })
+            .then((nothing) => {
+                console.log('Successfully waited to make sure new channel was created.');
+                process.exit();
+            }, (err) => {
+                console.log('Failed to sleep due to error: ' + err.stack ? err.stack : err);
+                process.exit();
+            });
+}
+
+function joinChannel(chain, client, org) {
+        orgName = ORGS[org].name;
+        console.log('[joinChannel] Calling peers in organization "%s" to join the channel "%s"', orgName, chain.getName());
+        //console.log('[joinChannel] user name: ', users.username, users.secret);
+
+        // add orderers
+        channelAddOrderer(chain, client, org);
+
+        // add peers and events
+        channelAddPeerEvent(chain, client, org);
+
+        return hfc.newDefaultKeyValueStore({
+                path: testUtil.storePathForOrg(orgName)
+        })
+        .then((store) => {
+                client.setStateStore(store);
+                console.log('[joinChannel] user name: ', users.username, users.secret);
+                return testUtil.getSubmitter(users.username, users.secret, client, false, org);
+        })
+        .then((admin) => {
+                console.log('[joinChannel:%s] Successfully enrolled user \'admin\'', org);
+                the_user = admin;
+
+                nonce = utils.getNonce();
+                tx_id = chain.buildTransactionID(nonce, the_user);
+                var request = {
+                        targets : targets,
+                        txId :  tx_id,
+                        nonce : nonce
+                };
+                var eventPromises = [];
+                //console.log('[joinChannel] for each', eventHubs);
+
+                eventHubs.forEach((eh) => {
+                        let txPromise = new Promise((resolve, reject) => {
+                                let handle = setTimeout(reject, 30000);
+//                console.log('[joinChannel] for each eh', eh);
+
+                                eh.registerBlockEvent((block) => {
+                                             console.log('eh.registerBlockEvent completed ');
+                                        clearTimeout(handle);
+
+                                        // in real-world situations, a peer may have more than one channels so
+                                        // we must check that this block came from the channel we asked the peer to join
+                                             console.log('block.data.data.length: ', block.data.data.length);
+                                        if(block.data.data.length === 1) {
+                                                // Config block must only contain one transaction
+                                                var envelope = _commonProto.Envelope.decode(block.data.data[0]);
+                                                var payload = _commonProto.Payload.decode(envelope.payload);
+                                                var channel_header = _commonProto.ChannelHeader.decode(payload.header.channel_header);
+                                             console.log('channel_header.channel_id: ', channel_header.channel_id);
+
+                                                if (channel_header.channel_id === channelName) {
+                                                        console.log('The new channel has been successfully joined on peer '+ eh.ep._endpoint.addr);
+                                                        resolve();
+                                                }
+                                        }
+                                }, (err) => {
+                                    console.log('Failed to registerBlockEvent due to error: ' + err.stack ? err.stack : err);
+                                    throw new Error('Failed to registerBlockEvent due to error: ' + err.stack ? err.stack : err);
+                                });
+                        }, (err) => {
+                            console.log('Failed to Promise due to error: ' + err.stack ? err.stack : err);
+                            throw new Error('Failed to Promise due to error: ' + err.stack ? err.stack : err);
+                        });
+
+                        eventPromises.push(txPromise);
+                });
+
+
+                        console.log('[joinChannel] about to send joinChannel', request);
+//                return chain.joinChannel(request);
+                var sendPromise = chain.joinChannel(request);
+                console.log('[joinChannel] sent joinChannel');
+                return Promise.all([sendPromise].concat(eventPromises));
+        }, (err) => {
+                console.log('[joinChannel] Failed to enroll user \'admin\' due to error: ' + err.stack ? err.stack : err);
+                evtDisconnect();
+                throw new Error('[joinChannel] Failed to enroll user \'admin\' due to error: ' + err.stack ? err.stack : err);
+        })
+        .then((results) => {
+                console.log(util.format('[joinChannel] join Channel R E S P O N S E : %j', results));
+
+                if(results[0] && results[0][0] && results[0][0].response && results[0][0].response.status == 200) {
+                        console.log('[joinChannel] Successfully joined peers in organization %s to join the channel %s', orgName, channelName);
+                        evtDisconnect();
+                } else {
+                        console.log('[joinChannel] Failed to join channel');
+                        evtDisconnect();
+                        throw new Error('Failed to join channel');
+                }
+        }, (err) => {
+                console.log('Failed to join channel due to error: ' + err.stack ? err.stack : err);
+                evtDisconnect();
+        });
+}
+
+function joinOneChannel(chain, client, org) {
+        console.log('joinOneChannel:', org);
+        console.log('[joinOneChannel] chain name: ', chain.getName());
+
+        joinChannel(chain, client, org)
+        .then(() => {
+                console.log('[joinOneChannel] Successfully joined peers in organization %s to join the channel %s', ORGS[org].name, channelName);
+                process.exit();
+        }, (err) => {
+                console.log(util.format('[joinOneChannel] Failed to join peers in organization "%s" to the channel', ORGS[org].name));
+                process.exit();
+        })
+        .catch(function(err) {
+                console.log('Failed request. ' + err);
+                process.exit();
+        });
+
+}
 
 // performance main
 function performance_main() {
     // send proposal to endorser
-    if ( transType.toUpperCase() == 'DEPLOY' ) {
-        chain = client.newChain('testChain-e2e');
-        var uid = 2;
-        userEnroll(uid);
-        console.log('complete userEnrollment');
+    for (i=0; i<channelOrgName.length; i++ ) {
+        org = channelOrgName[i];
+        orgName=ORGS[org].name;
+        console.log('[performance_main]: org=%s, org Name= %s', org, orgName);
+        var client = new hfc();
+        var chain = client.newChain(channelName);
+        console.log('[performance_main] chain name: ', chain.getName());
 
-        sleep(2000);
+        if ( (transType.toUpperCase() == 'INSTALL') || (transType.toUpperCase() == 'INSTANTIATE') ) {
+                console.log('DEPLOY: ');
 
-/*
-        hfc.newDefaultKeyValueStore({
-            path: keyValStorePath
-        }).then(
-            function (store) {
+            hfc.newDefaultKeyValueStore({
+                path: testUtil.storePathForOrg(orgName)
+            })
+            .then((store) => {
                 client.setStateStore(store);
-*/
+                testUtil.getSubmitter(users.username, users.secret, client, false, org)
+                .then(
+                    function(admin) {
+                        console.log('[performance_main:Nid=%d] Successfully enrolled user \'admin\'', Nid);
+                        the_user = admin;
+                        //the_user.mspImpl._id = ORGS[org].mspid;
+                        //console.log('[performance_main:Nid=%d] ORGS[org].mspid %s', Nid, ORGS[org].mspid);
+                        if ( transType.toUpperCase() == 'INSTALL' ) {
+                            chaincodeInstall(chain, client, org);
+                        } else if ( transType.toUpperCase() == 'INSTANTIATE' ) {
+                            chaincodeInstantiate(chain, client, org);
+                        }
+                        //channelAddAnchorPeer(chain, client, org);
+                    },
+                    function(err) {
+                        console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
+                        evtDisconnect();
 
-        //testUtil.getSubmitter(client, null, true)
-        testUtil.getSubmitter(users[uid].username, users[uid].secret, client, true)
-        .then(
-            function(admin) {
-                console.log('[Nid=%d] Successfully enrolled user \'admin\'', Nid);
-                the_user = admin;
-                deploy_chaincode();
-                sleep(30000);
-            },
-            function(err) {
-                console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
+                        return;
+                    }
+                );
+            });
+        } else if ( transType.toUpperCase() == 'INVOKE' ) {
+            // spawn off processes for transactions
+            for (var j = 0; j < nThread; j++) {
+                var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart]);
 
-                return;
+                workerProcess.stdout.on('data', function (data) {
+                    console.log('stdout: ' + data);
+                });
+
+                workerProcess.stderr.on('data', function (data) {
+                    console.log('stderr: ' + data);
+                });
+
+                workerProcess.on('close', function (code) {
+                    //console.log('child process exited with code ' + code);
+                });
             }
-        );
-        //});
-    } else if ( transType.toUpperCase() == 'INVOKE' ) {
-        // spawn off processes for transactions
-        for (var j = 0; j < nThread; j++) {
-            var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart]);
-
-            workerProcess.stdout.on('data', function (data) {
-                console.log('stdout: ' + data);
-            });
-
-            workerProcess.stderr.on('data', function (data) {
-                console.log('stderr: ' + data);
-            });
-
-            workerProcess.on('close', function (code) {
-                //console.log('child process exited with code ' + code);
-            });
+        } else if ( transType.toUpperCase() == 'CHANNEL' ) {
+            if ( channelOpt.action.toUpperCase() == 'CREATE' ) {
+                createOneChannel(chain, client, org);
+            } else if ( channelOpt.action.toUpperCase() == 'JOIN' ) {
+ //               joinOneChannel(chain, client, org);
+                joinChannel(chain, client, org);
+            }
+        } else {
+            console.log('[Nid=%d] invalid transType: %s', Nid, transType);
         }
-    } else {
-        console.log('[Nid=%d] invalid transType: %s', Nid, transType);
+
     }
+}
+
+function readFile(path) {
+        return new Promise(function(resolve, reject) {
+                fs.readFile(path, function(err, data) {
+                        if (err) {
+                                reject(err);
+                        } else {
+                                resolve(data);
+                        }
+                });
+        });
 }
 
 function sleep(ms) {
@@ -408,8 +936,10 @@ function sleep(ms) {
 }
 
 function evtDisconnect() {
-    if (eh && eh.isconnected()) {
-        logger.info('Disconnecting the event hub');
-        eh.disconnect();
+    for ( i=0; i<g_len; i++) {
+        if (eventHubs[i] && eventHubs[i].isconnected()) {
+            logger.info('Disconnecting the event hub: %d', i);
+            eventHubs[i].disconnect();
+        }
     }
 }

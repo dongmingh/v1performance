@@ -21,6 +21,7 @@ var os = require('os');
 var jsrsa = require('jsrsasign');
 var KEYUTIL = jsrsa.KEYUTIL;
 
+var hfc = require('fabric-client');
 var copService = require('fabric-ca-client/lib/FabricCAClientImpl.js');
 var User = require('fabric-client/lib/User.js');
 var CryptoSuite = require('fabric-client/lib/impl/CryptoSuite_ECDSA_AES.js');
@@ -29,9 +30,17 @@ var ecdsaKey = require('fabric-client/lib/impl/ecdsa/key.js');
 
 module.exports.CHAINCODE_PATH = 'github.com/example_cc';
 module.exports.CHAINCODE_MARBLES_PATH = 'github.com/marbles_cc';
+module.exports.END2END = {
+	channel: 'mychannel',
+	chaincodeId: 'end2end',
+	chaincodeVersion: 'v0'
+};
 
 // directory for file based KeyValueStore
 module.exports.KVS = '/tmp/hfc-test-kvs';
+module.exports.storePathForOrg = function(org) {
+	return module.exports.KVS + '_' + org;
+};
 
 // temporarily set $GOPATH to the test fixture folder
 module.exports.setupChaincodeDeploy = function() {
@@ -42,6 +51,7 @@ module.exports.setupChaincodeDeploy = function() {
 // running in the overall test bucket ('gulp test')
 module.exports.resetDefaults = function() {
 	global.hfc.config = undefined;
+	require('nconf').reset();
 };
 
 module.exports.cleanupDir = function(keyValStorePath) {
@@ -52,6 +62,10 @@ module.exports.cleanupDir = function(keyValStorePath) {
 	}
 };
 
+module.exports.getUniqueVersion = function(prefix) {
+	if (!prefix) prefix = 'v';
+	return prefix + Date.now();
+};
 
 // utility function to check if directory or file exists
 // uses entire / absolute path from root
@@ -70,7 +84,14 @@ module.exports.existsSync = function(absolutePath /*string*/) {
 
 module.exports.readFile = readFile;
 
-function getSubmitter(username, password, client, loadFromConfig) {
+hfc.addConfigFile(path.join(__dirname, '../mBCN/SCFiles/config.json'));
+var ORGS = hfc.getConfigSetting('test-network');
+
+function getSubmitter(username, password, client, loadFromConfig, userOrg) {
+        console.log('userOrg:%s loadFromConfig:%j ', userOrg, loadFromConfig);
+	var caUrl = ORGS[userOrg].ca;
+        console.log('ca: ', caUrl);
+
 	return client.getUserContext(username)
 	.then((user) => {
 		return new Promise((resolve, reject) => {
@@ -81,7 +102,7 @@ function getSubmitter(username, password, client, loadFromConfig) {
 
 			if (!loadFromConfig) {
 				// need to enroll it with CA server
-				var cop = new copService('http://localhost:7054');
+				var cop = new copService(caUrl);
 
 				var member;
 				return cop.enroll({
@@ -91,7 +112,7 @@ function getSubmitter(username, password, client, loadFromConfig) {
 					console.log('Successfully enrolled user \'' + username + '\'');
 
 					member = new User(username, client);
-					return member.setEnrollment(enrollment.key, enrollment.certificate);
+					return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
 				}).then(() => {
 					return client.setUserContext(member);
 				}).then(() => {
@@ -131,14 +152,14 @@ function getSubmitter(username, password, client, loadFromConfig) {
 					return readFile(certPEM);
 				}).then((data) => {
 					member = new User(username, client);
-					return member.setEnrollment(testKey, data.toString());
+					return member.setEnrollment(testKey, data.toString(), ORGS[userOrg].mspid);
 				}).then(() => {
 					return client.setUserContext(member);
 				}).then((user) => {
 					return resolve(user);
 				}).catch((err) => {
 					reject(new Error('Failed to load key or certificate and save to local stores. ' + err));
-					t.end();
+					process.exit();
 				});
 			}
 		});
@@ -156,6 +177,25 @@ function readFile(path) {
 	});
 }
 
-module.exports.getSubmitter = function(username, password, client, loadFromConfig) {
-	return getSubmitter(username, password, client, loadFromConfig);
+module.exports.getSubmitter = function(username, password, client, loadFromConfig, org) {
+	if (arguments.length < 2) throw new Error('"client" and "test" are both required parameters');
+
+	var fromConfig, userOrg;
+	if (typeof loadFromConfig === 'boolean') {
+		fromConfig = loadFromConfig;
+	} else {
+		fromConfig = false;
+	}
+
+	if (typeof loadFromConfig === 'string') {
+		userOrg = loadFromConfig;
+	} else {
+		if (typeof org === 'string') {
+			userOrg = org;
+		} else {
+			userOrg = 'org1';
+		}
+	}
+
+	return getSubmitter(username, password, client, fromConfig, userOrg);
 };

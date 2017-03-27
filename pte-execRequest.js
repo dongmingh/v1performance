@@ -37,8 +37,8 @@ var path = require('path');
 var hfc = require('fabric-client');
 hfc.setLogger(logger);
 
-//var grpc = require('grpc');
-
+var fs = require('fs');
+var grpc = require('grpc');
 var util = require('util');
 var testUtil = require('./pte-util.js');
 var utils = require('fabric-client/lib/utils.js');
@@ -49,13 +49,12 @@ var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
 var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
+var _commonProto = grpc.load(path.join(__dirname, '../../fabric-client/lib/protos/common/common.proto')).common;
 
-var fs = require('fs');
 const crypto = require('crypto');
 
-var client = new hfc();
-var chain = client.newChain('testChain-e2e');
-var keyValStorePath = testUtil.KVS;
+utils.setConfigSetting('crypto-keysize', 256);
+
 
 // local vars
 var the_user;
@@ -77,6 +76,10 @@ var chaincode_ver;
 var chain_id;
 var tx_id = null;
 var nonce = null;
+var the_user = null;
+var eventHubs=[];
+var targets = [];
+var eventPromises = [];
 
 testUtil.setupChaincodeDeploy();
 
@@ -93,8 +96,21 @@ var pid = parseInt(process.argv[2]);
 var Nid = parseInt(process.argv[3]);
 var uiFile = process.argv[4];
 var tStart = parseInt(process.argv[5]);
-console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, pid, Nid, uiFile, tStart);
+var org = parseInt(process.argv[6]);
+console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d, org=%s', Nid, pid, Nid, uiFile, tStart, org);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
+var TLS=uiContent.TLS;
+var channelOpt=uiContent.channelOpt;
+var channelOrgName = [];
+var channelName = channelOpt.name;
+for (i=0; i<channelOpt.orgName.length; i++) {
+    channelOrgName.push(channelOpt.orgName[i]);
+}
+console.log('TLS: %s', TLS.toUpperCase());
+console.log('channelOrgName.length: %d, channelOrgName: %s', channelOrgName.length, channelOrgName);
+
+var client = new hfc();
+var chain = client.newChain(channelName);
 
 invokeCheck = uiContent.invokeCheck;
 console.log('[Nid:id=%d:%d] invokeCheck: ', Nid, pid, invokeCheck);
@@ -115,25 +131,24 @@ console.log('[Nid:id=%d:%d] logLevel: %s', Nid, pid, logLevel);
 logger.setLevel(logLevel);
 
 var svcFile = uiContent.SCFile[0].ServiceCredentials;
-var network = JSON.parse(fs.readFileSync(svcFile, 'utf8'));
-var peers = network.credentials.peers;
-var users = network.credentials.users;
-var ca = network.credentials.ca;
-var orderer = network.credentials.orderer;
+var org=channelOrgName[0];
+console.log('svcFile: %s, org: %s', svcFile, org);
+hfc.addConfigFile(path.join(__dirname, svcFile));
+var ORGS = hfc.getConfigSetting('test-network');
+var orgName = ORGS[org].orgName;
 
-var ca_id = Object.keys(network.credentials.ca);
-var ca_url = 'http://' + ca[ca_id].discovery_host + ':' + ca[ca_id].discovery_port;
-console.log('[Nid:id=%d:%d] ca url: ', Nid, pid, ca_url);
-
-var evtHub = network.credentials.evtHub;
+var users =  hfc.getConfigSetting('users');
 
 //user parameters
-//var chaincode_id = uiContent.chaincodeID;
 var transMode = uiContent.transMode;
 var transType = uiContent.transType;
 var invokeType = uiContent.invokeType;
 var nRequest = parseInt(uiContent.nRequest);
-var nPeer = parseInt(uiContent.nPeer);
+var nThread = parseInt(uiContent.nThread);
+var nOrg = parseInt(uiContent.nOrg);
+var nPeerPerOrg = parseInt(uiContent.nPeerPerOrg);
+var nPeer = nOrg * nPeerPerOrg;
+
 var nOrderer = parseInt(uiContent.nOrderer);
 console.log('[Nid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', Nid, pid, nOrderer, nPeer, transMode, transType, invokeType, nRequest);
 
@@ -141,25 +156,9 @@ var runDur=0;
 if ( nRequest == 0 ) {
    runDur = parseInt(uiContent.runDur);
    console.log('[Nid:id=%d:%d] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', Nid, pid, nOrderer, nPeer, transMode, transType, invokeType, runDur);
-   // convert runDur to ms
+   // convert runDur from second to ms
    runDur = 1000*runDur;
 }
-
-//add orderer
-tmp = 'grpc://' + orderer[pid % nOrderer].discovery_host + ":" + orderer[pid % nOrderer].discovery_port;
-console.log('[Nid:id=%d:%d] orderer url: ', Nid, pid, tmp);
-chain.addOrderer(new Orderer(tmp));
-
-//var g = ['grpc://10.120.223.35:7051', 'grpc://10.120.223.35:7052', 'grpc://10.120.223.35:7053'];
-var g = [];
-for (i=0; i<peers.length; i++) {
-    tmp = 'grpc://' + peers[i].discovery_host + ":" + peers[i].discovery_port;
-    g.push(tmp);
-}
-
-var curPeer = new Peer(g[pid % nPeer]);
-chain.addPeer(curPeer);
-console.log('[Nid:id=%d:%d] peer url: %s', Nid, pid, g[pid % nPeer]);
 
 
 var ccType = uiContent.ccType;
@@ -199,11 +198,13 @@ function getMoveRequest() {
 
     nonce = utils.getNonce();
     tx_id = chain.buildTransactionID(nonce, the_user);
+    utils.setConfigSetting('E2E_TX_ID', tx_id);
+    logger.info('setConfigSetting("E2E_TX_ID") = %s', tx_id);
 
     request_invoke = {
         chaincodeId : chaincode_id,
         chaincodeVersion : chaincode_ver,
-        chainId: chain_id,
+        chainId: channelName,
         fcn: uiContent.invoke.move.fcn,
         args: testInvokeArgs,
         txId: tx_id,
@@ -237,10 +238,9 @@ function getQueryRequest() {
     nonce = utils.getNonce();
     tx_id = chain.buildTransactionID(nonce, the_user);
     request_query = {
-        targets: [curPeer],
         chaincodeId : chaincode_id,
         chaincodeVersion : chaincode_ver,
-        chainId: chain_id,
+        chainId: channelName,
         txId: tx_id,
         nonce: nonce,
         fcn: uiContent.invoke.query.fcn,
@@ -250,12 +250,211 @@ function getQueryRequest() {
     //console.log('request_query: ', request_query);
 }
 
+
+function assignThreadPeer(chain, client) {
+    console.log('[assignThreadPeer] chain name: ', chain.getName());
+    console.log('[assignThreadPeer Nid:pid=%d:%d] ', Nid, pid);
+    var peerIdx=0;
+    var peerTmp;
+    var eh;
+    for (let key1 in ORGS) {
+        if (ORGS.hasOwnProperty(key1)) {
+            for (let key in ORGS[key1]) {
+            if (key.indexOf('peer') === 0) {
+                if (peerIdx == pid % nPeer) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[key1][key].tls_cacerts));
+                    peerTmp = new Peer(
+                        ORGS[key1][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[key1][key].server-hostname
+                        }
+                    );
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                } else {
+                    //console.log('[channelAddAllPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
+                    peerTmp = new Peer( ORGS[key1][key].requests);
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                }
+
+                    eh=new EventHub();
+                    if (TLS.toUpperCase() == 'ENABLED') {
+                        eh.setPeerAddr(
+                            ORGS[key1][key].events,
+                            {
+                                pem: Buffer.from(data).toString(),
+                                'ssl-target-name-override': ORGS[key1][key].server-hostname
+                            }
+                        );
+                    } else {
+                        eh.setPeerAddr(ORGS[key1][key].events);
+                    }
+                    eh.connect();
+                    eventHubs.push(eh);
+                    console.log('[assignThreadPeer] requests: %s, events: %s ', ORGS[key1][key].requests, ORGS[key1][key].events);
+                }
+                peerIdx++;
+                }
+            }
+        }
+    }
+    console.log('[assignThreadPeer Nid:pid=%d:%d] add peer: ', Nid, pid, chain.getPeers());
+    //console.log('[assignThreadPeer] event: ', eventHubs);
+}
+
+function channelAddPeer(chain, client, org) {
+    console.log('[channelAddPeer] chain name: ', chain.getName());
+    var peerTmp;
+    var eh;
+    for (let key in ORGS[org]) {
+        if (ORGS[org].hasOwnProperty(key)) {
+            if (key.indexOf('peer') === 0) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
+                    peerTmp = new Peer(
+                        ORGS[org][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                        }
+                    );
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                } else {
+                    peerTmp = new Peer( ORGS[org][key].requests);
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                }
+            }
+        }
+    }
+    console.log('[channelAddPeer] add peer: ', chain.getPeers());
+}
+
+
+function channelAddPeerEvent(chain, client, org) {
+    console.log('[channelAddPeerEvent] chain name: ', chain.getName());
+            var eh;
+            var peerTmp;
+            for (let key in ORGS[org]) {
+                console.log('key: ', key);
+                if (ORGS[org].hasOwnProperty(key)) {
+                    if (key.indexOf('peer') === 0) {
+                        if (TLS.toUpperCase() == 'ENABLED') {
+                            let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
+                            peerTmp = new Peer(
+                                ORGS[org][key].requests,
+                                {
+                                    pem: Buffer.from(data).toString(),
+                                    'ssl-target-name-override': ORGS[key]['server-hostname']
+                                }
+                            );
+                        } else {
+                            peerTmp = new Peer( ORGS[org][key].requests);
+                            console.log('[channelAddPeerEvent] peer: ', ORGS[org][key].requests);
+                        }
+                        targets.push(peerTmp);
+                        chain.addPeer(peerTmp);
+
+                        eh=new EventHub();
+                        if (TLS.toUpperCase() == 'ENABLED') {
+                            eh.setPeerAddr(
+                                ORGS[org][key].events,
+                                {
+                                    pem: Buffer.from(data).toString(),
+                                    'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                                }
+                            );
+                        } else {
+                            eh.setPeerAddr(ORGS[org][key].events);
+                        }
+                        eh.connect();
+                        eventHubs.push(eh);
+                        console.log('[channelAddPeerEvent] requests: %s, events: %s ', ORGS[org][key].requests, ORGS[org][key].events);
+                    }
+                }
+                //console.log('[channelAddPeerEvent] add peer: ', chain.getPeers());
+                //console.log('[channelAddPeerEvent] event: ', eventHubs);
+            }
+}
+
+function channelAddOrderer(chain, client, org) {
+    console.log('[channelAddOrderer] chain name: ', chain.getName());
+    if (TLS.toUpperCase() == 'ENABLED') {
+        var caRootsPath = ORGS.orderer.tls_cacerts;
+        let data = fs.readFileSync(path.join(__dirname, caRootsPath));
+        let caroots = Buffer.from(data).toString();
+
+        chain.addOrderer(
+            new Orderer(
+                ORGS.orderer.url,
+                {
+                    'pem': caroots,
+                    'ssl-target-name-override': ORGS.orderer['server-hostname']
+                }
+            )
+        );
+    } else {
+        chain.addOrderer( new Orderer(ORGS.orderer.url));
+        console.log('[channelAddOrderer] orderer url: ', ORGS.orderer.url);
+    }
+    //console.log('[channelAddOrderer] orderer in the chain: ', chain.getOrderers());
+}
+
+function channelAddAnchorPeer(chain, client, org) {
+    console.log('[channelAddAnchorPeer] chain name: ', chain.getName());
+    var peerTmp;
+    var eh;
+    for (let key in ORGS) {
+        if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[key].peer1['tls_cacerts']));
+                    peerTmp = new Peer(
+                        ORGS[key].peer1.requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[key].peer1['server-hostname']
+                        }
+                    );
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                } else {
+                    //console.log('[channelAddAnchorPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
+                    peerTmp = new Peer( ORGS[key].peer1.requests);
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                }
+
+                if ( invokeType.toUpperCase() == 'MOVE' ) {
+                eh=new EventHub();
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    eh.setPeerAddr(
+                        ORGS[key].peer1.events,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[key].peer1['server-hostname']
+                        }
+                    );
+                } else {
+                    eh.setPeerAddr(ORGS[key].peer1.events);
+                }
+                eh.connect();
+                eventHubs.push(eh);
+                console.log('[channelAddAnchorPeer] requests: %s, events: %s ', ORGS[key].peer1.requests, ORGS[key].peer1.events);
+                }
+        }
+    }
+    console.log('[channelAddAnchorPeer] get peer: ', chain.getPeers());
+    console.log('[channelAddAnchorPeer] event: ', eventHubs);
+}
+
 /*
  *   transactions begin ....
  */
     execTransMode();
-
-var eh;
 
 function execTransMode() {
 
@@ -263,28 +462,30 @@ function execTransMode() {
     inv_m = 0;
     inv_q = 0;
 
+    var caRootsPath = ORGS.orderer.tls_cacerts;
+    let data = fs.readFileSync(path.join(__dirname, caRootsPath));
+    let caroots = Buffer.from(data).toString();
+
+
     //enroll user
     hfc.newDefaultKeyValueStore({
-        path: keyValStorePath
+        path: testUtil.storePathForOrg(orgName)
     }).then(
         function (store) {
             client.setStateStore(store);
                     console.log('[Nid:id=%d:%d] Successfully setStateStore', Nid, pid);
 
-            var uid = 2;
-            //testUtil.getSubmitter(client)
-            testUtil.getSubmitter(users[uid].username, users[uid].secret, client, true)
+            testUtil.getSubmitter(users.username, users.secret, client, false, org)
             .then(
                 function(admin) {
 
                     console.log('[Nid:id=%d:%d] Successfully loaded user \'admin\'', Nid, pid);
                     the_user = admin;
 
-                    var evtHub_url = 'grpc://' + evtHub[pid % nPeer].discovery_host + ':' + evtHub[pid % nPeer].discovery_port;
-                    eh = new EventHub();
-                    eh.setPeerAddr(evtHub_url);
-                    eh.connect();
-                    console.log('[Nid:id=%d:%d] eventHub connect: %s', Nid, pid, evtHub_url);
+                    channelAddOrderer(chain, client, org)
+
+                    //channelAddAnchorPeer(chain, client, org);
+                    assignThreadPeer(chain, client);
 
 	            tCurr = new Date().getTime();
 	            console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
@@ -373,70 +574,127 @@ function getTxRequest(results) {
 }
 
 var evtRcv=0;
-function eventRegister(tx) {
+function eventRegister(tx, cb) {
     var txId = tx.toString();
-    var txPromise = new Promise((resolve, reject) => {
-        var handle = setTimeout(reject, 600000);
 
-        eh.registerTxEvent(txId, (tx) => {
-            clearTimeout(handle);
+    var deployId = tx_id.toString();
+    var eventPromises = [];
+    eventHubs.forEach((eh) => {
+        let txPromise = new Promise((resolve, reject) => {
+            let handle = setTimeout(reject, 30000);
             evtRcv++;
-            eh.unregisterTxEvent(txId);
 
-            //sanity check: query the vary last invoke, no need for MIX mode transactions
-            if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
-                tCurr = new Date().getTime();
-                console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                if (invokeCheck.toUpperCase() == 'TRUE') {
-                    arg0 = keyStart + inv_m - 1;
-                    inv_q = inv_m - 1;
-                    invoke_query_simple(0);
+            eh.registerTxEvent(deployId.toString(), (tx, code) => {
+                clearTimeout(handle);
+                eh.unregisterTxEvent(deployId);
+
+                if (code !== 'VALID') {
+                    console.log('[eventRegister [Nid:id=%d:%d]] The invoke transaction was invalid, code = ', Nid, pid, code);
+                    reject();
+                } else {
+                    //console.log('[eventRegister [Nid:id=%d:%d]] The balance transfer transaction has been committed on peer ', Nid, pid, eh.ep._endpoint.addr);
+                    console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
+                        tCurr = new Date().getTime();
+                        console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        if (invokeCheck.toUpperCase() == 'TRUE') {
+                            arg0 = keyStart + inv_m - 1;
+                            inv_q = inv_m - 1;
+                            invoke_query_simple(0);
+                        }
+                        evtDisconnect();
+                        resolve();
+                    }
                 }
-                eh.disconnect();
-            }
-
+            });
         });
-    });
 
+        eventPromises.push(txPromise);
+    });
+    //var sendPromise = chain.sendTransaction(txRequest);
+    cb(eventPromises);
+        //cb(txRequest);
+    /*
+    return Promise.all([sendPromise].concat(eventPromises))
+    .then((results) => {
+        console.log(' event promise all complete and testing complete');
+        return results[0]; // the first returned value is from the 'sendPromise' which is from the 'sendTransaction()' call
+    }).catch((err) => {
+        console.log('Failed to send transaction and get notifications within the timeout period.');
+        evtDisconnect();
+        throw new Error('Failed to send transaction and get notifications within the timeout period.');
+    });
+    */
 }
 
-//eventRegister_latency
-function eventRegister_latency(tx) {
+function eventRegister_latency(tx, cb) {
     var txId = tx.toString();
-    var txPromise = new Promise((resolve, reject) => {
-        var handle = setTimeout(reject, 600000);
 
-        eh.registerTxEvent(txId, (tx) => {
-            clearTimeout(handle);
+    var deployId = tx_id.toString();
+    var eventPromises = [];
+    eventHubs.forEach((eh) => {
+        let txPromise = new Promise((resolve, reject) => {
+            let handle = setTimeout(reject, 30000);
             evtRcv++;
-            eh.unregisterTxEvent(txId);
 
-            //sanity check: query the vary last invoke, no need for MIX mode transactions
-            if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
-                tCurr = new Date().getTime();
-                console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                if (invokeCheck.toUpperCase() == 'TRUE') {
-                    arg0 = keyStart + inv_m - 1;
-                    inv_q = inv_m - 1;
-                    invoke_query_simple(0);
+            eh.registerTxEvent(deployId.toString(), (tx, code) => {
+                clearTimeout(handle);
+                eh.unregisterTxEvent(deployId);
+
+                if (code !== 'VALID') {
+                    console.log('[eventRegister [Nid:id=%d:%d]] The invoke transaction was invalid, code = ', Nid, pid, code);
+                    reject();
+                } else {
+                    //console.log('[eventRegister [Nid:id=%d:%d]] The balance transfer transaction has been committed on peer ', Nid, pid, eh.ep._endpoint.addr);
+                    console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
+                        tCurr = new Date().getTime();
+                        console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        if (invokeCheck.toUpperCase() == 'TRUE') {
+                            arg0 = keyStart + inv_m - 1;
+                            inv_q = inv_m - 1;
+                            invoke_query_simple(0);
+                        }
+                        evtDisconnect();
+                        resolve();
+                    } else if ( IDone != 1 ) {
+                        invoke_move_latency();
+                    }
                 }
-                eh.disconnect();
-            } else if ( IDone != 1 ) {
-//                tCurr = new Date().getTime();
-//                console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                invoke_move_latency();
-            }
-
+            });
         });
-    });
 
+        eventPromises.push(txPromise);
+    });
+    //var sendPromise = chain.sendTransaction(txRequest);
+    cb(eventPromises);
+    
+/*
+    return Promise.all([sendPromise].concat(eventPromises))
+    .then((results) => {
+        console.log(' event promise all complete and testing complete');
+        return results[0]; // the first returned value is from the 'sendPromise' which is from the 'sendTransaction()' call
+    }).catch((err) => {
+        console.log('Failed to send transaction and get notifications within the timeout period.');
+        evtDisconnect();
+        throw new Error('Failed to send transaction and get notifications within the timeout period.');
+    });
+*/
+    
 }
+
+
 // invoke_move_latency
 function invoke_move_latency() {
-    inv_m++;
+    isExecDone('Move');
+    if ( IDone == 1 ) {
+       return;
+    }
 
-//    tCurr = new Date().getTime();
-//    console.log('[Nid:id=%d:%d] invoke_move_latency: sending %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+    inv_m++;
+    tCurr = new Date().getTime();
+    console.log('[Nid:id=%d:%d] invoke_move_latency: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+
     getMoveRequest();
 
     chain.sendTransactionProposal(request_invoke)
@@ -445,31 +703,35 @@ function invoke_move_latency() {
             var proposalResponses = results[0];
 
             getTxRequest(results);
-            isExecDone('Move');
-            eventRegister_latency(request_invoke.txId);
+            eventRegister_latency(request_invoke.txId, function(sendPromise) {
+    tCurr = new Date().getTime();
+    console.log('[Nid:id=%d:%d] invoke_move_latency:eventRegister_latency %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
-            for(var i in proposalResponses) {
-                if (proposalResponses[i].response.status === 200) {
-                    //console.log('[Nid:id=%d:%d:%d] Successfully obtained transaction endorsement.', Nid, pid,i);
-                    return chain.sendTransaction(txRequest);
-                } else {
-                    console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
+                var sendPromise = chain.sendTransaction(txRequest);
+    tCurr = new Date().getTime();
+    console.log('[Nid:id=%d:%d] invoke_move_latency:sendTransaction %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                return Promise.all([sendPromise].concat(eventPromises))
+                .then((results) => {
+                    console.log(' event promise all complete and testing complete');
+                    tCurr = new Date().getTime();
+                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+
                     return;
-                }
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .catch(
-        function(err) {
-            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
-        }
+                    //return results[0];
 
-    );
+                }).catch((err) => {
+                    console.log('[Nid:id=%d:%d] Failed to send transaction due to error: ', Nid, pid, err.stack ? err.stack : err);
+                    evtDisconnect();
+                    return;
+                })
+            },
+            function(err) {
+                console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+                evtDisconnect();
+            })
+
+        });
+
 }
 
 
@@ -493,13 +755,15 @@ function execModeLatency() {
         }
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
-        eh.disconnect();
+        evtDisconnect();
     }
 }
 
 // invoke_move_simple
 function invoke_move_simple(freq) {
     inv_m++;
+    tCurr = new Date().getTime();
+    console.log('[Nid:id=%d:%d] invoke_move_simple: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
     getMoveRequest();
 
@@ -509,57 +773,39 @@ function invoke_move_simple(freq) {
             var proposalResponses = results[0];
 
             getTxRequest(results);
-            eventRegister(request_invoke.txId);
+            eventRegister(request_invoke.txId, function(sendPromise) {
 
-            for(var i in proposalResponses) {
-                if (proposalResponses[i].response.status === 200) {
-                    //console.log('[Nid:id=%d:%d:%d] Successfully obtained transaction endorsement.', Nid, pid,i);
-                    return chain.sendTransaction(txRequest);
-                } else {
-                    console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
-                    return;
-                }
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .then(
-        function(response) {
-            if (response.status === 'SUCCESS') {
-                //console.log('[Nid:id=%d:%d] Successfully ordered endorsement transaction.', Nid, pid);
-
-                isExecDone('Move');
-                if ( IDone != 1 ) {
-                    setTimeout(function(){
-                        invoke_move_simple(freq);
-                    },freq);
-                } else {
+                var sendPromise = chain.sendTransaction(txRequest);
+                return Promise.all([sendPromise].concat(eventPromises))
+                .then((results) => {
+                    console.log(' event promise all complete and testing complete');
                     tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+
+                    isExecDone('Move');
+                    if ( IDone != 1 ) {
+                        setTimeout(function(){
+                            invoke_move_simple(freq);
+                        },freq);
+                    } else {
+                        tCurr = new Date().getTime();
+                        console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //    return;
+                    }
+                    return results[0];
+
+                }).catch((err) => {
+                    console.log('[Nid:id=%d:%d] Failed to send transaction due to error: ', Nid, pid, err.stack ? err.stack : err);
+                    evtDisconnect();
                     return;
-                }
+                })
+            },
+            function(err) {
+                console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+                evtDisconnect();
+            })
 
-            } else {
-                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
-                eh.disconnect();
-                return;
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .catch(
-        function(err) {
-            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
-        }
-
-    );
+        });
 }
 
 
@@ -594,13 +840,13 @@ function invoke_query_simple(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
         }
     );
 
@@ -626,7 +872,7 @@ function execModeSimple() {
         }
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
-        eh.disconnect();
+        evtDisconnect();
     }
 }
 
@@ -637,79 +883,67 @@ function getRandomNum(min0, max0) {
 // invoke_move_const
 function invoke_move_const(freq) {
     inv_m++;
+    tCurr = new Date().getTime();
+    console.log('[Nid:id=%d:%d] invoke_move_simple: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
     getMoveRequest();
+
     chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
-            //var proposal = results[1];
+
             getTxRequest(results);
-            eventRegister(request_invoke.txId);
+            eventRegister(request_invoke.txId, function(sendPromise) {
 
-            if (proposalResponses[0].response.status === 200) {
-                return chain.sendTransaction(txRequest);
-                //console.log('Successfully obtained transaction endorsement.' + JSON.stringify(proposalResponses));
-            } else {
-                console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
-                eh.disconnect();
-                return;
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .then(
-        function(response) {
-            if (response.status === 'SUCCESS') {
-
-                // hist output
-                if ( recHist == 'HIST' ) {
+                var sendPromise = chain.sendTransaction(txRequest);
+                return Promise.all([sendPromise].concat(eventPromises))
+                .then((results) => {
+                    console.log(' event promise all complete and testing complete');
                     tCurr = new Date().getTime();
-                    buff = Nid +':'+ pid + ' ' + transType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
-                    fs.appendFile(ofile, buff, function(err) {
-                        if (err) {
-                           return console.log(err);
-                        }
-                    })
-                }
+                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
-                isExecDone('Move');
-                if ( IDone != 1 ) {
-                    var freq_n=freq;
-                    if ( devFreq > 0 ) {
-                        freq_n=getRandomNum(freq-devFreq, freq+devFreq);
+                    // hist output
+                    if ( recHist == 'HIST' ) {
+                        tCurr = new Date().getTime();
+                        buff = Nid +':'+ pid + ' ' + transType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
+                        fs.appendFile(ofile, buff, function(err) {
+                            if (err) {
+                               return console.log(err);
+                            }
+                        })
                     }
-                    setTimeout(function(){
-                        invoke_move_const(freq);
-                    },freq_n);
-                } else {
-                    tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+
+                    isExecDone('Move');
+                    if ( IDone != 1 ) {
+                        var freq_n=freq;
+                        if ( devFreq > 0 ) {
+                            freq_n=getRandomNum(freq-devFreq, freq+devFreq);
+                        }
+                        setTimeout(function(){
+                            invoke_move_const(freq);
+                        },freq);
+                    } else {
+                        tCurr = new Date().getTime();
+                        console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        return;
+                    }
+                    //return results[0];
+
+                }).catch((err) => {
+                    console.log('[Nid:id=%d:%d] Failed to send transaction due to error: ', Nid, pid, err.stack ? err.stack : err);
+                    evtDisconnect();
                     return;
-                }
+                })
+            },
+            function(err) {
+                console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+                evtDisconnect();
+            })
 
-            } else {
-                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
-                eh.disconnect();
-                return;
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .catch(
-        function(err) {
-            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
-        }
-
-    );
+        });
 }
+
 
 // invoke_query_const
 function invoke_query_const(freq) {
@@ -746,13 +980,13 @@ function invoke_query_const(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
         }
     );
 
@@ -795,68 +1029,65 @@ function execModeConstant() {
         }
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
-        eh.disconnect();
+        evtDisconnect();
     }
 }
 
 // mix mode
 function invoke_move_mix(freq) {
     inv_m++;
-
     tCurr = new Date().getTime();
-    console.log('Nid:id=%d:%d, invoke_move_mix(): tCurr= %d, freq: %d', Nid, pid, tCurr, freq);
+    console.log('[Nid:id=%d:%d] invoke_move_mix: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
     getMoveRequest();
+
     chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
+
             getTxRequest(results);
-            eventRegister(request_invoke.txId);
+            eventRegister(request_invoke.txId, function(sendPromise) {
 
-            if (proposalResponses[0].response.status === 200) {
-                return chain.sendTransaction(txRequest);
-            } else {
-                console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
-                return;
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .then(
-        function(response) {
-                //isExecDone('Move');
-            if (response.status === 'SUCCESS') {
-                setTimeout(function(){
-                    invoke_query_mix(freq);
-                },freq);
-            } else {
-                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
-                return;
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .catch(
-        function(err) {
-            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
-        }
+                var sendPromise = chain.sendTransaction(txRequest);
+                return Promise.all([sendPromise].concat(eventPromises))
+                .then((results) => {
+                    console.log(' event promise all complete and testing complete');
+                    tCurr = new Date().getTime();
+                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
-    );
+                    if ( IDone != 1 ) {
+                        setTimeout(function(){
+                            invoke_query_mix(freq);
+                        },freq);
+                    } else {
+                        tCurr = new Date().getTime();
+                        console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //    return;
+                    }
+                    isExecDone('Move');
+                    return results[0];
+
+                }).catch((err) => {
+                    console.log('[Nid:id=%d:%d] Failed to send transaction due to error: ', Nid, pid, err.stack ? err.stack : err);
+                    evtDisconnect();
+                    return;
+                })
+            },
+            function(err) {
+                console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+                evtDisconnect();
+            })
+
+        });
 }
+
 // invoke_query_mix
 function invoke_query_mix(freq) {
     inv_q++;
 
     tCurr = new Date().getTime();
-    console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d', Nid, pid, tCurr);
+    console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d inv_q= %d', Nid, pid, tCurr, inv_q);
 
     getQueryRequest();
     chain.queryByChaincode(request_query)
@@ -876,13 +1107,13 @@ function invoke_query_mix(freq) {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
         }
     );
 
@@ -892,7 +1123,7 @@ function execModeMix() {
     // send proposal to endorser
     if ( transType.toUpperCase() == 'INVOKE' ) {
         // no need to check since a query is issued after every invoke
-        invokeCheck = 'no';
+        invokeCheck = 'FALSE';
         tLocal = new Date().getTime();
         if ( runDur > 0 ) {
             tEnd = tLocal + runDur;
@@ -908,7 +1139,7 @@ function execModeMix() {
         invoke_move_mix(freq);
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
-        eh.disconnect();
+        evtDisconnect();
     }
 }
 
@@ -945,63 +1176,55 @@ function getBurstFreq() {
 // invoke_move_burst
 function invoke_move_burst() {
     inv_m++;
-
     // set up burst traffic duration and frequency
     getBurstFreq();
 
+    tCurr = new Date().getTime();
+    console.log('[Nid:id=%d:%d] invoke_move_burst: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+
     getMoveRequest();
+
     chain.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
+
             getTxRequest(results);
-            eventRegister(request_invoke.txId);
+            eventRegister(request_invoke.txId, function(sendPromise) {
 
-            if (proposalResponses[0].response.status === 200) {
-                return chain.sendTransaction(txRequest);
-            } else {
-                console.log('[Nid:id=%d:%d] Failed to obtain transaction endorsement. Error code: ', Nid, pid, status);
-                eh.disconnect();
-                return;
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .then(
-        function(response) {
-            if (response.status === 'SUCCESS') {
-                isExecDone('Move');
-                if ( IDone != 1 ) {
-                    setTimeout(function(){
-                        invoke_move_burst();
-                    },bFreq);
-                } else {
+                var sendPromise = chain.sendTransaction(txRequest);
+                return Promise.all([sendPromise].concat(eventPromises))
+                .then((results) => {
+                    console.log(' event promise all complete and testing complete');
                     tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                    return;
-                }
-            } else {
-                console.log('[Nid:id=%d:%d] Failed to order the endorsement of the transaction. Error code: ', Nid, pid, response.status);
-                eh.disconnect();
-                return;
-            }
-        },
-        function(err) {
-            console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
-            return;
-        })
-    .catch(
-        function(err) {
-            console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
-        }
+                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
-    );
+                    isExecDone('Move');
+                    if ( IDone != 1 ) {
+                        setTimeout(function(){
+                            invoke_move_burst();
+                        },bFreq);
+                    } else {
+                        tCurr = new Date().getTime();
+                        console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //    return;
+                    }
+                    return results[0];
+
+                }).catch((err) => {
+                    console.log('[Nid:id=%d:%d] Failed to send transaction due to error: ', Nid, pid, err.stack ? err.stack : err);
+                    evtDisconnect();
+                    return;
+                })
+            },
+            function(err) {
+                console.log('[Nid:id=%d:%d] Failed to send transaction proposal due to error: ', Nid, pid, err.stack ? err.stack : err);
+                evtDisconnect();
+            })
+
+        });
 }
+
 
 // invoke_query_burst
 function invoke_query_burst() {
@@ -1030,13 +1253,13 @@ function invoke_query_burst() {
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            eh.disconnect();
+            evtDisconnect();
         }
     );
 
@@ -1076,11 +1299,20 @@ function execModeBurst() {
         }
     } else {
         console.log('[Nid:id=%d:%d] invalid transType= %s', Nid, pid, transType);
-        eh.disconnect();
+        evtDisconnect();
     }
 }
 
 function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function evtDisconnect() {
+    for ( i=0; i<eventHubs.length; i++) {
+        if (eventHubs[i] && eventHubs[i].isconnected()) {
+            logger.info('Disconnecting the event hub: %d', i);
+            eventHubs[i].disconnect();
+        }
+    }
 }
 

@@ -1,2 +1,9 @@
 node userInputs/userInput-samplecc-i.json
-node userInputs/userInput-samplecc-q.json
+#node userInputs/userInput-samplecc-i1.json
+#node userInputs/userInput-samplecc-q.json
+#node userInputs/userInput-samplecc-q1.json
+#node userInputs/userInput-samplecc-deploy.json
+#node userInputs/userInput-samplecc-channel.json
+python userInputs/userInput-Move.json
+python userInputs/userInput-Query.json
+java userInputs/userInput-Query.json
