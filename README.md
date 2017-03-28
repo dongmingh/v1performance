@@ -7,9 +7,11 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Code Base
 
-- fabric commit level: 14055d70d9593e99295c7846076fc9dcfb1e052e
-- fabric-sdk-node commit level: ce1c864cd495bec29a8356a0d4cdc26a179a4f39
-- fabric-ca commit level: 894b7e400ddfabee0e7d87c53ab0f454cf955204
+Release v1.0.0-alpha:
+
+- fabric commit level: fa3d88cde177750804c7175ae000e0923199735c
+- fabric-sdk-node commit level: 196d0484c884ab894374c73df89bfe047bcc9f00
+- fabric-ca commit level: 29385879bc2931cce9ec833acf796129908b72fb
 
 
 ##Setup
