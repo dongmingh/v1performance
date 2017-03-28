@@ -7,9 +7,9 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Code Base
 
-- fabric commit level: 21ce6b23cf9129b98a1c22a3128d30b762f96c81
-- fabric-sdk-node commit level: 4702e5bc9217d1508b75afc412934a261487ef09
-- fabric-ca commit level: 972143ed3e7889adc8855ffd12477139433af709
+- fabric commit level: 14055d70d9593e99295c7846076fc9dcfb1e052e
+- fabric-sdk-node commit level: ce1c864cd495bec29a8356a0d4cdc26a179a4f39
+- fabric-ca commit level: 894b7e400ddfabee0e7d87c53ab0f454cf955204
 
 
 ##Setup
@@ -18,7 +18,7 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 1. git clone https://github.com/hyperledger/fabric-sdk-node.git
 2. cd fabric-sdk-node
 3. git reset --hard <fabric-sdk-node commit level>
-4. run command `npm install`
+4. run command `npm install` (remove node_modules if exists)
 5. run command `gulp ca`
 6. download all scripts (1 bash shell script and 3 js scripts) and all json files into directory fabric-sdk-node/test/unit
 7. create a sub directory, SCFiles, under fabric-sdk-node/test/unit
@@ -73,10 +73,19 @@ Available SDK types are node, python and java. Only node SDK is supported curren
         "transType": "Invoke",
         "invokeType": "Move",
         "nOrderer": "1",
-	    "nPeers": "4",
+        "nOrg": "2",
+        "nPeerPerOrg": "2",
         "nThread": "4",
         "nRequest": "0",
         "runDur": "600",
+        "TLS": "disabled",
+        "channelOpt": {
+            "name": "testOrg1",
+            "action":  "create",
+            "orgName": [
+                "testOrg1"
+            ]
+        },
         "burstOpt": {
             "burstFreq0":  "500",
             "burstDur0":  "3000",
@@ -137,7 +146,9 @@ where:
   -  Latency: one transaction type and rate only, the subsequent transaction is sent when the event message (ledger update is completed) of the previous transaction is received
 
 + **transType**: transaction type
-  - Deploy: deploy transaction
+  - Channel: channel activities specified in channelOpt.action
+  - Install: install chaincode
+  - Instantiate: instantiate chaincode
   - Invoke: invokes transaction
 
 + **invokeType**: invoke transaction type.  This parameter is valid only if the transType is set to invoke
@@ -148,11 +159,22 @@ where:
 
 + **nPeer**: number of peers for traffic,, this number has to match with the number of peers in the network.  Each thread is assigned with a peer with round robin.
 
++ **nOrg**: number of organitzations for the test
+
++ **nPeerPerOrg**: number of peers per organization for the test
+
 + **nThread**: number of threads for the test
 
 + **nRequest**: number of transactions to be executed for each thread
 
 + **runDur**: run duration in seconds to be executed if nRequest is 0
+
++ **TLS**: TLS setting for the test: Disabled or Enabled, ONLY **Disabled** is supported now.
+
++ **channelOpt**: transType channel options
+  - name: channel name
+  - action: channel action: create or join
+  - orgName: name of organization for the test
 
 + **burstOpt**: the frequencies and duration for Burst transaction mode traffic. Currently, two transaction rates are supported. The traffic will issue one transaction every burstFreq0 ms for burstDur0 ms, then one transaction every burstFreq1 ms for burstDur1 ms, then the pattern repeats. These parameters are valid only if the transMode is set to **Burst**.
   - burstFreq0: frequency in ms for the first transaction rate
@@ -211,7 +233,7 @@ The service credentials for each network can be either downloaded or created by 
 
 The following chaincodes are tested and supported:
 
-* **example02 chaincode**: This is a simple chaincode with limited capability.  This chaincode is not suitable for performance benchmark.
+* **example02 chaincode**: This is a simple chaincode with limited capability.  This chaincode is **NOT** suitable for performance benchmark.
 
 * **ccchecker chaincode**:  This chaincode supports variable payload sizes. See userInput-ccchecker.json for example of userInput file. Take the following steps to install this chaincode:
   - cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com
