@@ -582,21 +582,21 @@ function eventRegister(tx, cb) {
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
             let handle = setTimeout(reject, 30000);
-            evtRcv++;
 
             eh.registerTxEvent(deployId.toString(), (tx, code) => {
                 clearTimeout(handle);
                 eh.unregisterTxEvent(deployId);
+                evtRcv++;
 
                 if (code !== 'VALID') {
                     console.log('[eventRegister [Nid:id=%d:%d]] The invoke transaction was invalid, code = ', Nid, pid, code);
                     reject();
                 } else {
                     //console.log('[eventRegister [Nid:id=%d:%d]] The balance transfer transaction has been committed on peer ', Nid, pid, eh.ep._endpoint.addr);
-                    console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                         tCurr = new Date().getTime();
-                        console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                         if (invokeCheck.toUpperCase() == 'TRUE') {
                             arg0 = keyStart + inv_m - 1;
                             inv_q = inv_m - 1;
@@ -704,17 +704,12 @@ function invoke_move_latency() {
 
             getTxRequest(results);
             eventRegister_latency(request_invoke.txId, function(sendPromise) {
-    tCurr = new Date().getTime();
-    console.log('[Nid:id=%d:%d] invoke_move_latency:eventRegister_latency %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
                 var sendPromise = chain.sendTransaction(txRequest);
-    tCurr = new Date().getTime();
-    console.log('[Nid:id=%d:%d] invoke_move_latency:sendTransaction %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
-                    console.log(' event promise all complete and testing complete');
-                    tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //tCurr = new Date().getTime();
+                    //console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
                     return;
                     //return results[0];
@@ -762,8 +757,6 @@ function execModeLatency() {
 // invoke_move_simple
 function invoke_move_simple(freq) {
     inv_m++;
-    tCurr = new Date().getTime();
-    console.log('[Nid:id=%d:%d] invoke_move_simple: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
     getMoveRequest();
 
@@ -778,9 +771,8 @@ function invoke_move_simple(freq) {
                 var sendPromise = chain.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
-                    console.log(' event promise all complete and testing complete');
-                    tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //tCurr = new Date().getTime();
+                    //console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
                     isExecDone('Move');
                     if ( IDone != 1 ) {
@@ -883,8 +875,6 @@ function getRandomNum(min0, max0) {
 // invoke_move_const
 function invoke_move_const(freq) {
     inv_m++;
-    tCurr = new Date().getTime();
-    console.log('[Nid:id=%d:%d] invoke_move_simple: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
     getMoveRequest();
 
@@ -899,9 +889,8 @@ function invoke_move_const(freq) {
                 var sendPromise = chain.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
-                    console.log(' event promise all complete and testing complete');
-                    tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //tCurr = new Date().getTime();
+                    //console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
                     // hist output
                     if ( recHist == 'HIST' ) {
@@ -1036,8 +1025,6 @@ function execModeConstant() {
 // mix mode
 function invoke_move_mix(freq) {
     inv_m++;
-    tCurr = new Date().getTime();
-    console.log('[Nid:id=%d:%d] invoke_move_mix: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
     getMoveRequest();
 
@@ -1052,9 +1039,8 @@ function invoke_move_mix(freq) {
                 var sendPromise = chain.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
-                    console.log(' event promise all complete and testing complete');
-                    tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //tCurr = new Date().getTime();
+                    //console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
                     if ( IDone != 1 ) {
                         setTimeout(function(){
@@ -1085,9 +1071,6 @@ function invoke_move_mix(freq) {
 // invoke_query_mix
 function invoke_query_mix(freq) {
     inv_q++;
-
-    tCurr = new Date().getTime();
-    console.log('Nid:id=%d:%d, invoke_query_mix(): tCurr= %d inv_q= %d', Nid, pid, tCurr, inv_q);
 
     getQueryRequest();
     chain.queryByChaincode(request_query)
@@ -1158,7 +1141,7 @@ var bFreq;
 function getBurstFreq() {
 
     tCurr = new Date().getTime();
-    console.log('Nid:id=%d:%d, getBurstFreq(): tCurr= %d', Nid, pid, tCurr);
+    //console.log('Nid:id=%d:%d, getBurstFreq(): tCurr= %d', Nid, pid, tCurr);
 
     // set up burst traffic duration and frequency
     if ( tCurr < tUpd0 ) {
@@ -1179,9 +1162,6 @@ function invoke_move_burst() {
     // set up burst traffic duration and frequency
     getBurstFreq();
 
-    tCurr = new Date().getTime();
-    console.log('[Nid:id=%d:%d] invoke_move_burst: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-
     getMoveRequest();
 
     chain.sendTransactionProposal(request_invoke)
@@ -1195,9 +1175,8 @@ function invoke_move_burst() {
                 var sendPromise = chain.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
-                    console.log(' event promise all complete and testing complete');
-                    tCurr = new Date().getTime();
-                    console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //tCurr = new Date().getTime();
+                    //console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
                     isExecDone('Move');
                     if ( IDone != 1 ) {
