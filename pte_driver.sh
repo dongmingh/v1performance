@@ -77,7 +77,7 @@ function javaProc {
 # node
 if [ ${#nodeArray[@]} -gt 0 ]; then
     echo "executing ${#nodeArray[@]} node requests"
-#    nodeProc
+    nodeProc
 else
     echo "no node requests"
 fi
