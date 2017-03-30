@@ -75,15 +75,15 @@ function javaProc {
 }
 
 # node
-if [ ${#nodeArray[@]} > 0 ]; then
+if [ ${#nodeArray[@]} -gt 0 ]; then
     echo "executing ${#nodeArray[@]} node requests"
-    nodeProc
+#    nodeProc
 else
     echo "no node requests"
 fi
 
 # python
-if [ ${#pythonArray[@]} > 0 ]; then
+if [ ${#pythonArray[@]} -gt 0 ]; then
     echo "executing ${#pythonArray[@]} python requests"
     pythonProc
 else
@@ -91,7 +91,7 @@ else
 fi
 
 # java
-if [ ${#javaArray[@]} > 0 ]; then
+if [ ${#javaArray[@]} -gt 0 ]; then
     echo "executing ${#javaArray[@]} java requests"
     javaProc
 else
