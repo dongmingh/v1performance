@@ -14,6 +14,16 @@ Release v1.0.0-alpha:
 - fabric-ca commit level: 29385879bc2931cce9ec833acf796129908b72fb
 
 
+##pre-requisites
+
+To build and test, the following pre-requisites must be installed first, see [Hyperledger fabric-sdk-node](https://github.com/hyperledger/fabric-sdk-node) and [Hyperledger fabric](https://github.com/hyperledger/fabric) for detail:
+
+- node runtime version 6.9.x, note that 7.0 is not supported at this point
+- npm tool version 3.10.x
+- gulp command
+- docker
+
+
 ##Setup
 
 
