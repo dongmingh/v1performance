@@ -20,17 +20,17 @@ Release v1.0.0-alpha:
 1. cd $GOPATH/src/github.com/hyperledger
 2. git clone https://github.com/hyperledger/fabric
 3. cd fabric
-4. git reset --hard <fabric commit level>
+4. git reset --hard fa3d88cde177750804c7175ae000e0923199735c
 5. make docker
 6. cd ..
 7. git clone https://github.com/hyperledger/fabric-ca
 8. cd fabric-ca
-9. git reset --hard <fabric-ca commit level>
+9. git reset --hard 29385879bc2931cce9ec833acf796129908b72fb
 10. make docker
 11. cd ..
 12. git clone https://github.com/hyperledger/fabric-sdk-node.git
 13. cd fabric-sdk-node
-14. git reset --hard <fabric-sdk-node commit level>
+14. git reset --hard 29385879bc2931cce9ec833acf796129908b72fb
 15. run command `npm install` (remove directory node_modules if exists)
 16. run command `gulp ca`
 17. cd test
