@@ -93,53 +93,6 @@ hfc.addConfigFile(path.join(__dirname, svcFile));
 var ORGS = hfc.getConfigSetting('test-network');
 
 var users =  hfc.getConfigSetting('users');
-//var csr = fs.readFileSync(path.resolve(__dirname, gopath+'/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/fabriccop/enroll-csr.pem'));
-
-function setStaticCSR(uid) {
-    console.log('setStaticCSR ');
-    var CAClient = new FabricCAClient({
-          protocol: 'http',
-          hostname: ca[ca_id].discovery_host,
-          port: ca[ca_id].discovery_port
-    });
-
-    CAClient.enroll( users[uid].username, users[uid].secret, csr.toString())
-    .then(
-        function (pem) {
-            var cert = new X509();
-            cert.readCertPEM(pem);
-            console.log('cert getSubjectString: ', cert.getSubjectString());
-            console.log('setStaticCSR: Successfully enrolled \'' + users[uid].username + '\'');
-        }),
-        function (err) {
-            console.log('failed to enroll \'' + users[uid].username + '\'');
-    };
-}
-
-//set COP
-function setDynamicCSR(uid) {
-    console.log('setDynamicCSR ');
-    var ca_url=ORGS.Org1.ca;
-    console.log('ca_url: ', ca_url);
-    var caService = new FabricCAServices(ca_url);
-    var member;
-    caService.enroll({ 
-        enrollmentID: users.username,
-        enrollmentSecret: users.secret
-    }
-    ).then(
-        function (enrollment) {
-            var cert = new X509();
-            cert.readCertPEM(enrollment.certificate);
-            console.log('SubjectString: ', cert.getSubjectString());
-            console.log('setDynamicCSR: Successfully enrolled \'' + users.username + '\'' );
-        },
-        function (err) {
-            console.log('Failed to enroll \'' + users.username + '\'.  ' + err);
-        }
-    );
-}
-
 
 
 var transType = uiContent.transType;

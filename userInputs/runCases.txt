@@ -1,0 +1,9 @@
+#sdk=node userInputs/userInput-samplecc-i.json
+#sdk=node userInputs/userInput-samplecc-i1.json
+#sdk=node userInputs/userInput-samplecc-q.json
+#sdk=node userInputs/userInput-samplecc-q1.json
+sdk=node userInputs/userInput-samplecc-deploy.json
+#sdk=node userInputs/userInput-samplecc-channel.json
+sdk=python userInputs/userInput-Move.json
+sdk=python userInputs/userInput-Query.json
+sdk=java userInputs/userInput-Query.json

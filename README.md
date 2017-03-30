@@ -17,15 +17,27 @@ Release v1.0.0-alpha:
 ##Setup
 
 
-1. git clone https://github.com/hyperledger/fabric-sdk-node.git
-2. cd fabric-sdk-node
-3. git reset --hard <fabric-sdk-node commit level>
-4. run command `npm install` (remove node_modules if exists)
-5. run command `gulp ca`
-6. download all scripts (1 bash shell script and 3 js scripts) and all json files into directory fabric-sdk-node/test/unit
-7. create a sub directory, SCFiles, under fabric-sdk-node/test/unit
-8. add Service Credentials file for each fabric network to the SCFiles directory, see config-local.json in directory SCFiles as an example
-9. modify runCases.txt, userInput-ccchecer.json, and SCFile according to the desired test
+1. cd $GOPATH/src/github.com/hyperledger
+2. git clone https://github.com/hyperledger/fabric
+3. cd fabric
+4. git reset --hard <fabric commit level>
+5. make docker
+6. cd ..
+7. git clone https://github.com/hyperledger/fabric-ca
+8. cd fabric-ca
+9. git reset --hard <fabric-ca commit level>
+10. make docker
+11. cd ..
+12. git clone https://github.com/hyperledger/fabric-sdk-node.git
+13. cd fabric-sdk-node
+14. git reset --hard <fabric-sdk-node commit level>
+15. run command `npm install` (remove directory node_modules if exists)
+16. run command `gulp ca`
+17. cd test
+18. git clone https://github.com/dongmingh/v1performance
+19. cd v1performance
+20. add Service Credentials file for each fabric network to the SCFiles directory, see config.json in directory SCFiles as an example
+21. modify runCases.txt and json file in directory userInputs according to the test, see userInput-samplecc-channel.json as an example in userInputs directory
 
 ##Scripts
 
@@ -55,8 +67,8 @@ The above command will execute the transaction tests listed in the runCases.txt.
 
 This file contains all test cases to be executed.  Each line is a test case and includes two parameters: SDK type and user input file.  Below is an example of the runCases.txt containing two test cases using Node SDK:
 
-    node userInput-samplecc-i.json
-    node userInput-samplecc-q.json
+    sdk=node userInput-samplecc-i.json
+    sdk=node userInput-samplecc-q.json
 
 Available SDK types are node, python and java. Only node SDK is supported currently.
 
@@ -255,12 +267,158 @@ All threads will execute the same transaction concurrently. Two kinds of executi
 
 + By transaction number: Each thread executes the specified number of transactions specified by nRequest in the user input file.
     
-+ By run time duration: Each thread executes the same transaction concurrently for the specified time duration specified by runDur in the user input file, note that nRequest must be 0.
++ By run time duration: Each thread executes the same transaction concurrently for the specified time duration specified by runDur in the user input file, note that nRequest is set to 0.
+
+
+
 
 
 ##Use Cases
+PTE can be used for channel (create, join), deploy (install and instantiate) and transactions (invoke (move) and invoke (query)).  This all depend on the settings of run cases file, user input files, configuration file (config.json).
 
-PTE can be used for various test scenarios.  This all depend on the settings of run cases file, user input files, SCFiles.  For example,
+###Channel
+
+For any channel activities (create or join), set transType to Channel:
+
+    "transMode": "Simple",
+    "transType": "Channel",
+    "invokeType": "Move",
+
+####create a channel
+
+To create a channel, set the action in channelOpt to create and the name to the channel name:
+
+    "channelOpt": {
+        "name": "testOrg1",
+        "action":  "create",
+        "orgName": [
+            "testOrg1"
+        ]
+    },
+
+Note that orgName is ignored in this test.
+
+####create a channel
+
+
+To join an org to a channel, set the action in channelOpt to join, name to channel name, and orgName to org name:
+
+    "channelOpt": {
+        "name": "testOrg1",
+        "action":  "create",
+        "orgName": [
+            "testOrg1"
+        ]
+    },
+
+###deployment (install and instantiate)
+
+To install or instantiate a chaincode, set up the deploy clause according to the test, such as:
+
+    "deploy": {
+        "chaincodePath": "github.com/sample_cc",
+        "fcn": "init",
+        "args": []
+    },
+
+
+####install a chaicode
+
+To install a chaincode, set the transType as install:
+
+    "transMode": "Simple",
+    "transType": "instantiate",
+    "invokeType": "Move",
+
+and set channelOpt name to channel name and orgName to org name:
+
+    "channelOpt": {
+        "name":  "testOrg1",
+        "action":  "create",
+        "orgName": [
+            "testOrg1"
+        ]
+    },
+
+Note that the action is ignored.
+
+####instantiate a chaicode
+
+To install a chaincode, set the transType as install:
+
+    "transMode": "Simple",
+    "transType": "instantiate",
+    "invokeType": "Move", 
+
+and set channelOpt name to channel name:
+
+    "channelOpt": {
+        "name":  "testOrg1",
+        "action":  "create",
+        "orgName": [
+            "testOrg1"
+        ]
+    },
+
+Note that the action and orgName are ignored.
+
+###transactions
+
+####invoke (move)
+
+To execute invoke (move) transactions, set the transType to Invoke and invokeType to Move, and specify the network parameters and desired execution parameters:
+
+    "invokeCheck": "TRUE",
+    "transMode": "Constant",
+    "transType": "Invoke",
+    "invokeType": "Move",
+    "nOrderer": "1",
+    "nOrg": "2",
+    "nPeerPerOrg": "2",
+    "nThread": "4",
+    "nRequest": "1000",
+    "runDur": "600",
+    "TLS": "Disabled",
+
+and the channel name in channelOpt:
+
+    "channelOpt": {
+        "name": "testOrg1",
+        "action":  "create",
+        "orgName": [
+            "testOrg1"
+        ]
+    },
+
+
+####invoke (query)
+
+To execute invoke (move) transactions, set the transType to Invoke and invokeType to Query, and specify the network parameters and desired execution parameters:
+
+    "invokeCheck": "TRUE",
+    "transMode": "Constant",
+    "transType": "Invoke",
+    "invokeType": "Query",
+    "nOrderer": "1",
+    "nOrg": "2",
+    "nPeerPerOrg": "2",
+    "nThread": "4",
+    "nRequest": "1000",
+    "runDur": "600",
+    "TLS": "Disabled",
+
+and the channel name in channelOpt:
+
+    "channelOpt": {
+        "name": "testOrg1",
+        "action":  "create",
+        "orgName": [
+            "testOrg1"
+        ]
+    },
+
+
+##Some test scenarios
 
 + For different chaincode deployment or transactions, each user input file is set to a chaincode for deployment and set different transaction request for transactions.
 
@@ -294,67 +452,34 @@ with a specific runCases.txt.
 
 That the runCases.txt contains:
 
-    node userInput-ccchecker-latency-i.json
+    sdk=node userInput-samplecc-latency-i.json
 
-will execute 1000 invokes (Move) with 1 thread on one network using ccchecker chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Move).
-
-
-####Stress (invoke)
-
-That the runCases.txt contains:
-
-    node userInput-ccchecker-stress-i.json
-
-will execute invokes (Move) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
-
-    node userInput-ccchecker-stress-i.json
-
-
-####Stress (query)
-
-That the runCases.txt contains:
-
-    node userInput-ccchecker-stress-q.json
-
-will execute invokes (Query) with 4 threads on one 4-peer network using ccchecker chaincode for 600 seconds.
-
-
-####Stress (mix)
-
-Let the runCases.txt contain
-
-    node userInput-ccchecker-stress-i.json
-    node userInput-ccchecker-stress-q.json
-
-If both SCFiles are set to the same network, then this
-will execute invokes (Move) with 4 threads and invoke (Query) on one 4-peer network using ccchecker chaincode for 600 seconds concurrently 
-
-If the SCFiles are set to different network, then network specified in userInput-ccchecker-stress-i.json will execute invoke (Move) and the network specified in userInput-ccchecker-stress-q.json will execute invoke (Query) concurrently.
+will execute 1000 invokes (Move) with 1 thread on one network using sample_cc chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Move).
 
 
 ####Long run
 
 That the runCases.txt contains:
 
-    node userInput-ccchecker-longrun-i.json
+    sdk=node userInput-samplecc-longrun-i.json
 
-will execute invokes (Move) of various payload size ranging from 1kb-2kb with 1 threads on one network using ccchecker chaincode for 72 hours at 1 transaction per second.
+will execute invokes (Move) of various payload size ranging from 1kb-2kb with 1 threads on one network using sample_cc chaincode for 72 hours at 1 transaction per second.
 
 
 ####Concurrency
 
 That the runCases.txt contains:
 
-    node userInput-ccchecker-concurrency-i.json
+    sdk=node userInput-samplecc-concurrency-i.json
 
-will execute invokes (Move) of 1kb payload with 50 threads on one 4-peer network using ccchecker chaincode for 10 minutes.
+will execute invokes (Move) of 1kb payload with 50 threads on one 4-peer network using sample_cc chaincode for 10 minutes.
 
 
 ####Complex
 
 That the runCases.txt contains:
 
-    node userInput-ccchecker-complex-i.json
+    sdk=node userInput-samplecc-complex-i.json
 
-will execute invokes (Move) of various payload size ranging from 10kb-500kb with 10 threads on one 4-peer network using ccchecker chaincode for 10 minutes. Each invoke (Move) is followed by an invoke (Query).
+will execute invokes (Move) of various payload size ranging from 10kb-500kb with 10 threads on one 4-peer network using sample_cc chaincode for 10 minutes. Each invoke (Move) is followed by an invoke (Query).
 

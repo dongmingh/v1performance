@@ -17,23 +17,23 @@ while read line
 do
    #echo $line
    tt=$(echo $line | awk '{print $1}')
-   #echo " tt  $tt"
+   echo " tt  $tt"
    sdkType=$(echo $tt | awk '{print tolower($tt)}')
-   #echo "tt $tt sdkType $sdkType"
+   echo "tt $tt sdkType $sdkType"
    userinput=$(echo $line | awk '{print $2}')
 
    case $sdkType in
-     node)
+     sdk=node)
        echo "sdk type spported: $sdkType"
        nodeArray[${#nodeArray[@]}]=$userinput
        ;;
 
-     python)
+     sdk=python)
        echo "sdk type unspported: $sdkType"
        pythonArray[${#pythonArray[@]}]=$userinput
        ;;
 
-     java)
+     sdk=java)
        echo "sdk type unspported: $sdkType"
        javaArray[${#javaArray[@]}]=$userinput
        ;;
