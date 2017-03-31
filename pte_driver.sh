@@ -17,9 +17,9 @@ while read line
 do
    #echo $line
    tt=$(echo $line | awk '{print $1}')
-   echo " tt  $tt"
+   #echo " tt  $tt"
    sdkType=$(echo $tt | awk '{print tolower($tt)}')
-   echo "tt $tt sdkType $sdkType"
+   #echo "tt $tt sdkType $sdkType"
    userinput=$(echo $line | awk '{print $2}')
 
    case $sdkType in
