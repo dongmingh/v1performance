@@ -88,6 +88,7 @@ hfc.addConfigFile(path.join(__dirname, '../mBCN/SCFiles/config.json'));
 var ORGS = hfc.getConfigSetting('test-network');
 
 function getSubmitter(username, password, client, loadFromConfig, userOrg) {
+        var ORGS = hfc.getConfigSetting('test-network');
         console.log('userOrg:%s loadFromConfig:%j ', userOrg, loadFromConfig);
 	var caUrl = ORGS[userOrg].ca;
         console.log('ca: ', caUrl);
