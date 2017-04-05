@@ -17,9 +17,9 @@ while read line
 do
    #echo $line
    tt=$(echo $line | awk '{print $1}')
-   echo " tt  $tt"
+   #echo " tt  $tt"
    sdkType=$(echo $tt | awk '{print tolower($tt)}')
-   echo "tt $tt sdkType $sdkType"
+   #echo "tt $tt sdkType $sdkType"
    userinput=$(echo $line | awk '{print $2}')
 
    case $sdkType in
@@ -75,7 +75,7 @@ function javaProc {
 }
 
 # node
-if [ ${#nodeArray[@]} > 0 ]; then
+if [ ${#nodeArray[@]} -gt 0 ]; then
     echo "executing ${#nodeArray[@]} node requests"
     nodeProc
 else
@@ -83,7 +83,7 @@ else
 fi
 
 # python
-if [ ${#pythonArray[@]} > 0 ]; then
+if [ ${#pythonArray[@]} -gt 0 ]; then
     echo "executing ${#pythonArray[@]} python requests"
     pythonProc
 else
@@ -91,7 +91,7 @@ else
 fi
 
 # java
-if [ ${#javaArray[@]} > 0 ]; then
+if [ ${#javaArray[@]} -gt 0 ]; then
     echo "executing ${#javaArray[@]} java requests"
     javaProc
 else
