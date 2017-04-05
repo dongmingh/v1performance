@@ -3,14 +3,12 @@
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
-    "invokeCheck": "FALSE",
-    "transMode": "Constant",
-    "transType": "Invoke",
-    "invokeType": "Query",
+    "invokeCheck": "TRUE",
+    "transMode": "Simple",
+    "transType": "Channel",
+    "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
-    "nOrg": "2",
-    "nPeerPerOrg": "2",
     "nThread": "4",
     "nRequest": "1000",
     "runDur": "600",
@@ -33,12 +31,12 @@
     },
     "constantOpt": {
         "recHist": "HIST",
-        "constFreq": "0",
+        "constFreq": "1",
         "devFreq": "0"
     },
     "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "5000",
+        "keyStart": "50000",
         "payLoadMin": "1024",
         "payLoadMax": "1024"
     },
@@ -58,6 +56,13 @@
         }
     },
     "SCFile": [
-		{"ServiceCredentials":"SCFiles/config.json"}
+		{"ServiceCredentials":"SCFiles/config.json"},
+		{"ServiceCredentials":"SCFiles/config-1.json"},
+		{"ServiceCredentials":"SCFiles/config-351.json"},
+		{"ServiceCredentials":"SCFiles/config-local.json"},
+		{"ServiceCredentials":"SCFiles/hsbn-bluemix.json"},
+		{"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
+		{"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
+		{"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"}
 	]
 }

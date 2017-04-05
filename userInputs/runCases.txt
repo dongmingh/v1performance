@@ -3,7 +3,13 @@
 #sdk=node userInputs/userInput-samplecc-q.json
 #sdk=node userInputs/userInput-samplecc-q1.json
 #sdk=node userInputs/userInput-samplecc-deploy.json
-sdk=node userInputs/userInput-samplecc-channel.json
+#sdk=node userInputs/userInput-samplecc-channel.json
+sdk=node userInputs/userInput-samplecc-chan-create.json
+#sdk=node userInputs/userInput-samplecc-chan-join1.json
+#sdk=node userInputs/userInput-samplecc-chan-join2.json
+#sdk=node userInputs/userInput-samplecc-install1.json
+#sdk=node userInputs/userInput-samplecc-install2.json
+#sdk=node userInputs/userInput-samplecc-instantitate.json
 sdk=python userInputs/userInput-Move.json
 sdk=python userInputs/userInput-Query.json
 sdk=java userInputs/userInput-Query.json

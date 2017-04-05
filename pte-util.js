@@ -85,7 +85,12 @@ module.exports.existsSync = function(absolutePath /*string*/) {
 module.exports.readFile = readFile;
 
 hfc.addConfigFile(path.join(__dirname, '../mBCN/SCFiles/config.json'));
-var ORGS = hfc.getConfigSetting('test-network');
+//var ORGS = hfc.getConfigSetting('test-network');
+
+var     tlsOptions = {
+        trustedRoots: [],
+        verify: false
+};
 
 function getSubmitter(username, password, client, loadFromConfig, userOrg) {
         var ORGS = hfc.getConfigSetting('test-network');
@@ -103,7 +108,7 @@ function getSubmitter(username, password, client, loadFromConfig, userOrg) {
 
 			if (!loadFromConfig) {
 				// need to enroll it with CA server
-				var cop = new copService(caUrl);
+				var cop = new copService(caUrl, tlsOptions);
 
 				var member;
 				return cop.enroll({
@@ -112,7 +117,7 @@ function getSubmitter(username, password, client, loadFromConfig, userOrg) {
 				}).then((enrollment) => {
 					console.log('Successfully enrolled user \'' + username + '\'');
 
-					member = new User(username, client);
+					member = new User(username);
 					return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
 				}).then(() => {
 					return client.setUserContext(member);
@@ -152,7 +157,7 @@ function getSubmitter(username, password, client, loadFromConfig, userOrg) {
 					var certPEM = path.join(__dirname, '../fixtures/msp/local/signcerts/admin.pem');
 					return readFile(certPEM);
 				}).then((data) => {
-					member = new User(username, client);
+					member = new User(username);
 					return member.setEnrollment(testKey, data.toString(), ORGS[userOrg].mspid);
 				}).then(() => {
 					return client.setUserContext(member);

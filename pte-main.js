@@ -120,16 +120,36 @@ var orgName;
 
 var targets = [];
 var eventHubs=[];
+var orderer;
 
-function channelAddOrderer(chain, client, org) {
-    console.log('[channelAddOrderer] chain name: ', chain.getName());
+function clientNewOrderer(client, org) {
+    if (TLS.toUpperCase() == 'ENABLED') {
+        var caRootsPath = ORGS.orderer.tls_cacerts;
+        let data = fs.readFileSync(path.join(__dirname, caRootsPath));
+        let caroots = Buffer.from(data).toString();
+
+        orderer = client.newOrderer(
+            ORGS.orderer.url,
+            {
+                'pem': caroots,
+                'ssl-target-name-override': ORGS.orderer['server-hostname']
+            }
+        );
+    } else {
+        orderer = client.newOrderer(ORGS.orderer.url);
+        console.log('[clientNewOrderer] orderer url: ', ORGS.orderer.url);
+    }
+    //console.log('[clientNewOrderer] orderer in the chain: ', chain.getOrderers());
+}
+function chainAddOrderer(chain, client, org) {
+    console.log('[chainAddOrderer] chain name: ', chain.getName());
     if (TLS.toUpperCase() == 'ENABLED') {
         var caRootsPath = ORGS.orderer.tls_cacerts;
         let data = fs.readFileSync(path.join(__dirname, caRootsPath));
         let caroots = Buffer.from(data).toString();
 
         chain.addOrderer(
-            new Orderer(
+            client.newOrderer(
                 ORGS.orderer.url,
                 {
                     'pem': caroots,
@@ -138,10 +158,12 @@ function channelAddOrderer(chain, client, org) {
             )
         );
     } else {
-        chain.addOrderer( new Orderer(ORGS.orderer.url));
-        console.log('[channelAddOrderer] orderer url: ', ORGS.orderer.url);
+        chain.addOrderer(
+            client.newOrderer(ORGS.orderer.url)
+        );
+        console.log('[chainAddOrderer] orderer url: ', ORGS.orderer.url);
     }
-    //console.log('[channelAddOrderer] orderer in the chain: ', chain.getOrderers());
+    //console.log('[chainAddOrderer] orderer in the chain: ', chain.getOrderers());
 }
 
 function channelAddAllPeer(chain, client) {
@@ -164,7 +186,6 @@ function channelAddAllPeer(chain, client) {
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 } else {
-                    //console.log('[channelAddAllPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
                     peerTmp = new Peer( ORGS[key1][key].requests);
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
@@ -215,7 +236,6 @@ function channelRemoveAllPeer(chain, client) {
                         chain.removePeer(peerTmp);
                     }
                 } else {
-                    //console.log('[channelRemoveAllPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
                     peerTmp = new Peer( ORGS[key1][key].requests);
                     if (chain.isValidPeer(peerTmp)) {
                         console.log('[channelRemoveAllPeer] chain remove peer: ', ORGS[key1][key].requests);
@@ -230,7 +250,7 @@ function channelRemoveAllPeer(chain, client) {
     console.log('[channelRemoveAllPeer] add peer: ', chain.getPeers());
 }
 
-function channelAddAnchorPeer(chain, client, org) {
+function channelAddAnchorPeer(chain, client) {
     console.log('[channelAddAnchorPeer] chain name: ', chain.getName());
     var peerTmp;
     var eh;
@@ -248,7 +268,6 @@ function channelAddAnchorPeer(chain, client, org) {
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 } else {
-                    //console.log('[channelAddAnchorPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
                     peerTmp = new Peer( ORGS[key].peer1.requests);
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
@@ -294,7 +313,6 @@ function channelAddPeer(chain, client, org) {
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 } else {
-                    //console.log('[channelAddPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
                     peerTmp = new Peer( ORGS[org][key].requests);
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
@@ -341,7 +359,6 @@ function channelAddPeerEvent(chain, client, org) {
             var eh;
             var peerTmp;
             for (let key in ORGS[org]) {
-                //console.log('key: ', key);
                 if (ORGS[org].hasOwnProperty(key)) {
                     if (key.indexOf('peer') === 0) {
                         if (TLS.toUpperCase() == 'ENABLED') {
@@ -416,13 +433,11 @@ performance_main();
 
 // deploy_chaincode
 function chaincodeInstall(chain, client, org) {
-    //grpc endpoints
     console.log('chaincodeInstall: ', org);
     orgName = ORGS[org].name;
 
-    channelAddOrderer(chain, client, org);
+    chainAddOrderer(chain, client, org);
 
-    //channelAddAllPeer(chain, client);
     channelAddPeer(chain, client, org);
 
     var chaincode_id = uiContent.chaincodeID;
@@ -431,9 +446,10 @@ function chaincodeInstall(chain, client, org) {
     console.log('[chaincodeInstall:Nid=%d] chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
 
     nonce = utils.getNonce();
-    tx_id = chain.buildTransactionID(nonce, the_user);
+    tx_id = hfc.buildTransactionID(nonce, the_user);
     nonce = utils.getNonce();
     var request_install = {
+        targets: targets,
         chaincodePath: uiContent.deploy.chaincodePath,
         chaincodeId: chaincode_id,
         chaincodeVersion: chaincode_ver,
@@ -444,7 +460,7 @@ function chaincodeInstall(chain, client, org) {
     console.log('request_install: ', request_install);
 
     //sendInstallProposal
-    chain.sendInstallProposal(request_install)
+    client.installChaincode(request_install)
     .then(
         function(results) {
             var proposalResponses = results[0];
@@ -462,17 +478,14 @@ function chaincodeInstall(chain, client, org) {
                 all_good = all_good & one_good;
             }
             if (all_good) {
-                console.log(util.format('Successfully sent install Proposal and received ProposalResponse: Status - %s', proposalResponses[0].response.status));
+                console.log(util.format('Successfully sent install Proposal to peers in organization(%s) and received ProposalResponse: Status - %s', orgName, proposalResponses[0].response.status));
                 evtDisconnect();
                 process.exit();
             } else {
-                console.log('Failed to send install Proposal or receive valid response. Response null or status is not 200. exiting...');
+                console.log('Failed to send install Proposal in organization(%s) or receive valid response. Response null or status is not 200. exiting...', orgName);
                 evtDisconnect();
                 process.exit();
             }
-
-            //channelAddEvent(chain, client, org);
-            //console.log('Successfully add Event');
 
             // read the config block from the orderer for the chain
             // and initialize the verify MSPs based on the participating
@@ -488,11 +501,10 @@ function chaincodeInstall(chain, client, org) {
 }
 
 function chaincodeInstantiate(chain, client, org) {
-        console.log('[chaincodeInstantiate] org= %s, org name=%s', org, orgName);
-        console.log('[chaincodeInstantiate] chain name: ', chain.getName());
+        console.log('[chaincodeInstantiate] org= %s, org name=%s, chain name=%s', org, orgName, chain.getName());
 
-        channelAddOrderer(chain, client, org);
-        channelAddAnchorPeer(chain, client, org);
+        chainAddOrderer(chain, client, org);
+        channelAddAnchorPeer(chain, client);
 
         chain.initialize()
         .then((success) => {
@@ -502,7 +514,7 @@ function chaincodeInstantiate(chain, client, org) {
             var chain_id = uiContent.chainID;
 
             nonce = utils.getNonce();
-            tx_id = chain.buildTransactionID(nonce, the_user);
+            tx_id = hfc.buildTransactionID(nonce, the_user);
             var request_instantiate = {
                 chaincodePath: uiContent.deploy.chaincodePath,
                 chaincodeId: chaincode_id,
@@ -512,10 +524,39 @@ function chaincodeInstantiate(chain, client, org) {
                 chainId: channelName,
                 txId: tx_id,
                 nonce: nonce
+                // use this to demonstrate the following policy:
+                // 'if signed by org1 admin, then that's the only signature required,
+                // but if that signature is missing, then the policy can also be fulfilled
+                // when members (non-admin) from both orgs signed'
+//                'endorsement-policy': {
+/*
+                    identities: [
+                        { role: { name: "member", mspId: "PeerOrg1" }},
+                        { role: { name: "member", mspId: "PeerOrg2" }}
+                    ],
+                    policy: {
+                        "1-of": [{ "signed-by": 0 }, { "signed-by": 1 }]
+                    }
+*/
+
+/*
+                        identities: [
+                                { role: { name: 'member', mspId: ORGS['testOrg1'].mspid }},
+                                { role: { name: 'member', mspId: ORGS['testOrg2'].mspid }},
+                                { role: { name: 'admin', mspId: ORGS['testOrg1'].mspid }}
+                        ],
+                        policy: {
+                                '1-of': [
+                                        { 'signed-by': 2},
+                                        { '2-of': [{ 'signed-by': 0}, { 'signed-by': 1 }]}
+                                ]
+                        }
+                }
+*/
             };
 
             // sendInstantiateProposal
-            console.log('request_instantiate: ', request_instantiate);
+            //console.log('request_instantiate: ', request_instantiate);
             return chain.sendInstantiateProposal(request_instantiate);
         },
         function(err) {
@@ -540,7 +581,7 @@ function chaincodeInstantiate(chain, client, org) {
                 all_good = all_good & one_good;
             }
             if (all_good) {
-                console.log(util.format('Successfully sent Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - "%s", endorsement signature: %s', proposalResponses[0].response.status, proposalResponses[0].response.message, proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature));
+                console.log(util.format('Successfully sent chaincode instantiation Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - "%s", endorsement signature: %s', proposalResponses[0].response.status, proposalResponses[0].response.message, proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature));
 
 
                 var request = {
@@ -556,7 +597,9 @@ function chaincodeInstantiate(chain, client, org) {
                         let handle = setTimeout(reject, 30000);
 
                         eh.registerTxEvent(deployId.toString(), (tx, code) => {
-                            console.log('[chaincodeInstantiate] The chaincode instantiate transaction has been committed on peer '+ eh.ep.addr);
+                            var tCurr1=new Date().getTime();
+                            console.log('[chaincodeInstantiate] tCurr=%d, The chaincode instantiate transaction time=%d', tCurr, tCurr1-tCurr);
+                            //console.log('[chaincodeInstantiate] The chaincode instantiate transaction has been committed on peer '+ eh.ep.addr);
                             clearTimeout(handle);
                             eh.unregisterTxEvent(deployId);
 
@@ -576,6 +619,8 @@ function chaincodeInstantiate(chain, client, org) {
                 });
 
                 var sendPromise = chain.sendTransaction(request);
+                var tCurr=new Date().getTime();
+                console.log('[chaincodeInstantiate] Promise.all tCurr=%d', tCurr);
                 return Promise.all([sendPromise].concat(eventPromises))
 
                 .then((results) => {
@@ -583,7 +628,9 @@ function chaincodeInstantiate(chain, client, org) {
                     console.log('[chaincodeInstantiate] Event promise all complete and testing complete');
                     return results[0]; // the first returned value is from the 'sendPromise' which is from the 'sendTransaction()' call
                 }).catch((err) => {
-                    console.log('Failed to send instantiate transaction and get notifications within the timeout period.');
+                    var tCurr1=new Date().getTime();
+                    console.log('[chaincodeInstantiate] failed to send instantiate transaction: tCurr=%d, elapse time=%d', tCurr, tCurr1-tCurr);
+                    //console.log('Failed to send instantiate transaction and get notifications within the timeout period.');
                     evtDisconnect();
                     throw new Error('Failed to send instantiate transaction and get notifications within the timeout period.');
 
@@ -603,7 +650,8 @@ function chaincodeInstantiate(chain, client, org) {
     .then((response) => {
             if (response.status === 'SUCCESS') {
                 console.log('[Nid=%d] Successfully instantiate transaction. ', Nid);
-                return sleep(20000);
+                evtDisconnect();
+                return;
             } else {
                 console.log('[Nid=%d] Failed to instantiate transaction. Error code: ', Nid, response.status);
                 evtDisconnect();
@@ -616,13 +664,13 @@ function chaincodeInstantiate(chain, client, org) {
     );
 }
 
-function createOneChannel(chain, client, org) {
+function createOneChannel(client, org) {
         orgName = ORGS[org].name;
         console.log('[createOneChannel] org= %s, org name=%s', org, orgName);
-        console.log('[createOneChannel] chain name: ', chain.getName());
+        //console.log('[createOneChannel] chain name: ', chain.getName());
         console.log('[createOneChannel] user name: ', users.username, users.secret);
 
-        channelAddOrderer(chain, client, org);
+        clientNewOrderer(client, org);
 
             // Acting as a client in org when creating the channel
 
@@ -643,43 +691,55 @@ function createOneChannel(chain, client, org) {
                 // readin the envelope to send to the orderer
                 cfgtxFile=gopath+'/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/'+channelName+'.tx';
                 console.log('cfgtxFile:', cfgtxFile);
-                return readFile(cfgtxFile);
-            }, (err) => {
-                console.log('Failed to enroll user \'admin\'. ' + err);
-                process.exit();
-            })
-            .then((data) => {
+                var data =fs.readFileSync(cfgtxFile);
                 console.log('Successfully read file: %s', cfgtxFile);
                 var request = {
-                        envelope : data
+                        envelope : data,
+                        name : channelName,
+                        orderer : orderer
                 };
                 // send to orderer
-                console.log('chain orderer: ', chain.getOrderers());
+                //console.log('chain orderer: ', chain.getOrderers());
                 console.log('request: ',request);
-                return chain.createChannel(request);
+                return client.createChannel(request);
             }, (err) => {
-                console.log('Failed to read file for channel template: ' + err);
+                console.log('Failed to enroll user \'admin\'. ' + err);
+                evtDisconnect();
                 process.exit();
             })
-            .then((response) => {
-                logger.debug(' response ::%j',response);
+            .then((chain) => {
+                logger.debug(' response ::%j',chain);
 
-                if (response && response.status === 'SUCCESS') {
-                        console.log('Successfully created the channel: %s.', channelName);
-                        return sleep(5000);
+                if (chain) {
+                        var test_orderers = chain.getOrderers();
+                        if(test_orderers) {
+                                var test_orderer = test_orderers[0];
+                                if(test_orderer === orderer) {
+                                        console.log('Successfully created the channel.');
+                                }
+                                else {
+                                        console.log('Chain did not have the orderer.');
+                                }
+                        }
+                        return;
                 } else {
                         console.log('Failed to create the channel. ');
+                        evtDisconnect();
                         process.exit();
                 }
+
             }, (err) => {
                 console.log('Failed to initialize the channel: ' + err.stack ? err.stack : err);
+                evtDisconnect();
                 process.exit();
             })
             .then((nothing) => {
                 console.log('Successfully waited to make sure new channel was created.');
+                evtDisconnect();
                 process.exit();
             }, (err) => {
-                console.log('Failed to sleep due to error: ' + err.stack ? err.stack : err);
+                console.log('Failed due to error: ' + err.stack ? err.stack : err);
+                evtDisconnect();
                 process.exit();
             });
 }
@@ -690,7 +750,7 @@ function joinChannel(chain, client, org) {
         //console.log('[joinChannel] user name: ', users.username, users.secret);
 
         // add orderers
-        channelAddOrderer(chain, client, org);
+        chainAddOrderer(chain, client, org);
 
         // add peers and events
         channelAddPeerEvent(chain, client, org);
@@ -708,7 +768,7 @@ function joinChannel(chain, client, org) {
                 the_user = admin;
 
                 nonce = utils.getNonce();
-                tx_id = chain.buildTransactionID(nonce, the_user);
+                tx_id = hfc.buildTransactionID(nonce, the_user);
                 var request = {
                         targets : targets,
                         txId :  tx_id,
@@ -768,10 +828,10 @@ function joinChannel(chain, client, org) {
                 console.log(util.format('[joinChannel] join Channel R E S P O N S E : %j', results));
 
                 if(results[0] && results[0][0] && results[0][0].response && results[0][0].response.status == 200) {
-                        console.log('[joinChannel] Successfully joined peers in organization %s to join the channel %s', orgName, channelName);
+                        console.log('[joinChannel] Successfully joined peers in organization(%s) to channel(%s)', orgName, channelName);
                         evtDisconnect();
                 } else {
-                        console.log('[joinChannel] Failed to join channel');
+                        console.log('[joinChannel] Failed to join peers in organization(%s) to channel(%s)', orgName, channelName);
                         evtDisconnect();
                         throw new Error('Failed to join channel');
                 }
@@ -808,8 +868,6 @@ function performance_main() {
         orgName=ORGS[org].name;
         console.log('[performance_main]: org=%s, org Name= %s', org, orgName);
         var client = new hfc();
-        var chain = client.newChain(channelName);
-        console.log('[performance_main] chain name: ', chain.getName());
 
         if ( (transType.toUpperCase() == 'INSTALL') || (transType.toUpperCase() == 'INSTANTIATE') ) {
                 console.log('DEPLOY: ');
@@ -827,11 +885,14 @@ function performance_main() {
                         //the_user.mspImpl._id = ORGS[org].mspid;
                         //console.log('[performance_main:Nid=%d] ORGS[org].mspid %s', Nid, ORGS[org].mspid);
                         if ( transType.toUpperCase() == 'INSTALL' ) {
+                            var chain = client.newChain(channelName);
+                            console.log('[performance_main] chain name: ', chain.getName());
                             chaincodeInstall(chain, client, org);
                         } else if ( transType.toUpperCase() == 'INSTANTIATE' ) {
+                            var chain = client.newChain(channelName);
+                            console.log('[performance_main] chain name: ', chain.getName());
                             chaincodeInstantiate(chain, client, org);
                         }
-                        //channelAddAnchorPeer(chain, client, org);
                     },
                     function(err) {
                         console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
@@ -860,9 +921,11 @@ function performance_main() {
             }
         } else if ( transType.toUpperCase() == 'CHANNEL' ) {
             if ( channelOpt.action.toUpperCase() == 'CREATE' ) {
-                createOneChannel(chain, client, org);
+                createOneChannel(client, org);
+                //createOneChannel(chain, client, org);
             } else if ( channelOpt.action.toUpperCase() == 'JOIN' ) {
- //               joinOneChannel(chain, client, org);
+                var chain = client.newChain(channelName);
+                console.log('[performance_main] chain name: ', chain.getName());
                 joinChannel(chain, client, org);
             }
         } else {

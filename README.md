@@ -7,12 +7,16 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Code Base
 
-Release v1.0.0-alpha:
+- fabric commit level: aa119ec8d446a34df70a281efad649626b41d395
+- fabric-sdk-node commit level: 214a499b51185ff32ba1e646e72e50f7b3b7afc4
+- fabric-ca commit level: 77dc0ce08853615e6876db81fb9384c4e9c31209
+
+##v1.0.0-alpha
+For v1.0.0-alpha support, use v1performance commit level  aa73747ccf5f511fbcd10a962dd1e588bde1a8b0.  Below is the v1.0.0-alpha commit levels.
 
 - fabric commit level: fa3d88cde177750804c7175ae000e0923199735c
 - fabric-sdk-node commit level: 196d0484c884ab894374c73df89bfe047bcc9f00
 - fabric-ca commit level: 29385879bc2931cce9ec833acf796129908b72fb
-
 
 ##pre-requisites
 
@@ -30,24 +34,25 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 1. cd $GOPATH/src/github.com/hyperledger
 2. git clone https://github.com/hyperledger/fabric
 3. cd fabric
-4. git reset --hard fa3d88cde177750804c7175ae000e0923199735c
+4. git reset --hard aa119ec8d446a34df70a281efad649626b41d395
 5. make docker
 6. cd ..
 7. git clone https://github.com/hyperledger/fabric-ca
 8. cd fabric-ca
-9. git reset --hard 29385879bc2931cce9ec833acf796129908b72fb
+9. git reset --hard 77dc0ce08853615e6876db81fb9384c4e9c31209
 10. make docker
 11. cd ..
 12. git clone https://github.com/hyperledger/fabric-sdk-node.git
 13. cd fabric-sdk-node
-14. git reset --hard 29385879bc2931cce9ec833acf796129908b72fb
+14. git reset --hard 214a499b51185ff32ba1e646e72e50f7b3b7afc4
 15. run command `npm install` (remove directory node_modules if exists)
 16. run command `gulp ca`
 17. cd test
 18. git clone https://github.com/dongmingh/v1performance
 19. cd v1performance
-20. add Service Credentials file for each fabric network to the SCFiles directory, see config.json in directory SCFiles as an example
-21. modify runCases.txt and json file in directory userInputs according to the test, see userInput-samplecc-channel.json as an example in userInputs directory
+20. For v1.0.0-alpha, `git reset --hard aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`
+21. add Service Credentials file for each fabric network to the SCFiles directory, see config.json in directory SCFiles as an example
+22. modify runCases.txt and json file in directory userInputs according to the test, see userInput-samplecc-channel.json as an example in userInputs directory
 
 ##Scripts
 

@@ -197,7 +197,7 @@ function getMoveRequest() {
     }
 
     nonce = utils.getNonce();
-    tx_id = chain.buildTransactionID(nonce, the_user);
+    tx_id = hfc.buildTransactionID(nonce, the_user);
     utils.setConfigSetting('E2E_TX_ID', tx_id);
     logger.info('setConfigSetting("E2E_TX_ID") = %s', tx_id);
 
@@ -236,7 +236,7 @@ function getQueryRequest() {
 
 //        targets: g[pid % nPeer],
     nonce = utils.getNonce();
-    tx_id = chain.buildTransactionID(nonce, the_user);
+    tx_id = hfc.buildTransactionID(nonce, the_user);
     request_query = {
         chaincodeId : chaincode_id,
         chaincodeVersion : chaincode_ver,
@@ -473,7 +473,7 @@ function execTransMode() {
     }).then(
         function (store) {
             client.setStateStore(store);
-                    console.log('[Nid:id=%d:%d] Successfully setStateStore', Nid, pid);
+            console.log('[Nid:id=%d:%d] Successfully setStateStore', Nid, pid);
 
             testUtil.getSubmitter(users.username, users.secret, client, false, org)
             .then(
@@ -642,14 +642,14 @@ function eventRegister_latency(tx, cb) {
                 eh.unregisterTxEvent(deployId);
 
                 if (code !== 'VALID') {
-                    console.log('[eventRegister [Nid:id=%d:%d]] The invoke transaction was invalid, code = ', Nid, pid, code);
+                    console.log('[eventRegister_latency [Nid:id=%d:%d]] The invoke transaction was invalid, code = ', Nid, pid, code);
                     reject();
                 } else {
-                    //console.log('[eventRegister [Nid:id=%d:%d]] The balance transfer transaction has been committed on peer ', Nid, pid, eh.ep._endpoint.addr);
-                    console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                    //console.log('[eventRegister_latency [Nid:id=%d:%d]] The balance transfer transaction has been committed on peer ', Nid, pid, eh.ep._endpoint.addr);
+                    console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                         tCurr = new Date().getTime();
-                        console.log('[Nid:id=%d:%d] eventRegister: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                         if (invokeCheck.toUpperCase() == 'TRUE') {
                             arg0 = keyStart + inv_m - 1;
                             inv_q = inv_m - 1;
@@ -828,17 +828,18 @@ function invoke_query_simple(freq) {
                     console.log('response_payloads is null');
                 }
                 console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                process.exit();
             }
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
-            evtDisconnect();
+            process.exit();
             return;
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            evtDisconnect();
+            process.exit();
         }
     );
 
@@ -964,18 +965,17 @@ function invoke_query_const(freq) {
                     console.log('[Nid:id=%d:%d] query result:', Nid, pid, response_payloads[j].toString('utf8'));
                 }
                 console.log('[Nid:id=%d:%d] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_q, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
-                //return;
+                process.exit();
             }
         },
         function(err) {
             console.log('[Nid:id=%d:%d] Failed to send query due to error: ', Nid, pid, err.stack ? err.stack : err);
-            evtDisconnect();
-            return;
+            process.exit();
         })
     .catch(
         function(err) {
             console.log('[Nid:id=%d:%d] %s failed: ', Nid, pid, transType,  err.stack ? err.stack : err);
-            evtDisconnect();
+            process.exit();
         }
     );
 
