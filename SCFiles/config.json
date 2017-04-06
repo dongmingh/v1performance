@@ -7,7 +7,7 @@
                 },
 		"testOrg1": {
 			"name": "PeerOrg1",
-			"mspid": "Peer1MSP",
+			"mspid": "PeerOrg1",
 			"ca": "http://10.120.223.35:7054",
 			"peer1": {
 				"requests": "grpc://10.120.223.35:7061",
@@ -24,7 +24,7 @@
 		},
 		"testOrg2": {
 			"name": "PeerOrg2",
-			"mspid": "Peer2MSP",
+			"mspid": "PeerOrg2",
 			"ca": "http://10.120.223.35:7055",
 			"peer1": {
 				"requests": "grpc://10.120.223.35:7063",

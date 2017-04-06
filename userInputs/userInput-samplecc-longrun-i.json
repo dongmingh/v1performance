@@ -16,7 +16,7 @@
     "runDur": "259200",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testOrg1",
+        "name": "testChannel1",
         "action":  "create",
         "orgName": [
             "testOrg1"

@@ -715,7 +715,7 @@ function createOneChannel(client, org) {
                         if(test_orderers) {
                                 var test_orderer = test_orderers[0];
                                 if(test_orderer === orderer) {
-                                        console.log('Successfully created the channel.');
+                                        console.log('Successfully created the channel(%s).', channelName);
                                 }
                                 else {
                                         console.log('Chain did not have the orderer.');
