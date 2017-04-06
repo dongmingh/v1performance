@@ -7,8 +7,8 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Code Base
 
-- fabric commit level: aa119ec8d446a34df70a281efad649626b41d395
-- fabric-sdk-node commit level: 214a499b51185ff32ba1e646e72e50f7b3b7afc4
+- fabric commit level: 9e40c3c0070303285b4249112c966969551d9056
+- fabric-sdk-node commit level: 45c2f389ef37f3eab64cfceace46b0157abb9d33
 - fabric-ca commit level: 77dc0ce08853615e6876db81fb9384c4e9c31209
 
 ##v1.0.0-alpha
@@ -34,7 +34,7 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 1. cd $GOPATH/src/github.com/hyperledger
 2. git clone https://github.com/hyperledger/fabric
 3. cd fabric
-4. git reset --hard aa119ec8d446a34df70a281efad649626b41d395
+4. git reset --hard 9e40c3c0070303285b4249112c966969551d9056
 5. make docker
 6. cd ..
 7. git clone https://github.com/hyperledger/fabric-ca
@@ -44,7 +44,7 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 11. cd ..
 12. git clone https://github.com/hyperledger/fabric-sdk-node.git
 13. cd fabric-sdk-node
-14. git reset --hard 214a499b51185ff32ba1e646e72e50f7b3b7afc4
+14. git reset --hard 45c2f389ef37f3eab64cfceace46b0157abb9d33
 15. run command `npm install` (remove directory node_modules if exists)
 16. run command `gulp ca`
 17. cd test

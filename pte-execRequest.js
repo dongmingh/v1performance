@@ -592,8 +592,6 @@ function eventRegister(tx, cb) {
                     console.log('[eventRegister [Nid:id=%d:%d]] The invoke transaction was invalid, code = ', Nid, pid, code);
                     reject();
                 } else {
-                    //console.log('[eventRegister [Nid:id=%d:%d]] The balance transfer transaction has been committed on peer ', Nid, pid, eh.ep._endpoint.addr);
-                    //console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                         tCurr = new Date().getTime();
                         console.log('[Nid:id=%d:%d] eventRegister: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
@@ -645,8 +643,6 @@ function eventRegister_latency(tx, cb) {
                     console.log('[eventRegister_latency [Nid:id=%d:%d]] The invoke transaction was invalid, code = ', Nid, pid, code);
                     reject();
                 } else {
-                    //console.log('[eventRegister_latency [Nid:id=%d:%d]] The balance transfer transaction has been committed on peer ', Nid, pid, eh.ep._endpoint.addr);
-                    console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                         tCurr = new Date().getTime();
                         console.log('[Nid:id=%d:%d] eventRegister_latency: completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
@@ -686,14 +682,11 @@ function eventRegister_latency(tx, cb) {
 
 // invoke_move_latency
 function invoke_move_latency() {
-    isExecDone('Move');
     if ( IDone == 1 ) {
        return;
     }
 
     inv_m++;
-    tCurr = new Date().getTime();
-    console.log('[Nid:id=%d:%d] invoke_move_latency: %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
     getMoveRequest();
 
@@ -708,11 +701,9 @@ function invoke_move_latency() {
                 var sendPromise = chain.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
-                    //tCurr = new Date().getTime();
-                    //console.log('[Nid:id=%d:%d] event promise all complete and testing completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
 
-                    return;
-                    //return results[0];
+                    isExecDone('Move');
+                    return results[0];
 
                 }).catch((err) => {
                     console.log('[Nid:id=%d:%d] Failed to send transaction due to error: ', Nid, pid, err.stack ? err.stack : err);
