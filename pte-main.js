@@ -605,11 +605,9 @@ function chaincodeInstantiate(chain, client, org) {
 
                             if (code !== 'VALID') {
                                 console.log('[chaincodeInstantiate] The chaincode instantiate transaction was invalid, code = ' + code);
-                                evtDisconnect();
                                 reject();
                             } else {
                                 console.log('[chaincodeInstantiate] The chaincode instantiate transaction was valid.');
-                                evtDisconnect();
                                 resolve();
                             }
                         });
