@@ -581,7 +581,7 @@ function eventRegister(tx, cb) {
     var eventPromises = [];
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
-            let handle = setTimeout(reject, 30000);
+            let handle = setTimeout(reject, 600000);
 
             eh.registerTxEvent(deployId.toString(), (tx, code) => {
                 clearTimeout(handle);
@@ -632,7 +632,7 @@ function eventRegister_latency(tx, cb) {
     var eventPromises = [];
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
-            let handle = setTimeout(reject, 30000);
+            let handle = setTimeout(reject, 600000);
             evtRcv++;
 
             eh.registerTxEvent(deployId.toString(), (tx, code) => {
