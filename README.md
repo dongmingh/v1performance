@@ -3,24 +3,26 @@
 
 ----------
 
-The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup/) to interact with a [Hyperledger fabric](https://github.com/hyperledger/fabric) network.
+The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup/) to interact with a [Hyperledger Fabric](https://github.com/hyperledger/fabric) network.
 
 ##Code Base
 
-- fabric commit level: 9e40c3c0070303285b4249112c966969551d9056
+- Fabric commit level: 9e40c3c0070303285b4249112c966969551d9056
 - fabric-sdk-node commit level: 45c2f389ef37f3eab64cfceace46b0157abb9d33
 - fabric-ca commit level: 77dc0ce08853615e6876db81fb9384c4e9c31209
+- PTE v1performance commit level: current (or 6e7909754fe427062f841d91ee9293aabcccafe3)
 
-##v1.0.0-alpha
+##Code Base for v1.0.0-alpha
 For v1.0.0-alpha support, use v1performance commit level  aa73747ccf5f511fbcd10a962dd1e588bde1a8b0.  Below is the v1.0.0-alpha commit levels.
 
-- fabric commit level: fa3d88cde177750804c7175ae000e0923199735c
+- Fabric commit level: fa3d88cde177750804c7175ae000e0923199735c
 - fabric-sdk-node commit level: 196d0484c884ab894374c73df89bfe047bcc9f00
 - fabric-ca commit level: 29385879bc2931cce9ec833acf796129908b72fb
+- PTE v1performance commit level: aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`
 
-##pre-requisites
+##Pre-requisites
 
-To build and test, the following pre-requisites must be installed first, see [Hyperledger fabric-sdk-node](https://github.com/hyperledger/fabric-sdk-node) and [Hyperledger fabric](https://github.com/hyperledger/fabric) for detail:
+To build and test, the following pre-requisites must be installed first, see [Hyperledger fabric-sdk-node](https://github.com/hyperledger/fabric-sdk-node) and [Hyperledger Fabric](https://github.com/hyperledger/fabric) for detail:
 
 - node runtime version 6.9.x, note that 7.0 is not supported at this point
 - npm tool version 3.10.x
@@ -30,30 +32,39 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 
 ##Setup
 
-
 1. cd $GOPATH/src/github.com/hyperledger
-2. git clone https://github.com/hyperledger/fabric
-3. cd fabric
-4. git reset --hard 9e40c3c0070303285b4249112c966969551d9056
-5. make docker
-6. cd ..
-7. git clone https://github.com/hyperledger/fabric-ca
-8. cd fabric-ca
-9. git reset --hard 77dc0ce08853615e6876db81fb9384c4e9c31209
-10. make docker
-11. cd ..
-12. git clone https://github.com/hyperledger/fabric-sdk-node.git
-13. cd fabric-sdk-node
-14. git reset --hard 45c2f389ef37f3eab64cfceace46b0157abb9d33
-15. run command `npm install` (remove directory node_modules if exists)
-16. run command `gulp ca`
-17. cd test
-18. git clone https://github.com/dongmingh/v1performance
-19. cd v1performance
-20. For v1.0.0-alpha, `git reset --hard aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`
-21. add Service Credentials file for each fabric network to the SCFiles directory, see config.json in directory SCFiles as an example
-22. modify runCases.txt and json file in directory userInputs according to the test.
-23. create a config.json based on the format of SCFiles/config-chan1.json.
+- git clone https://github.com/hyperledger/fabric
+- cd fabric
+- git reset --hard 9e40c3c0070303285b4249112c966969551d9056
+- make docker
+- cd ..
+- git clone https://github.com/hyperledger/fabric-ca
+- cd fabric-ca
+- git reset --hard 77dc0ce08853615e6876db81fb9384c4e9c31209
+- make docker
+- cd ..
+- git clone https://github.com/hyperledger/fabric-sdk-node.git
+- cd fabric-sdk-node
+- git reset --hard 45c2f389ef37f3eab64cfceace46b0157abb9d33
+- rm -rf node_modules
+- npm install
+- gulp ca
+- cd test
+- git clone https://github.com/dongmingh/v1performance
+- cd v1performance
+- The current commit level runs with the latest commit levels (as listed above) for fabric, fabric-sdk-node, and fabric-ca. However, if testing v1.0.0-alpha, `git reset --hard aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`
+- cd SCFiles
+- Create a Service Credentials file(s) for your Fabric network. Refer to existing config.json file examples. Change the address (10.120.223.35) to your own network nodes addresses. For example, if using NetworkLauncher to create docker containers on your laptop/workstation, use the same address when running NetworkLauncher tool with "-w" option, such as 127.0.0.1 or 0.0.0.0 or your machine eth0 ip address or your vagrant ip address (type ifconfig to find it). If you have an existing network, be sure to add a block for all your peers, each with the correct IP address and server-hostname
+- cd ../userInputs
+- Create your own version of runCases.txt and User Input json files, according to the test requirements. Use the desired chaincode name, channel name, organizations, etc. Using the information in your own network profiles, remember to "create" all channels, and "join" and "install" for each org, to ensure all peers are set up correctly. See sections below for more details on how to edit these files to use this tool.
+- Before proceeding to run this performance tool pte_driver.sh, ensure your network is running! If you do not have an existing network already, consider using the [NetworkLauncher](https://github.com/dongmingh/v1Launcher) tool to spin up a network using docker containers:
+
+        # OPTIONALLY download and follow its directions to start a network:
+        cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test
+        git clone https://github.com/dongmingh/v1Launcher
+        cd v1Launcher
+        ./NetworkLauncher.sh -?
+
 
 ##Scripts
 
@@ -70,7 +81,6 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 - run cases file: the file contains all user specified test cases
 
 
-
 ####Examples
 
 - ./pte_driver.sh userInputs/runCases.txt
@@ -78,20 +88,17 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 The above command will execute the transaction tests listed in the runCases.txt.
 
 
-
-##Run Cases File
+##runCases.txt file, in directory userInputs
 
 This file contains all test cases to be executed.  Each line is a test case and includes two parameters: SDK type and user input file.  Below is an example of the runCases.txt containing two test cases using Node SDK:
 
     sdk=node userInputs/samplecc-chan1-i.json
     sdk=node userInputs/samplecc-chan2-i.json
 
-Available SDK types are node, python and java. Only node SDK is supported currently.
+Available SDK types are node, python and java. However, currently only node SDK is supported.
 
 
-
-##User Input File
-
+##User Input file format, in directory userInputs
 
     {
         "channelID": "_ch1",
@@ -248,8 +255,7 @@ where:
 + **SCFile**: the service credentials json.
 
 
-
-##Service Credentials
+##Service Credentials, in directory SCFiles
 
 The service credentials contain the information of the network.  The following is a sample of the service credentials json file:
 
@@ -305,8 +311,6 @@ The service credentials contain the information of the network.  The following i
     }
 
 
-
-
 ##Chaincodes
 
 The following chaincodes are tested and supported:
@@ -336,11 +340,8 @@ Two types of transaction requests:
 + By run time duration: Each thread executes the same transaction concurrently for the specified time duration specified by runDur in the user input file, note that nRequest is set to 0.
 
 
-
-
-
 ##Use Cases
-PTE can be used for channel (create, join), chaincode (install and instantiate) and transactions (invoke (move) and invoke (query)).  This depends on the settings of run cases file, user input files, configuration file (config.json).
+PTE can be used for channel (create, join), chaincode (install and instantiate) and transactions (invoke (move) and invoke (query)).  Specify settings in the run cases file, user input files, and configuration file (config.json).
 
 ###Channel
 
@@ -350,9 +351,9 @@ For any channel activities (create or join), set transType to Channel:
     "transType": "Channel",
     "invokeType": "Move",
 
-####create a channel
+####Create a channel
 
-To create a channel, set the action in channelOpt to create and the name to the channel name:
+To create a channel, set the action in channelOpt to create, and set the name to the channel name:
 
     "channelOpt": {
         "name": "testChannel1",
@@ -364,10 +365,9 @@ To create a channel, set the action in channelOpt to create and the name to the 
 
 Note that orgName is ignored in this test.
 
-####create a channel
+####Join a channel
 
-
-To join an org to a channel, set the action in channelOpt to join, name to channel name, and orgName to org name:
+To join all peers in an org to a channel, set the action in channelOpt to join, set name to channel name, and set orgName to org name:
 
     "channelOpt": {
         "name": "testChannel1",
@@ -377,7 +377,7 @@ To join an org to a channel, set the action in channelOpt to join, name to chann
         ]
     },
 
-###deployment (install and instantiate)
+###Deployment (install and instantiate)
 
 To install or instantiate a chaincode, set up the deploy clause according to the test, such as:
 
@@ -388,7 +388,7 @@ To install or instantiate a chaincode, set up the deploy clause according to the
     },
 
 
-####install a chaicode
+####Install a chaincode
 
 To install a chaincode, set the transType as install:
 
@@ -408,9 +408,9 @@ and set channelOpt name to channel name and orgName to org name:
 
 Note that the action is ignored.
 
-####instantiate a chaicode
+####Instantiate a chaincode
 
-To install a chaincode, set the transType as install:
+To instantiate a chaincode, set the transType as instantiate:
 
     "transMode": "Simple",
     "transType": "instantiate",
@@ -428,9 +428,9 @@ and set channelOpt name to channel name:
 
 Note that the action and orgName are ignored.
 
-###transactions
+###Transactions
 
-####invoke (move)
+####Invoke (move)
 
 To execute invoke (move) transactions, set the transType to Invoke and invokeType to Move, and specify the network parameters and desired execution parameters:
 
@@ -457,7 +457,7 @@ and the channel name in channelOpt:
     },
 
 
-####invoke (query)
+####Invoke (query)
 
 To execute invoke (move) transactions, set the transType to Invoke and invokeType to Query, and specify the network parameters and desired execution parameters:
 
@@ -503,8 +503,6 @@ The following is an example of invoke moves test output. The test contains 4 thr
     stdout: [Nid:id=0:2] eventRegister: completed 1000(1000) Invoke(Move) in 364174 ms, timestamp: start 1492024894499 end 1492025258673
     stdout: [Nid:id=0:1] eventRegister: completed 1000(1000) Invoke(Move) in 400421 ms, timestamp: start 1492024894500 end 1492025294921
     stdout: [Nid:id=0:0] eventRegister: completed 1000(1000) Invoke(Move) in 406530 ms, timestamp: start 1492024894498 end 1492025301028
-
-
 
 
 ##Examples
