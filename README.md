@@ -197,8 +197,6 @@ where:
 
 + **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.  One orderer is assigned to one thread with round robin. PTE currently only supports 1 orderer.
 
-+ **nPeer**: number of peers for traffic,, this number has to match with the number of peers in the network.  Each thread is assigned with a peer with round robin.
-
 + **nOrg**: number of organitzations for the test
 
 + **nPeerPerOrg**: number of peers per organization for the test
@@ -331,7 +329,10 @@ The following chaincodes are tested and supported:
 
 ##Transaction Execution
 
-All threads from the same test case will execute the same transaction concurrently. However, the runCases.txt can contain more than one test cases and each test case will execute the specified transaction and they are not required to the same transactions.
+File runCases.txt may contain more than one testcase, executed sequentially.
+A testcase is a userInput file, which defines all the test parameters, including transaction type, number of threads, number of transactions, duration, etc. 
+All threads in one testcase will concurrently execute the specified transaction.
+Different transactions may be used in different testcases included within a single runCases.txt file, making it possible for example to send a certain number of invokes to all peers and then query each peer.
 
 Two types of transaction requests:
 
