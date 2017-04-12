@@ -24,10 +24,6 @@
 // in a happy-path scenario
 'use strict';
 
-//var tape = require('tape');
-//var _test = require('tape-promise');
-//var test = _test(tape);
-
 var log4js = require('log4js');
 var logger = log4js.getLogger('E2E');
 logger.setLevel('ERROR');
@@ -96,8 +92,7 @@ var pid = parseInt(process.argv[2]);
 var Nid = parseInt(process.argv[3]);
 var uiFile = process.argv[4];
 var tStart = parseInt(process.argv[5]);
-var org = parseInt(process.argv[6]);
-console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d, org=%s', Nid, pid, Nid, uiFile, tStart, org);
+console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, pid, Nid, uiFile, tStart);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 var TLS=uiContent.TLS;
 var channelOpt=uiContent.channelOpt;
@@ -115,9 +110,10 @@ var chain = client.newChain(channelName);
 invokeCheck = uiContent.invokeCheck;
 console.log('[Nid:id=%d:%d] invokeCheck: ', Nid, pid, invokeCheck);
 
-chaincode_id = uiContent.chaincodeID;
+var channelID = uiContent.channelID;
+chaincode_id = uiContent.chaincodeID+channelID;
 chaincode_ver = uiContent.chaincodeVer;
-chain_id = uiContent.chainID;
+chain_id = uiContent.chainID+channelID;
 console.log('[Nid:id=%d:%d] chaincode_id: %s, chain_id: %s', Nid, pid, chaincode_id, chain_id);
 
 //set log level
@@ -186,14 +182,12 @@ var request_invoke;
 function getMoveRequest() {
     if ( ccType == 'ccchecker') {
         arg0 ++;
-        testInvokeArgs[1] = 'key'+pid+'_'+arg0;
+        testInvokeArgs[1] = 'key_'+channelID+'_'+pid+'_'+arg0;
         // random payload
         var r = Math.floor(Math.random() * (payLoadMax - payLoadMin)) + payLoadMin;
 
         var buf = crypto.randomBytes(r);
         testInvokeArgs[2] = buf.toString('hex');
-
-        //console.log('Nid:id=%d:%d, key: %s, r: %d', Nid, pid, testInvokeArgs[1], r);
     }
 
     nonce = utils.getNonce();
@@ -230,11 +224,9 @@ var request_query;
 function getQueryRequest() {
     if ( ccType == 'ccchecker') {
         arg0 ++;
-//    arg0 = keyStart+10;
-        testQueryArgs[1] = 'key'+pid+'_'+arg0;
+        testQueryArgs[1] = 'key_'+channelID+'_'+pid+'_'+arg0;
     }
 
-//        targets: g[pid % nPeer],
     nonce = utils.getNonce();
     tx_id = hfc.buildTransactionID(nonce, the_user);
     request_query = {
@@ -252,8 +244,7 @@ function getQueryRequest() {
 
 
 function assignThreadPeer(chain, client) {
-    console.log('[assignThreadPeer] chain name: ', chain.getName());
-    console.log('[assignThreadPeer Nid:pid=%d:%d] ', Nid, pid);
+    console.log('[assignThreadPeer Nid:pid=%d:%d] chain name: %s', Nid, pid, chain.getName());
     var peerIdx=0;
     var peerTmp;
     var eh;
@@ -274,7 +265,6 @@ function assignThreadPeer(chain, client) {
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 } else {
-                    //console.log('[channelAddAllPeer] key: %s, peer1: %s', key, ORGS[org].peer1.requests);
                     peerTmp = new Peer( ORGS[key1][key].requests);
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
@@ -302,7 +292,6 @@ function assignThreadPeer(chain, client) {
         }
     }
     console.log('[assignThreadPeer Nid:pid=%d:%d] add peer: ', Nid, pid, chain.getPeers());
-    //console.log('[assignThreadPeer] event: ', eventHubs);
 }
 
 function channelAddPeer(chain, client, org) {
@@ -488,7 +477,11 @@ function execTransMode() {
                     assignThreadPeer(chain, client);
 
 	            tCurr = new Date().getTime();
-	            console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tStart-tCurr);
+                    var tSynchUp=tStart-tCurr;
+                    if ( tSynchUp < 10000 ) {
+                        tSynchUp=10000;
+                    }
+	            console.log('Nid:id=%d:%d, execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, tCurr, tStart, tSynchUp);
                     // execute transactions
                     setTimeout(function() {
                         if (transMode.toUpperCase() == 'SIMPLE') {
@@ -506,7 +499,7 @@ function execTransMode() {
                             console.log(util.format("Nid:id=%d:%d, Transaction %j and/or mode %s invalid", Nid, pid, transType, transMode));
                             process.exit(1);
                         }
-                    }, tStart-tCurr);
+                    }, tSynchUp);
                 },
                 function(err) {
                     console.log('[Nid:id=%d:%d] Failed to wait due to error: ', Nid, pid, err.stack ? err.stack : err);

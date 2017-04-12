@@ -1,23 +1,26 @@
 {
-    "chaincodeID": "end2end",
+    "channelID": "_ch2",
+    "chaincodeID": "sample_cc",
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
-    "invokeCheck": "TRUE",
+    "invokeCheck": "FALSE",
     "transMode": "Simple",
-    "transType": "Channel",
+    "transType": "Invoke",
     "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
-    "nThread": "4",
-    "nRequest": "1000",
+    "nOrg": "2",
+    "nPeerPerOrg": "2",
+    "nThread": "50",
+    "nRequest": "0",
     "runDur": "600",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testChannel1",
-        "action":  "join",
+        "name": "testChannel2",
+        "action":  "create",
         "orgName": [
-            "testOrg2"
+            "testOrg1"
         ]
     },
     "burstOpt": {
@@ -31,12 +34,12 @@
     },
     "constantOpt": {
         "recHist": "HIST",
-        "constFreq": "1",
-        "devFreq": "0"
+        "constFreq": "200",
+        "devFreq": "50"
     },
     "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "50000",
+        "keyStart": "0",
         "payLoadMin": "1024",
         "payLoadMax": "1024"
     },
@@ -56,13 +59,6 @@
         }
     },
     "SCFile": [
-		{"ServiceCredentials":"SCFiles/config.json"},
-		{"ServiceCredentials":"SCFiles/config-1.json"},
-		{"ServiceCredentials":"SCFiles/config-351.json"},
-		{"ServiceCredentials":"SCFiles/config-local.json"},
-		{"ServiceCredentials":"SCFiles/hsbn-bluemix.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"}
+		{"ServiceCredentials":"SCFiles/config-chan2.json"}
 	]
 }

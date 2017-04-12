@@ -1,5 +1,6 @@
 {
-    "chaincodeID": "end2end",
+    "channelID": "_ch2",
+    "chaincodeID": "sample_cc",
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
@@ -14,10 +15,10 @@
     "runDur": "600",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testChannel1",
-        "action":  "create",
+        "name": "testChannel2",
+        "action":  "join",
         "orgName": [
-            "testOrg1"
+            "testOrg2"
         ]
     },
     "burstOpt": {
@@ -56,13 +57,6 @@
         }
     },
     "SCFile": [
-		{"ServiceCredentials":"SCFiles/config.json"},
-		{"ServiceCredentials":"SCFiles/config-1.json"},
-		{"ServiceCredentials":"SCFiles/config-351.json"},
-		{"ServiceCredentials":"SCFiles/config-local.json"},
-		{"ServiceCredentials":"SCFiles/hsbn-bluemix.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"}
+		{"ServiceCredentials":"SCFiles/config-chan2.json"}
 	]
 }

@@ -94,9 +94,8 @@ var     tlsOptions = {
 
 function getSubmitter(username, password, client, loadFromConfig, userOrg) {
         var ORGS = hfc.getConfigSetting('test-network');
-        console.log('userOrg:%s loadFromConfig:%j ', userOrg, loadFromConfig);
 	var caUrl = ORGS[userOrg].ca;
-        console.log('ca: ', caUrl);
+        console.log('[getSubmitter] ca: ', caUrl);
 
 	return client.getUserContext(username)
 	.then((user) => {

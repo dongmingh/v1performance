@@ -1,22 +1,23 @@
 {
-    "chaincodeID": "end2end",
+    "channelID": "_ch2",
+    "chaincodeID": "sample_cc",
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
     "invokeCheck": "FALSE",
-    "transMode": "Constant",
+    "transMode": "Latency",
     "transType": "Invoke",
     "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
     "nOrg": "2",
     "nPeerPerOrg": "2",
-    "nThread": "1",
-    "nRequest": "0",
-    "runDur": "259200",
+    "nThread": "4",
+    "nRequest": "1000",
+    "runDur": "600",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testChannel1",
+        "name": "testChannel2",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -33,14 +34,14 @@
     },
     "constantOpt": {
         "recHist": "HIST",
-        "constFreq": "1000",
+        "constFreq": "400",
         "devFreq": "100"
     },
     "ccType": "ccchecker",
     "ccOpt": {
         "keyStart": "0",
         "payLoadMin": "1024",
-        "payLoadMax": "2048"
+        "payLoadMax": "1024"
     },
     "deploy": {
         "chaincodePath": "github.com/sample_cc",
@@ -58,10 +59,6 @@
         }
     },
     "SCFile": [
-		{"ServiceCredentials":"SCFiles/config.json"},
-		{"ServiceCredentials":"SCFiles/config-local.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0000.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0001.json"},
-		{"ServiceCredentials":"SCFiles/ServiceCredentials0002.json"}
+		{"ServiceCredentials":"SCFiles/config-chan2.json"}
 	]
 }

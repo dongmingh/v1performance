@@ -52,7 +52,8 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 19. cd v1performance
 20. For v1.0.0-alpha, `git reset --hard aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`
 21. add Service Credentials file for each fabric network to the SCFiles directory, see config.json in directory SCFiles as an example
-22. modify runCases.txt and json file in directory userInputs according to the test, see userInput-samplecc-channel.json as an example in userInputs directory
+22. modify runCases.txt and json file in directory userInputs according to the test.
+23. create a config.json based on the format of SCFiles/config-chan1.json.
 
 ##Scripts
 
@@ -72,7 +73,7 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 
 ####Examples
 
-- ./pte_driver.sh runCases.txt
+- ./pte_driver.sh userInputs/runCases.txt
 
 The above command will execute the transaction tests listed in the runCases.txt.
 
@@ -82,8 +83,8 @@ The above command will execute the transaction tests listed in the runCases.txt.
 
 This file contains all test cases to be executed.  Each line is a test case and includes two parameters: SDK type and user input file.  Below is an example of the runCases.txt containing two test cases using Node SDK:
 
-    sdk=node userInput-samplecc-i.json
-    sdk=node userInput-samplecc-q.json
+    sdk=node userInputs/samplecc-chan1-i.json
+    sdk=node userInputs/samplecc-chan2-i.json
 
 Available SDK types are node, python and java. Only node SDK is supported currently.
 
@@ -93,7 +94,8 @@ Available SDK types are node, python and java. Only node SDK is supported curren
 
 
     {
-        "chaincodeID": "end2end",
+        "channelID": "_ch1",
+        "chaincodeID": "sample_cc",
         "chaincodeVer": "v0",
         "chainID": "testchainid",
         "logLevel": "ERROR",
@@ -157,7 +159,9 @@ Available SDK types are node, python and java. Only node SDK is supported curren
     
 where:
 
-+ **chaincodeID**: chaincode ID for the run.  DO NOT CHANGE.
++ **channelID**: channel ID for the run.
+
++ **chaincodeID**: chaincode ID for the run.
 
 + **chaincodeVer**: chaincode version.
 
@@ -165,7 +169,7 @@ where:
 
 + **legLevel**: logging level for the run.  Options are ERROR, DEBUG, or INFO.  Set to **ERROR** for performance test.  The default value is **ERROR**.
 
-+ **invokeCheck**: if this is `TRUE`, then a query will be issued for the last invoke upon the receiving of the event of the very last invoke.  This value is ignored for query test.
++ **invokeCheck**: if this is `TRUE`, then a query will be executed for the last invoke upon the receiving of the event of the last invoke.  This value is ignored for query test.
  
 + **transMode**: transaction mode
   -  Simple: one transaction type and rate only, the subsequent transaction is sent when the response of sending transaction (not the event handler), success or failure, of the previous transaction is received
@@ -184,7 +188,7 @@ where:
   - Move: move transaction
   - Query: query transaction
 
-+ **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.  One orderer is assigned to one thread with round robin.  If this number is 1, then the first orderer listed in the config json is assigned to all threads.
++ **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.  One orderer is assigned to one thread with round robin. PTE currently only supports 1 orderer.
 
 + **nPeer**: number of peers for traffic,, this number has to match with the number of peers in the network.  Each thread is assigned with a peer with round robin.
 
@@ -235,9 +239,9 @@ where:
   - payLoadMin: minimum size in bytes of the payload. The payload is made of random string with various size between payLoadMin and payLoadMax.
   - payLoadMax: maximum size in bytes of the payload
 
-+ **deploy**: deploy contents
++ **deploy**: deploy transaction contents
 
-+ **invoke** invoke contents
++ **invoke** invoke transaction contents
   - query: query content
   - move: move content
 
@@ -247,15 +251,60 @@ where:
 
 ##Service Credentials
 
-The service credentials contain the following information of the network:
+The service credentials contain the information of the network.  The following is a sample of the service credentials json file:
 
-  - list of each peer's host and port
-  - event hub's host and port
-  - list of each orderer's host and port
-  - ca's host and port
-  - list of each user's name and secret
+    {
+        "test-network": {
+                "orderer": {
+                        "url": "grpc://10.120.223.35:5005",
+                        "server-hostname": "orderer0",
+                        "tls_cacerts": "../fixtures/tls/orderer/ca-cert.pem"
+                },
+                "testOrg1": {
+                        "name": "PeerOrg1",
+                        "mspid": "PeerOrg1",
+                        "ca": "http://10.120.223.35:7054",
+                        "peer1": {
+                                "requests": "grpc://10.120.223.35:7061",
+                                "events": "grpc://10.120.223.35:6051",
+                                "server-hostname": "peer0",
+                                "tls_cacerts": "../fixtures/tls/peers/peer0/ca-cert.pem"
+                        },
+                        "peer2": {
+                                "requests": "grpc://10.120.223.35:7062",
+                                "events": "grpc://10.120.223.35:6052",
+                                "server-hostname": "peer1",
+                                "tls_cacerts": "../fixtures/tls/peers/peer1/ca-cert.pem"
+                        }
+                },
+                "testOrg2": {
+                        "name": "PeerOrg2",
+                        "mspid": "PeerOrg2",
+                        "ca": "http://10.120.223.35:7055",
+                        "peer1": {
+                                "requests": "grpc://10.120.223.35:7063",
+                                "events": "grpc://10.120.223.35:6053",
+                                "server-hostname": "peer2",
+                                "tls_cacerts": "../fixtures/tls/peers/peer2/ca-cert.pem"
+                        },
+                        "peer2": {
+                                "requests": "grpc://10.120.223.35:7064",
+                                "events": "grpc://10.120.223.35:6054",
+                                "server-hostname": "peer3",
+                                "tls_cacerts": "../fixtures/tls/peers/peer3/ca-cert.pem"
+                        }
+                }
+        },
+        "users":
+        {
+            "username": "admin",
+            "secret": "adminpw",
+            "affiliation": "bank_a"
+        }
 
-The service credentials for each network can be either downloaded or created by copy and paste from Bluemix if the network resides on Bluemix.  For the local network, the user needs to create a json file similar to the config-local.json in SCFiles directory. 
+    }
+
+
 
 
 ##Chaincodes
@@ -278,7 +327,9 @@ The following chaincodes are tested and supported:
 
 ##Transaction Execution
 
-All threads will execute the same transaction concurrently. Two kinds of executions are supported.
+All threads from the same test case will execute the same transaction concurrently. However, the runCases.txt can contain more than one test cases and each test case will execute the specified transaction and they are not required to the same transactions.
+
+Two types of transaction requests:
 
 + By transaction number: Each thread executes the specified number of transactions specified by nRequest in the user input file.
     
@@ -289,7 +340,7 @@ All threads will execute the same transaction concurrently. Two kinds of executi
 
 
 ##Use Cases
-PTE can be used for channel (create, join), deploy (install and instantiate) and transactions (invoke (move) and invoke (query)).  This all depend on the settings of run cases file, user input files, configuration file (config.json).
+PTE can be used for channel (create, join), chaincode (install and instantiate) and transactions (invoke (move) and invoke (query)).  This depends on the settings of run cases file, user input files, configuration file (config.json).
 
 ###Channel
 
@@ -304,7 +355,7 @@ For any channel activities (create or join), set transType to Channel:
 To create a channel, set the action in channelOpt to create and the name to the channel name:
 
     "channelOpt": {
-        "name": "testOrg1",
+        "name": "testChannel1",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -319,7 +370,7 @@ Note that orgName is ignored in this test.
 To join an org to a channel, set the action in channelOpt to join, name to channel name, and orgName to org name:
 
     "channelOpt": {
-        "name": "testOrg1",
+        "name": "testChannel1",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -348,7 +399,7 @@ To install a chaincode, set the transType as install:
 and set channelOpt name to channel name and orgName to org name:
 
     "channelOpt": {
-        "name":  "testOrg1",
+        "name":  "testChannel1",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -368,7 +419,7 @@ To install a chaincode, set the transType as install:
 and set channelOpt name to channel name:
 
     "channelOpt": {
-        "name":  "testOrg1",
+        "name":  "testChannel1",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -398,7 +449,7 @@ To execute invoke (move) transactions, set the transType to Invoke and invokeTyp
 and the channel name in channelOpt:
 
     "channelOpt": {
-        "name": "testOrg1",
+        "name": "testChannel1",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -425,7 +476,7 @@ To execute invoke (move) transactions, set the transType to Invoke and invokeTyp
 and the channel name in channelOpt:
 
     "channelOpt": {
-        "name": "testOrg1",
+        "name": "testChannel1",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -446,12 +497,13 @@ and the channel name in channelOpt:
 
 The output includes network id, thread id, transaction type, total transactions, completed transactions, failed transactions, starting time, ending time, and elapsed time.
 
-The following is an example of invoke queries test output. The test contains 4 threads on one network.  The output shows that network 0 thread 0 executed 100 queries with no failure in 1487 ms, network 0 thread 2 executed 100 queries with no failure in 1498 ms etc. 
+The following is an example of invoke moves test output. The test contains 4 threads on one network.  The output shows that network 0 thread 0 executed 1000 moves with no failure in 406530 ms, network 0 thread 1 executed 1000 moves with no failure in 400421 ms etc.  Also, the starting and ending timestamps are provided.
 
-    [Nid:id=0:0] completed 100 Invoke(Query) in 1487 ms, timestamp: start 1481250240860 end 1481250242347
-    [Nid:id=0:2] completed 100 Invoke(Query) in 1498 ms, timestamp: start 1481250240861 end 1481250242359
-    [Nid:id=0:1] completed 100 Invoke(Query) in 1525 ms, timestamp: start 1481250240861 end 1481250242386
-    [Nid:id=0:3] completed 100 Invoke(Query) in 1800 ms, timestamp: start 1481250240861 end 1481250242661
+    stdout: [Nid:id=0:3] eventRegister: completed 1000(1000) Invoke(Move) in 259473 ms, timestamp: start 1492024894518 end 1492025153991
+    stdout: [Nid:id=0:2] eventRegister: completed 1000(1000) Invoke(Move) in 364174 ms, timestamp: start 1492024894499 end 1492025258673
+    stdout: [Nid:id=0:1] eventRegister: completed 1000(1000) Invoke(Move) in 400421 ms, timestamp: start 1492024894500 end 1492025294921
+    stdout: [Nid:id=0:0] eventRegister: completed 1000(1000) Invoke(Move) in 406530 ms, timestamp: start 1492024894498 end 1492025301028
+
 
 
 
@@ -459,7 +511,7 @@ The following is an example of invoke queries test output. The test contains 4 t
 
 The following test cases execute the same command
 
-    pte_driver.sh runCases.txt
+    pte_driver.sh userInputs/runCases.txt
 
 with a specific runCases.txt.
 
@@ -467,7 +519,7 @@ with a specific runCases.txt.
 
 That the runCases.txt contains:
 
-    sdk=node userInput-samplecc-latency-i.json
+    sdk=node samplecc-latency-i.json
 
 will execute 1000 invokes (Move) with 1 thread on one network using sample_cc chaincode.  The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Move).
 
@@ -476,7 +528,7 @@ will execute 1000 invokes (Move) with 1 thread on one network using sample_cc ch
 
 That the runCases.txt contains:
 
-    sdk=node userInput-samplecc-longrun-i.json
+    sdk=node userInputs/samplecc-longrun-i.json
 
 will execute invokes (Move) of various payload size ranging from 1kb-2kb with 1 threads on one network using sample_cc chaincode for 72 hours at 1 transaction per second.
 
@@ -485,7 +537,7 @@ will execute invokes (Move) of various payload size ranging from 1kb-2kb with 1 
 
 That the runCases.txt contains:
 
-    sdk=node userInput-samplecc-concurrency-i.json
+    sdk=node samplecc-concurrency-i.json
 
 will execute invokes (Move) of 1kb payload with 50 threads on one 4-peer network using sample_cc chaincode for 10 minutes.
 
@@ -494,7 +546,7 @@ will execute invokes (Move) of 1kb payload with 50 threads on one 4-peer network
 
 That the runCases.txt contains:
 
-    sdk=node userInput-samplecc-complex-i.json
+    sdk=node samplecc-complex-i.json
 
 will execute invokes (Move) of various payload size ranging from 10kb-500kb with 10 threads on one 4-peer network using sample_cc chaincode for 10 minutes. Each invoke (Move) is followed by an invoke (Query).
 
