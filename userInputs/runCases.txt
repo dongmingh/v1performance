@@ -1,5 +1,5 @@
-sdk=node userInputs/samplecc-chan1-i.json
-sdk=node userInputs/samplecc-chan2-i.json
+#sdk=node userInputs/samplecc-chan1-i.json
+#sdk=node userInputs/samplecc-chan2-i.json
 #sdk=node userInputs/samplecc-chan1-q.json
 #sdk=node userInputs/samplecc-chan2-q.json
 #sdk=node userInputs/samplecc-chan1-latency-i.json

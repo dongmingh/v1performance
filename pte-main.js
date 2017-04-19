@@ -359,7 +359,7 @@ function channelAddPeerEvent(chain, client, org) {
                                 ORGS[org][key].requests,
                                 {
                                     pem: Buffer.from(data).toString(),
-                                    'ssl-target-name-override': ORGS[key]['server-hostname']
+                                    'ssl-target-name-override': ORGS[org][key]['server-hostname']
                                 }
                             );
                         } else {
@@ -371,6 +371,7 @@ function channelAddPeerEvent(chain, client, org) {
 
                         eh=new EventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
+                            let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -655,7 +656,7 @@ function createOneChannel(client, org) {
             })
             .then((store) => {
                 client.setStateStore(store);
-                return testUtil.getSubmitter(users.username, users.secret, client, false, org)
+                return testUtil.getSubmitter(users.username, users.secret, client, true, org)
             })
             .then((admin) => {
                 console.log('[createOneChannel] Successfully enrolled user \'admin\'');

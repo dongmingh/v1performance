@@ -35,7 +35,7 @@
     "constantOpt": {
         "recHist": "HIST",
         "constFreq": "1000",
-        "devFreq": "100"
+        "devFreq": "10"
     },
     "ccType": "ccchecker",
     "ccOpt": {

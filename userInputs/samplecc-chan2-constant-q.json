@@ -1,13 +1,13 @@
 {
-    "channelID": "_ch1",
+    "channelID": "_ch2",
     "chaincodeID": "sample_cc",
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
-    "invokeCheck": "TRUE",
+    "invokeCheck": "FALSE",
     "transMode": "Constant",
     "transType": "Invoke",
-    "invokeType": "Move",
+    "invokeType": "Query",
     "nOrderer": "1",
     "nPeer": "4",
     "nOrg": "2",
@@ -17,7 +17,7 @@
     "runDur": "600",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testChannel1",
+        "name": "testChannel2",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -39,7 +39,7 @@
     },
     "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "1000",
+        "keyStart": "10000",
         "payLoadMin": "1024",
         "payLoadMax": "1024"
     },
@@ -59,6 +59,6 @@
         }
     },
     "SCFile": [
-		{"ServiceCredentials":"SCFiles/config-chan1.json"}
+		{"ServiceCredentials":"SCFiles/config-chan2.json"}
 	]
 }

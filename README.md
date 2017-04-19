@@ -372,7 +372,7 @@ To join all peers in an org to a channel, set the action in channelOpt to join, 
 
     "channelOpt": {
         "name": "testChannel1",
-        "action":  "create",
+        "action":  "join",
         "orgName": [
             "testOrg1"
         ]
@@ -394,7 +394,7 @@ To install or instantiate a chaincode, set up the deploy clause according to the
 To install a chaincode, set the transType as install:
 
     "transMode": "Simple",
-    "transType": "instantiate",
+    "transType": "install",
     "invokeType": "Move",
 
 and set channelOpt name to channel name and orgName to org name:
