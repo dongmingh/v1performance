@@ -66,8 +66,8 @@ testUtil.setupChaincodeDeploy();
 var Nid = parseInt(process.argv[2]);
 var uiFile = process.argv[3];
 var tStart = parseInt(process.argv[4]);
-var uiContent = JSON.parse(fs.readFileSync(uiFile));
 console.log('input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, uiFile, tStart);
+var uiContent = JSON.parse(fs.readFileSync(uiFile));
 
 var TLS=uiContent.TLS;
 var channelID = uiContent.channelID;
@@ -429,7 +429,7 @@ function chaincodeInstall(chain, client, org) {
     chainAddOrderer(chain, client, org);
 
     channelAddPeer(chain, client, org);
-    printChainInfo(chain);
+    //printChainInfo(chain);
 
     nonce = utils.getNonce();
     tx_id = hfc.buildTransactionID(nonce, the_user);
@@ -487,7 +487,7 @@ function chaincodeInstantiate(chain, client, org) {
 
         chainAddOrderer(chain, client, org);
         channelAddAnchorPeer(chain, client);
-        printChainInfo(chain);
+        //printChainInfo(chain);
 
         chain.initialize()
         .then((success) => {
@@ -656,7 +656,7 @@ function createOneChannel(client, org) {
             })
             .then((store) => {
                 client.setStateStore(store);
-                return testUtil.getSubmitter(users.username, users.secret, client, true, org)
+                return testUtil.getSubmitter(users.username, users.secret, client, false, org)
             })
             .then((admin) => {
                 console.log('[createOneChannel] Successfully enrolled user \'admin\'');
@@ -732,7 +732,7 @@ function joinChannel(chain, client, org) {
         // add peers and events
         channelAddPeerEvent(chain, client, org);
 
-        printChainInfo(chain);
+        //printChainInfo(chain);
 
         return hfc.newDefaultKeyValueStore({
                 path: testUtil.storePathForOrg(orgName)
@@ -753,6 +753,7 @@ function joinChannel(chain, client, org) {
                         txId :  tx_id,
                         nonce : nonce
                 };
+                console.log('[joinChannel:%s] request: ', org, request);
                 var eventPromises = [];
                 //console.log('[joinChannel] for each', eventHubs);
 
