@@ -268,6 +268,8 @@ The service credentials contain the information of the network.  The following i
                         "name": "PeerOrg1",
                         "mspid": "PeerOrg1",
                         "ca": "http://10.120.223.35:7054",
+                        "username": "admin",
+                        "secret": "adminpw",
                         "peer1": {
                                 "requests": "grpc://10.120.223.35:7061",
                                 "events": "grpc://10.120.223.35:6051",
@@ -285,6 +287,8 @@ The service credentials contain the information of the network.  The following i
                         "name": "PeerOrg2",
                         "mspid": "PeerOrg2",
                         "ca": "http://10.120.223.35:7055",
+                        "username": "admin",
+                        "secret": "adminpw",
                         "peer1": {
                                 "requests": "grpc://10.120.223.35:7063",
                                 "events": "grpc://10.120.223.35:6053",
@@ -298,14 +302,7 @@ The service credentials contain the information of the network.  The following i
                                 "tls_cacerts": "../fixtures/tls/peers/peer3/ca-cert.pem"
                         }
                 }
-        },
-        "users":
-        {
-            "username": "admin",
-            "secret": "adminpw",
-            "affiliation": "bank_a"
         }
-
     }
 
 
@@ -332,7 +329,7 @@ The following chaincodes are tested and supported:
 File runCases.txt may contain more than one testcase, executed sequentially.
 A testcase is a userInput file, which defines all the test parameters, including transaction type, number of threads, number of transactions, duration, etc. 
 All threads in one testcase will concurrently execute the specified transaction.
-Different transactions may be used in different testcases included within a single runCases.txt file, making it possible for example to send a certain number of invokes to all peers and then query each peer.
+Different transactions may be used in different testCases included within a single runCases.txt file, making it possible for example to send a certain number of invokes to all peers and then query each peer.
 
 Two types of transaction requests:
 

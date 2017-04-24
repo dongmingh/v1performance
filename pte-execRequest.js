@@ -92,7 +92,8 @@ var pid = parseInt(process.argv[2]);
 var Nid = parseInt(process.argv[3]);
 var uiFile = process.argv[4];
 var tStart = parseInt(process.argv[5]);
-console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, pid, Nid, uiFile, tStart);
+var org=process.argv[6];
+console.log('[Nid:id=%d:%d] input parameters: Nid=%d, uiFile=%s, tStart=%d, org=%s', Nid, pid, Nid, uiFile, tStart, org);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 var TLS=uiContent.TLS;
 var channelOpt=uiContent.channelOpt;
@@ -127,7 +128,6 @@ console.log('[Nid:id=%d:%d] logLevel: %s', Nid, pid, logLevel);
 logger.setLevel(logLevel);
 
 var svcFile = uiContent.SCFile[0].ServiceCredentials;
-var org=channelOrgName[0];
 console.log('svcFile: %s, org: %s', svcFile, org);
 hfc.addConfigFile(path.join(__dirname, svcFile));
 var ORGS = hfc.getConfigSetting('test-network');
@@ -182,7 +182,7 @@ var request_invoke;
 function getMoveRequest() {
     if ( ccType == 'ccchecker') {
         arg0 ++;
-        testInvokeArgs[1] = 'key_'+channelID+'_'+pid+'_'+arg0;
+        testInvokeArgs[1] = 'key_'+channelID+'_'+org+'_'+pid+'_'+arg0;
         // random payload
         var r = Math.floor(Math.random() * (payLoadMax - payLoadMin)) + payLoadMin;
 
@@ -224,7 +224,7 @@ var request_query;
 function getQueryRequest() {
     if ( ccType == 'ccchecker') {
         arg0 ++;
-        testQueryArgs[1] = 'key_'+channelID+'_'+pid+'_'+arg0;
+        testQueryArgs[1] = 'key_'+channelID+'_'+org+'_'+pid+'_'+arg0;
     }
 
     nonce = utils.getNonce();
@@ -293,6 +293,56 @@ function assignThreadPeer(chain, client) {
     }
     console.log('[assignThreadPeer Nid:pid=%d:%d] add peer: ', Nid, pid, chain.getPeers());
 }
+
+function assignThreadOrgPeer(chain, client, org) {
+    console.log('[assignThreadOrgPeer Nid:pid=%d:%d] chain name: %s, org: %s', Nid, pid, chain.getName(), org);
+    var peerIdx=0;
+    var peerTmp;
+    var eh;
+    for (let key in ORGS[org]) {
+        if (ORGS[org].hasOwnProperty(key)) {
+            if (key.indexOf('peer') === 0) {
+                if (peerIdx == pid % nPeerPerOrg) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(path.join(__dirname, ORGS[org][key].tls_cacerts));
+                    peerTmp = new Peer(
+                        ORGS[org][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[org][key].server-hostname
+                        }
+                    );
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                } else {
+                    peerTmp = client.newPeer( ORGS[org][key].requests);
+                    targets.push(peerTmp);
+                    chain.addPeer(peerTmp);
+                }
+
+                    eh=new EventHub();
+                    if (TLS.toUpperCase() == 'ENABLED') {
+                        eh.setPeerAddr(
+                            ORGS[org][key].events,
+                            {
+                                pem: Buffer.from(data).toString(),
+                                'ssl-target-name-override': ORGS[org][key].server-hostname
+                            }
+                        );
+                    } else {
+                        eh.setPeerAddr(ORGS[org][key].events);
+                    }
+                    eh.connect();
+                    eventHubs.push(eh);
+                    console.log('[assignThreadOrgPeer] requests: %s, events: %s ', ORGS[org][key].requests, ORGS[org][key].events);
+                }
+                peerIdx++;
+            }
+        }
+    }
+    console.log('[assignThreadOrgPeer Nid:pid=%d:%d] org: %s, add peer: ', Nid, pid, org, chain.getPeers());
+}
+
 
 function channelAddPeer(chain, client, org) {
     console.log('[channelAddPeer] chain name: ', chain.getName());
@@ -474,7 +524,7 @@ function execTransMode() {
                     channelAddOrderer(chain, client, org)
 
                     //channelAddAnchorPeer(chain, client, org);
-                    assignThreadPeer(chain, client);
+                    assignThreadOrgPeer(chain, client, org);
 
 	            tCurr = new Date().getTime();
                     var tSynchUp=tStart-tCurr;

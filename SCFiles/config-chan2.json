@@ -9,6 +9,8 @@
 			"name": "PeerOrg1",
 			"mspid": "PeerOrg1",
 			"ca": "http://10.120.223.35:7054",
+			"username": "admin",
+			"secret": "adminpw",
 			"peer1": {
 				"requests": "grpc://10.120.223.35:7061",
 				"events": "grpc://10.120.223.35:6051",
@@ -26,6 +28,8 @@
 			"name": "PeerOrg2",
 			"mspid": "PeerOrg2",
 			"ca": "http://10.120.223.35:7055",
+			"username": "admin",
+			"secret": "adminpw",
 			"peer1": {
 				"requests": "grpc://10.120.223.35:7063",
 				"events": "grpc://10.120.223.35:6053",
@@ -39,12 +43,6 @@
                                 "tls_cacerts": "../fixtures/tls/peers/peer3/ca-cert.pem"
 			}
 		}
-	},
-     "users": 
-      {
-        "username": "admin",
-        "secret": "adminpw",
-        "affiliation": "bank_a"
-    }
+        }
 
 }

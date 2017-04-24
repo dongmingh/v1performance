@@ -646,6 +646,9 @@ function chaincodeInstantiate(chain, client, org) {
 function createOneChannel(client, org) {
         orgName = ORGS[org].name;
         console.log('[createOneChannel] org= %s, org name=%s', org, orgName);
+        var username = ORGS[org].username;
+        var secret = ORGS[org].secret;
+        console.log('[createOneChannel] user= %s, secret=%s', username, secret);
 
         clientNewOrderer(client, org);
 
@@ -656,7 +659,7 @@ function createOneChannel(client, org) {
             })
             .then((store) => {
                 client.setStateStore(store);
-                return testUtil.getSubmitter(users.username, users.secret, client, false, org)
+                return testUtil.getSubmitter(username, secret, client, false, org)
             })
             .then((admin) => {
                 console.log('[createOneChannel] Successfully enrolled user \'admin\'');
@@ -724,7 +727,9 @@ function createOneChannel(client, org) {
 function joinChannel(chain, client, org) {
         orgName = ORGS[org].name;
         console.log('[joinChannel] Calling peers in organization "%s" to join the channel "%s"', orgName, chain.getName());
-        //console.log('[joinChannel] user name: ', users.username, users.secret);
+        var username = ORGS[org].username;
+        var secret = ORGS[org].secret;
+        console.log('[joinChannel] user=%s, secret=%s', username, secret);
 
         // add orderers
         chainAddOrderer(chain, client, org);
@@ -740,7 +745,7 @@ function joinChannel(chain, client, org) {
         .then((store) => {
                 client.setStateStore(store);
                 console.log('[joinChannel] user name: ', users.username, users.secret);
-                return testUtil.getSubmitter(users.username, users.secret, client, false, org);
+                return testUtil.getSubmitter(username, secret, client, false, org);
         })
         .then((admin) => {
                 console.log('[joinChannel:%s] Successfully enrolled user \'admin\'', org);
@@ -844,14 +849,16 @@ function performance_main() {
         var client = new hfc();
 
         if ( (transType.toUpperCase() == 'INSTALL') || (transType.toUpperCase() == 'INSTANTIATE') ) {
-                console.log('DEPLOY: ');
+            var username = ORGS[org].username;
+            var secret = ORGS[org].secret;
+            console.log('[performance_main] Deploy: user= %s, secret=%s', username, secret);
 
             hfc.newDefaultKeyValueStore({
                 path: testUtil.storePathForOrg(orgName)
             })
             .then((store) => {
                 client.setStateStore(store);
-                testUtil.getSubmitter(users.username, users.secret, client, false, org)
+                testUtil.getSubmitter(username, secret, client, false, org)
                 .then(
                     function(admin) {
                         console.log('[performance_main:Nid=%d] Successfully enrolled user \'admin\'', Nid);
@@ -877,7 +884,7 @@ function performance_main() {
         } else if ( transType.toUpperCase() == 'INVOKE' ) {
             // spawn off processes for transactions
             for (var j = 0; j < nThread; j++) {
-                var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart]);
+                var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart, org]);
 
                 workerProcess.stdout.on('data', function (data) {
                     console.log('stdout: ' + data);
