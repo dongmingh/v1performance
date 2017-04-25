@@ -53,7 +53,6 @@ utils.setConfigSetting('crypto-keysize', 256);
 
 
 // local vars
-var the_user;
 var tmp;
 var tCurr;
 var tEnd;
@@ -504,6 +503,10 @@ function execTransMode() {
     var caRootsPath = ORGS.orderer.tls_cacerts;
     let data = fs.readFileSync(path.join(__dirname, caRootsPath));
     let caroots = Buffer.from(data).toString();
+    var username = ORGS[org].username;
+    var secret = ORGS[org].secret;
+    console.log('[createOneChannel] user= %s, secret=%s', username, secret);
+
 
 
     //enroll user
@@ -514,7 +517,7 @@ function execTransMode() {
             client.setStateStore(store);
             console.log('[Nid:id=%d:%d] Successfully setStateStore', Nid, pid);
 
-            testUtil.getSubmitter(users.username, users.secret, client, false, org)
+            testUtil.getSubmitter(username, secret, client, false, org)
             .then(
                 function(admin) {
 

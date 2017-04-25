@@ -744,7 +744,6 @@ function joinChannel(chain, client, org) {
         })
         .then((store) => {
                 client.setStateStore(store);
-                console.log('[joinChannel] user name: ', users.username, users.secret);
                 return testUtil.getSubmitter(username, secret, client, false, org);
         })
         .then((admin) => {
