@@ -29,7 +29,6 @@
 				"events": "grpc://10.120.223.35:6052",
                                 "server-hostname": "peer1",
                                 "tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls/ca-cert.pem"
-                                "tls_cacerts": "../fixtures/tls/peers/peer1/ca-cert.pem"
 			}
 		},
 		"org2": {
