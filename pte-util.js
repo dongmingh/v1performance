@@ -17,6 +17,7 @@
 var path = require('path');
 var fs = require('fs-extra');
 var os = require('os');
+var util = require('util');
 
 var jsrsa = require('jsrsasign');
 var KEYUTIL = jsrsa.KEYUTIL;
@@ -29,6 +30,7 @@ var KeyStore = require('fabric-client/lib/impl/CryptoKeyStore.js');
 var ecdsaKey = require('fabric-client/lib/impl/ecdsa/key.js');
 
 module.exports.CHAINCODE_PATH = 'github.com/example_cc';
+module.exports.CHAINCODE_UPGRADE_PATH = 'github.com/example_cc1';
 module.exports.CHAINCODE_MARBLES_PATH = 'github.com/marbles_cc';
 module.exports.END2END = {
 	channel: 'mychannel',
@@ -84,91 +86,92 @@ module.exports.existsSync = function(absolutePath /*string*/) {
 
 module.exports.readFile = readFile;
 
-hfc.addConfigFile(path.join(__dirname, '../mBCN/SCFiles/config.json'));
-//var ORGS = hfc.getConfigSetting('test-network');
+var ORGS;
 
-var     tlsOptions = {
-        trustedRoots: [],
-        verify: false
+var	tlsOptions = {
+	trustedRoots: [],
+	verify: false
 };
 
-function getSubmitter(username, password, client, loadFromConfig, userOrg) {
-        var ORGS = hfc.getConfigSetting('test-network');
-	var caUrl = ORGS[userOrg].ca;
-        console.log('[getSubmitter] ca: ', caUrl);
+function getMember(username, password, client, userOrg, svcFile) {
+        hfc.addConfigFile(svcFile);
+        ORGS = hfc.getConfigSetting('test-network');
 
-	return client.getUserContext(username)
+	var caUrl = ORGS[userOrg].ca.url;
+        console.log('[getMember] ca url: %s, name: %s, username: %s, password: %s', caUrl, ORGS[userOrg].ca.name, username, password);
+
+	return client.getUserContext(username, true)
 	.then((user) => {
 		return new Promise((resolve, reject) => {
 			if (user && user.isEnrolled()) {
-				console.log('util: Successfully loaded member from persistence');
+				console.log('Successfully loaded member from persistence');
 				return resolve(user);
 			}
 
-			if (!loadFromConfig) {
-				// need to enroll it with CA server
-				var cop = new copService(caUrl, tlsOptions);
+			// need to enroll it with CA server
+			var cop = new copService(caUrl, tlsOptions, ORGS[userOrg].ca.name);
 
-				var member;
-				return cop.enroll({
-					enrollmentID: username,
-					enrollmentSecret: password
-				}).then((enrollment) => {
-					console.log('Successfully enrolled user \'' + username + '\'');
+			var member;
+			return cop.enroll({
+				enrollmentID: username,
+				enrollmentSecret: password
+			}).then((enrollment) => {
+				console.log('Successfully enrolled user \'' + username + '\'');
 
-					member = new User(username);
-					return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
-				}).then(() => {
-					return client.setUserContext(member);
-				}).then(() => {
-					return resolve(member);
-				}).catch((err) => {
-					console.log('Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
-					process.exit();
-				});
-			} else {
-				// need to load private key and pre-enrolled certificate from files based on the MSP
-				// config directory structure:
-				// <config>
-				//    \_ keystore
-				//       \_ admin.pem  <<== this is the private key saved in PEM file
-				//    \_ signcerts
-				//       \_ admin.pem  <<== this is the signed certificate saved in PEM file
-
-				// first load the private key and save in the BCCSP's key store
-				var privKeyPEM = path.join(__dirname, '../fixtures/msp/local/keystore/admin.pem');
-				var pemData, member;
-				return readFile(privKeyPEM)
-				.then((data) => {
-					pemData = data;
-					// default crypto suite uses $HOME/.hfc-key-store as key store
-					var kspath = CryptoSuite.getDefaultKeyStorePath();
-					var testKey;
-					return new KeyStore({
-						path: kspath
-					});
-				}).then((store) => {
-					var rawKey = KEYUTIL.getKey(pemData.toString());
-					testKey = new ecdsaKey(rawKey);
-					return store.putKey(testKey);
-				}).then((value) => {
-					// next save the certificate in a serialized user enrollment in the state store
-					var certPEM = path.join(__dirname, '../fixtures/msp/local/signcerts/admin.pem');
-					return readFile(certPEM);
-				}).then((data) => {
-					member = new User(username);
-					return member.setEnrollment(testKey, data.toString(), ORGS[userOrg].mspid);
-				}).then(() => {
-					return client.setUserContext(member);
-				}).then((user) => {
-					return resolve(user);
-				}).catch((err) => {
-					reject(new Error('Failed to load key or certificate and save to local stores. ' + err));
-					process.exit();
-				});
-			}
+				member = new User(username);
+				return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
+			}).then(() => {
+				return client.setUserContext(member);
+			}).then(() => {
+				return resolve(member);
+			}).catch((err) => {
+				console.log('Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
+				console.log();
+			});
 		});
 	});
+}
+
+function getAdmin(client, userOrg, svcFile) {
+        hfc.addConfigFile(svcFile);
+        ORGS = hfc.getConfigSetting('test-network');
+        var mspPath = ORGS[userOrg].mspPath;
+	var keyPath =  util.format(mspPath+'/peerOrganizations/%s.example.com/users/Admin@%s.example.com/msp/keystore', userOrg, userOrg);
+	var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
+	var certPath = util.format(mspPath+'/peerOrganizations/%s.example.com/users/Admin@%s.example.com/msp/signcerts', userOrg, userOrg);
+	var certPEM = readAllFiles(certPath)[0];
+        console.log('[getAdmin] keyPath: %s', keyPath);
+        console.log('[getAdmin] certPath: %s', certPath);
+
+	return Promise.resolve(client.createUser({
+		username: 'peer'+userOrg+'Admin',
+		mspid: ORGS[userOrg].mspid,
+		cryptoContent: {
+			privateKeyPEM: keyPEM.toString(),
+			signedCertPEM: certPEM.toString()
+		}
+	}));
+}
+
+function getOrdererAdmin(client, userOrg, svcFile) {
+        hfc.addConfigFile(svcFile);
+        ORGS = hfc.getConfigSetting('test-network');
+        var mspPath = ORGS.orderer.mspPath;
+	var keyPath =  util.format(mspPath+'/ordererOrganizations/%s.example.com/users/Admin@%s.example.com/msp/keystore', 'orderer1', 'orderer1');
+	var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
+	var certPath = util.format(mspPath+'/ordererOrganizations/%s.example.com/users/Admin@%s.example.com/msp/signcerts', 'orderer1', 'orderer1');
+	var certPEM = readAllFiles(certPath)[0];
+        console.log('[getOrdererAdmin] keyPath: %s', keyPath);
+        console.log('[getOrdererAdmin] certPath: %s', certPath);
+
+	return Promise.resolve(client.createUser({
+		username: 'ordererAdmin',
+		mspid: ORGS.orderer.mspid,
+		cryptoContent: {
+			privateKeyPEM: keyPEM.toString(),
+			signedCertPEM: certPEM.toString()
+		}
+	}));
 }
 
 function readFile(path) {
@@ -182,18 +185,35 @@ function readFile(path) {
 	});
 }
 
-module.exports.getSubmitter = function(username, password, client, loadFromConfig, org) {
+function readAllFiles(dir) {
+	var files = fs.readdirSync(dir);
+	var certs = [];
+	files.forEach((file_name) => {
+		let file_path = path.join(dir,file_name);
+		//console.log(' looking at file ::'+file_path);
+		let data = fs.readFileSync(file_path);
+		certs.push(data);
+	});
+	return certs;
+}
+
+module.exports.getOrderAdminSubmitter = function(client, userOrg, svcFile) {
+	return getOrdererAdmin(client, userOrg, svcFile);
+};
+
+module.exports.getSubmitter = function(username, secret, client, peerOrgAdmin, org, svcFile) {
 	if (arguments.length < 2) throw new Error('"client" and "test" are both required parameters');
 
-	var fromConfig, userOrg;
-	if (typeof loadFromConfig === 'boolean') {
-		fromConfig = loadFromConfig;
+	var peerAdmin, userOrg;
+	if (typeof peerOrgAdmin === 'boolean') {
+		peerAdmin = peerOrgAdmin;
 	} else {
-		fromConfig = false;
+		peerAdmin = false;
 	}
 
-	if (typeof loadFromConfig === 'string') {
-		userOrg = loadFromConfig;
+	// if the 3rd argument was skipped
+	if (typeof peerOrgAdmin === 'string') {
+		userOrg = peerOrgAdmin;
 	} else {
 		if (typeof org === 'string') {
 			userOrg = org;
@@ -202,5 +222,10 @@ module.exports.getSubmitter = function(username, password, client, loadFromConfi
 		}
 	}
 
-	return getSubmitter(username, password, client, fromConfig, userOrg);
+	if (peerAdmin) {
+		console.log(' >>>> getting the org admin');
+		return getAdmin(client, userOrg, svcFile);
+	} else {
+		return getMember(username, secret, client, userOrg, svcFile);
+	}
 };

@@ -15,10 +15,10 @@
     "runDur": "600",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testChannel1",
+        "name": "testOrgsChannel1",
         "action":  "join",
         "orgName": [
-            "testOrg1"
+            "org1"
         ]
     },
     "burstOpt": {

@@ -17,11 +17,11 @@
     "runDur": "600",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testChannel2",
+        "name": "testOrgsChannel2",
         "action":  "create",
         "orgName": [
-            "testOrg1",
-            "testOrg2"
+            "org1",
+            "org2"
         ]
     },
     "burstOpt": {
@@ -40,12 +40,12 @@
     },
     "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "10000",
+        "keyStart": "1000",
         "payLoadMin": "1024",
         "payLoadMax": "1024"
     },
     "deploy": {
-        "chaincodePath": "github.com/sample_cc",
+        "chaincodePath": "github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",
         "fcn": "init",
         "args": []
     },

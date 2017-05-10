@@ -59,7 +59,7 @@ var webUser = null;
 var tmp;
 var i=0;
 
-testUtil.setupChaincodeDeploy();
+//testUtil.setupChaincodeDeploy();
 
 
 // input: userinput json file
@@ -74,7 +74,7 @@ var channelID = uiContent.channelID;
 var chaincode_id = uiContent.chaincodeID+channelID;
 var chaincode_ver = uiContent.chaincodeVer;
 var chain_id = uiContent.chainID+channelID;
-console.log('[chaincodeInstall:Nid=%d] chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
+console.log('chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
 
 var channelOpt=uiContent.channelOpt;
 var channelName=channelOpt.name;
@@ -131,7 +131,7 @@ function printChainInfo(chain) {
 function clientNewOrderer(client, org) {
     if (TLS.toUpperCase() == 'ENABLED') {
         var caRootsPath = ORGS.orderer.tls_cacerts;
-        let data = fs.readFileSync(path.join(__dirname, caRootsPath));
+        let data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
         orderer = client.newOrderer(
@@ -144,13 +144,14 @@ function clientNewOrderer(client, org) {
     } else {
         orderer = client.newOrderer(ORGS.orderer.url);
     }
+    console.log('[clientNewOrderer] orderer: %s', ORGS.orderer.url);
 }
 
 function chainAddOrderer(chain, client, org) {
     console.log('[chainAddOrderer] chain name: ', chain.getName());
     if (TLS.toUpperCase() == 'ENABLED') {
         var caRootsPath = ORGS.orderer.tls_cacerts;
-        let data = fs.readFileSync(path.join(__dirname, caRootsPath));
+        var data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
         chain.addOrderer(
@@ -172,35 +173,36 @@ function chainAddOrderer(chain, client, org) {
 function channelAddAllPeer(chain, client) {
     console.log('[channelAddAllPeer] chain name: ', chain.getName());
     var peerTmp;
+    var data;
     var eh;
     for (let key1 in ORGS) {
         if (ORGS.hasOwnProperty(key1)) {
             for (let key in ORGS[key1]) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(__dirname, ORGS[key1][key].tls_cacerts));
-                    peerTmp = new Peer(
+                    data = fs.readFileSync(ORGS[key1][key].tls_cacerts);
+                    peerTmp = client.newPeer(
                         ORGS[key1][key].requests,
                         {
                             pem: Buffer.from(data).toString(),
-                            'ssl-target-name-override': ORGS[key1][key].server-hostname
+                            'ssl-target-name-override': ORGS[key1][key]['server-hostname']
                         }
                     );
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 } else {
-                    peerTmp = new Peer( ORGS[key1][key].requests);
+                    peerTmp = client.newPeer( ORGS[key1][key].requests);
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 }
 
-                eh=new EventHub();
+                eh=new EventHub(client);
                 if (TLS.toUpperCase() == 'ENABLED') {
                     eh.setPeerAddr(
                         ORGS[key1][key].events,
                         {
                             pem: Buffer.from(data).toString(),
-                            'ssl-target-name-override': ORGS[key1][key].server-hostname
+                            'ssl-target-name-override': ORGS[key1][key]['server-hostname']
                         }
                     );
                 } else {
@@ -217,18 +219,19 @@ function channelAddAllPeer(chain, client) {
 function channelRemoveAllPeer(chain, client) {
     console.log('[channelRemoveAllPeer] chain name: ', chain.getName());
     var peerTmp;
+    var data;
     var eh;
     for (let key1 in ORGS) {
         if (ORGS.hasOwnProperty(key1)) {
             for (let key in ORGS[key1]) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(__dirname, ORGS[key1][key].tls_cacerts));
-                    peerTmp = new Peer(
+                    data = fs.readFileSync(ORGS[key1][key].tls_cacerts);
+                    peerTmp = client.newPeer(
                         ORGS[key1][key].requests,
                         {
                             pem: Buffer.from(data).toString(),
-                            'ssl-target-name-override': ORGS[key1][key].server-hostname
+                            'ssl-target-name-override': ORGS[key1][key]['server-hostname']
                         }
                     );
                     if (chain.isValidPeer(peerTmp)) {
@@ -236,7 +239,7 @@ function channelRemoveAllPeer(chain, client) {
                         chain.removePeer(peerTmp);
                     }
                 } else {
-                    peerTmp = new Peer( ORGS[key1][key].requests);
+                    peerTmp = client.newPeer( ORGS[key1][key].requests);
                     if (chain.isValidPeer(peerTmp)) {
                         console.log('[channelRemoveAllPeer] chain remove peer: ', ORGS[key1][key].requests);
                         chain.removePeer(peerTmp);
@@ -249,30 +252,34 @@ function channelRemoveAllPeer(chain, client) {
     }
 }
 
-function channelAddAnchorPeer(chain, client) {
+function channelAddAnchorPeer(chain, client, org) {
     console.log('[channelAddAnchorPeer] chain name: ', chain.getName());
     var peerTmp;
+    var data;
     var eh;
     for (let key in ORGS) {
         if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
-                if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(__dirname, ORGS[key].peer1['tls_cacerts']));
-                    peerTmp = new Peer(
-                        ORGS[key].peer1.requests,
-                        {
-                            pem: Buffer.from(data).toString(),
-                            'ssl-target-name-override': ORGS[key].peer1['server-hostname']
-                        }
-                    );
-                    targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
-                } else {
-                    peerTmp = new Peer( ORGS[key].peer1.requests);
-                    targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
-                }
+            if (TLS.toUpperCase() == 'ENABLED') {
+                data = fs.readFileSync(ORGS[key].peer1['tls_cacerts']);
+                peerTmp = client.newPeer(
+                    ORGS[key].peer1.requests,
+                    {
+                        pem: Buffer.from(data).toString(),
+                        'ssl-target-name-override': ORGS[key].peer1['server-hostname']
+                    }
+                );
+                targets.push(peerTmp);
+                chain.addPeer(peerTmp);
+            } else {
+                peerTmp = client.newPeer( ORGS[key].peer1.requests);
+                targets.push(peerTmp);
+                chain.addPeer(peerTmp);
+            }
+            console.log('[channelAddAnchorPeer] requests: %s', ORGS[key].peer1.requests);
 
-                eh=new EventHub();
+            //an event listener can only register with a peer in its own org
+            if ( key == org ) {
+                eh=new EventHub(client);
                 if (TLS.toUpperCase() == 'ENABLED') {
                     eh.setPeerAddr(
                         ORGS[key].peer1.events,
@@ -286,7 +293,8 @@ function channelAddAnchorPeer(chain, client) {
                 }
                 eh.connect();
                 eventHubs.push(eh);
-                console.log('[channelAddAnchorPeer] requests: %s, events: %s ', ORGS[key].peer1.requests, ORGS[key].peer1.events);
+                console.log('[channelAddAnchorPeer] events: %s ', ORGS[key].peer1.events);
+            }
         }
     }
 }
@@ -299,8 +307,8 @@ function channelAddPeer(chain, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
-                    peerTmp = new Peer(
+                    let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                    peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
                             pem: Buffer.from(data).toString(),
@@ -310,7 +318,7 @@ function channelAddPeer(chain, client, org) {
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 } else {
-                    peerTmp = new Peer( ORGS[org][key].requests);
+                    peerTmp = client.newPeer( ORGS[org][key].requests);
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
                 }
@@ -327,8 +335,8 @@ function channelRemovePeer(chain, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
-                    peerTmp = new Peer(
+                    let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                    peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
                             pem: Buffer.from(data).toString(),
@@ -337,13 +345,62 @@ function channelRemovePeer(chain, client, org) {
                     );
                     chain.removePeer(peerTmp);
                 } else {
-                    peerTmp = new Peer( ORGS[org][key].requests);
+                    peerTmp = client.newPeer( ORGS[org][key].requests);
                     targets.push(peerTmp);
                     chain.removePeer(peerTmp);
                 }
             }
         }
     }
+}
+
+
+function channelAddPeerEventJoin(chain, client, org) {
+    console.log('[channelAddPeerEvent] chain name: ', chain.getName());
+            var eh;
+            var peerTmp;
+            for (let key in ORGS[org]) {
+                if (ORGS[org].hasOwnProperty(key)) {
+                    if (key.indexOf('peer') === 0) {
+                        if (TLS.toUpperCase() == 'ENABLED') {
+                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            targets.push(
+                                client.newPeer(
+                                    ORGS[org][key].requests,
+                                    {
+                                        pem: Buffer.from(data).toString(),
+                                        'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                                    }
+                                )
+                            );
+                        } else {
+                            targets.push(
+                                client.newPeer(
+                                    ORGS[org][key].requests
+                                )
+                            );
+                            console.log('[channelAddPeerEvent] peer: ', ORGS[org][key].requests);
+                        }
+
+                        eh=new EventHub(client);
+                        if (TLS.toUpperCase() == 'ENABLED') {
+                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            eh.setPeerAddr(
+                                ORGS[org][key].events,
+                                {
+                                    pem: Buffer.from(data).toString(),
+                                    'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                                }
+                            );
+                        } else {
+                            eh.setPeerAddr(ORGS[org][key].events);
+                        }
+                        eh.connect();
+                        eventHubs.push(eh);
+                        console.log('[channelAddPeerEvent] requests: %s, events: %s ', ORGS[org][key].requests, ORGS[org][key].events);
+                    }
+                }
+            }
 }
 
 function channelAddPeerEvent(chain, client, org) {
@@ -354,24 +411,27 @@ function channelAddPeerEvent(chain, client, org) {
                 if (ORGS[org].hasOwnProperty(key)) {
                     if (key.indexOf('peer') === 0) {
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
-                            peerTmp = new Peer(
-                                ORGS[org][key].requests,
-                                {
-                                    pem: Buffer.from(data).toString(),
-                                    'ssl-target-name-override': ORGS[org][key]['server-hostname']
-                                }
+                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            peerTmp = client.newPeer(
+                                    ORGS[org][key].requests,
+                                    {
+                                        pem: Buffer.from(data).toString(),
+                                        'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                                    }
                             );
+                            targets.push(peerTmp);
+                            chain.addPeer(peerTmp);
                         } else {
-                            peerTmp = new Peer( ORGS[org][key].requests);
+                            peerTmp = client.newPeer(
+                                    ORGS[org][key].requests
+                            );
+                            chain.addPeer(peerTmp);
                             console.log('[channelAddPeerEvent] peer: ', ORGS[org][key].requests);
                         }
-                        targets.push(peerTmp);
-                        chain.addPeer(peerTmp);
 
-                        eh=new EventHub();
+                        eh=new EventHub(client);
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(path.join(__dirname, ORGS[org][key]['tls_cacerts']));
+                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -397,7 +457,7 @@ function channelAddEvent(chain, client, org) {
                 if (ORGS[org].hasOwnProperty(key)) {
                     if (key.indexOf('peer') === 0) {
 
-                        eh=new EventHub();
+                        eh=new EventHub(client);
                         if (TLS.toUpperCase() == 'ENABLED') {
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
@@ -423,7 +483,7 @@ performance_main();
 
 // install chaincode
 function chaincodeInstall(chain, client, org) {
-    console.log('chaincodeInstall: ', org);
+    console.log('[chaincodeInstall]: ', org);
     orgName = ORGS[org].name;
 
     chainAddOrderer(chain, client, org);
@@ -486,7 +546,8 @@ function chaincodeInstantiate(chain, client, org) {
         console.log('[chaincodeInstantiate] org= %s, org name=%s, chain name=%s', org, orgName, chain.getName());
 
         chainAddOrderer(chain, client, org);
-        channelAddAnchorPeer(chain, client);
+        //channelAddPeerEvent(chain, client, org);
+        channelAddAnchorPeer(chain, client, org);
         //printChainInfo(chain);
 
         chain.initialize()
@@ -574,7 +635,7 @@ function chaincodeInstantiate(chain, client, org) {
                 var eventPromises = [];
                 eventHubs.forEach((eh) => {
                     let txPromise = new Promise((resolve, reject) => {
-                        let handle = setTimeout(reject, 30000);
+                        let handle = setTimeout(reject, 120000);
 
                         eh.registerTxEvent(deployId.toString(), (tx, code) => {
                             var tCurr1=new Date().getTime();
@@ -642,33 +703,232 @@ function chaincodeInstantiate(chain, client, org) {
     );
 }
 
+function readAllFiles(dir) {
+        var files = fs.readdirSync(dir);
+        var certs = [];
+        files.forEach((file_name) => {
+                let file_path = path.join(dir,file_name);
+                //console.log('[readAllFiles] looking at file ::'+file_path);
+                let data = fs.readFileSync(file_path);
+                certs.push(data);
+        });
+        return certs;
+}
+
+
+function pushMSP(client, msps) {
+
+    for (let key in ORGS) {
+        //console.log('[pushMSP] key: %s', key);
+        if (key.indexOf('orderer') === 0) {
+            var msp = {};
+            msp.id = ORGS[key].mspid;
+            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/orderer1.example.com/msp/', 'cacerts'));
+            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/orderer1.example.com/msp/', 'admincerts'));
+            msps.push(client.newMSP(msp));
+        } else if (key.indexOf('org') === 0) {
+            var msp = {};
+            msp.id = ORGS[key].mspid;
+            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.example.com/msp/', 'cacerts'));
+            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.example.com/msp/', 'admincerts'));
+            msps.push(client.newMSP(msp));
+        }
+    }
+}
+
 //create channel
 function createOneChannel(client, org) {
         orgName = ORGS[org].name;
-        console.log('[createOneChannel] org= %s, org name=%s', org, orgName);
+        console.log('[createOneChannel] org= %s, org name= %s', org, orgName);
         var username = ORGS[org].username;
         var secret = ORGS[org].secret;
-        console.log('[createOneChannel] user= %s, secret=%s', username, secret);
+        console.log('[createOneChannel] user= %s, secret= %s', username, secret);
 
         clientNewOrderer(client, org);
 
-            // Acting as a client in org when creating the channel
+        var ACCEPT_ALL = {
+                identities: [],
+                policy: {
+                        '0-of': []
+                }
+        };
+
+
+        var test_input3 = {
+                channel : {
+                        name : channelName,
+                        consortium : 'SampleConsortium',
+                        peers : {
+                                organizations : [{
+                                        id : 'PeerOrg1',
+                                        //msp : { mspid : 'Org1MSP'},
+                                        policies : {
+
+                                        }
+                                },{
+                                        id : 'PeerOrg2',
+                                        //msp : { mspid : 'Org2MSP'},
+                                        policies : {
+
+                                        }
+                                }],
+                                policies : {
+                                        Admins  : {threshold : 'ANY'},
+                                        Writers : {threshold : 'ANY'},
+                                        Readers : {threshold : 'ANY'},
+                                },
+                        }
+                }
+        };
+
+        var config = null;
+        var signatures = [];
+        var msps = [];
+        var key;
+
+        pushMSP(client, msps);
+
+        utils.setConfigSetting('key-value-store', 'fabric-client/lib/impl/FileKeyValueStore.js');
 
             hfc.newDefaultKeyValueStore({
                 path: testUtil.storePathForOrg(orgName)
             })
             .then((store) => {
                 client.setStateStore(store);
-                return testUtil.getSubmitter(username, secret, client, false, org)
+                return testUtil.getOrderAdminSubmitter(client, org, svcFile);
             })
             .then((admin) => {
                 console.log('[createOneChannel] Successfully enrolled user \'admin\'');
+                //console.log('test_input3: ', test_input3);
+                //console.log('orderer: ', orderer);
+                //console.log('msps: ', msps);
+                return client.buildChannelConfig(test_input3, orderer, msps);
+            }).then((config_bytes) => {
+                console.log('\n***\n built config \n***\n');
+                console.log('Successfully built config update');
+                config = config_bytes;
+
+                key = 'org1';
+                username=ORGS[key].username;
+                secret=ORGS[key].secret;
+                client._userContext = null;
+                return testUtil.getSubmitter(username, secret, client, true, key, svcFile);
+            }).then((admin) => {
+                //the_user = admin;
+                console.log('[createOneChannel] admin : ', admin);
+                console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                var signature = client.signChannelConfig(config);
+                console.log('[createOneChannel] Successfully signed config update: ', key);
+                // collect signature from org1 admin
+                // TODO: signature counting against policies on the orderer
+                // at the moment is being investigated, but it requires this
+                // weird double-signature from each org admin
+                signatures.push(signature);
+                signatures.push(signature);
+                //console.log('[createOneChannel] org-signature: ', signature);
+
+                key = 'org2';
+                username=ORGS[key].username;
+                secret=ORGS[key].secret;
+                client._userContext = null;
+                return testUtil.getSubmitter(username, secret, client, true, key, svcFile);
+            }).then((admin) => {
+                //the_user = admin;
+                console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                var signature = client.signChannelConfig(config);
+                console.log('[createOneChannel] Successfully signed config update: ', key);
+                // collect signature from org1 admin
+                // TODO: signature counting against policies on the orderer
+                // at the moment is being investigated, but it requires this
+                // weird double-signature from each org admin
+                signatures.push(signature);
+                signatures.push(signature);
+                //console.log('[createOneChannel] org-signature: ', signature);
+
+                key='orderer';
+                client._userContext = null;
+                return testUtil.getOrderAdminSubmitter(client, key, svcFile);
+            }).then((admin) => {
                 the_user = admin;
+                console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                var signature = client.signChannelConfig(config);
+                console.log('[createOneChannel] Successfully signed config update: ', key);
+                console.log('[createOneChannel] admin : ', admin);
+                // collect signature from org1 admin
+                // TODO: signature counting against policies on the orderer
+                // at the moment is being investigated, but it requires this
+                // weird double-signature from each org admin
+                signatures.push(signature);
+                signatures.push(signature);
+                //console.log('[createOneChannel] orderer-signature: ', signature);
+
+                // sign config for all org
+/*
+
+                for (let key in ORGS) {
+                    console.log('[createOneChannel] key: %s ', key);
+
+                    if ( key.indexOf('org') === 0) {
+                    username=ORGS[key].username;
+                    secret=ORGS[key].secret;
+                    console.log('[createOneChannel] key: %s, username: %s, secret: %s', key, username, secret);
+                        client._userContext = null;
+                        testUtil.getSubmitter(username, secret, client, true, key, svcFile)
+                        .then((admin) => {
+                                console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                                var signature = client.signChannelConfig(config);
+                                console.log('[createOneChannel] Successfully signed config update: ', key);
+                                // collect signature from org1 admin
+                                // TODO: signature counting against policies on the orderer
+                                // at the moment is being investigated, but it requires this
+                                // weird double-signature from each org admin
+                                signatures.push(signature);
+                                signatures.push(signature);
+                                console.log('[createOneChannel] org-signature: ', signature);
+                            }
+                        )
+                    } 
+                }
+                    var key='orderer';
+                        client._userContext = null;
+                        testUtil.getOrderAdminSubmitter(client, key, svcFile)
+                        .then((admin) => {
+                                the_user = admin;
+                                console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                                var signature = client.signChannelConfig(config);
+                                console.log('[createOneChannel] Successfully signed config update: ', key);
+                                // collect signature from org1 admin
+                                // TODO: signature counting against policies on the orderer
+                                // at the moment is being investigated, but it requires this
+                                // weird double-signature from each org admin
+                                signatures.push(signature);
+                                signatures.push(signature);
+                                console.log('[createOneChannel] orderer-signature: ', signature);
+                            }
+                        )
+*/
+
+
+                //console.log('[createOneChannel] signatures: ', signatures);
+                console.log('[createOneChannel] done signing: %s', channelName);
+
+                // build up the create request
+                let nonce = utils.getNonce();
+                let tx_id = Client.buildTransactionID(nonce, the_user);
+                var request = {
+                        config: config,
+                        signatures : signatures,
+                        name : channelName,
+                        orderer : orderer,
+                        txId  : tx_id,
+                        nonce : nonce
+                };
 
                 //FIXME: temporary fix until mspid is configured into Chain
                 //the_user.mspImpl._id = ORGS[org].mspid;
 
                 // readin the envelope to send to the orderer
+/*
                 cfgtxFile=gopath+'/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/'+channelName+'.tx';
                 var data =fs.readFileSync(cfgtxFile);
                 console.log('[createOneChannel] Successfully read file: %s', cfgtxFile);
@@ -677,6 +937,7 @@ function createOneChannel(client, org) {
                         name : channelName,
                         orderer : orderer
                 };
+*/
                 // send to orderer
                 //console.log('chain orderer: ', chain.getOrderers());
                 console.log('request: ',request);
@@ -686,29 +947,15 @@ function createOneChannel(client, org) {
                 evtDisconnect();
                 process.exit();
             })
-            .then((chain) => {
-                logger.debug(' response ::%j',chain);
+            .then((result) => {
 
-                if (chain) {
-                        var test_orderers = chain.getOrderers();
-                        if(test_orderers) {
-                                var test_orderer = test_orderers[0];
-                                if(test_orderer === orderer) {
-                                        console.log('Successfully created the channel(%s).', channelName);
-                                }
-                                else {
-                                        console.log('Chain did not have the orderer.');
-                                }
-                        }
-                        return;
-                } else {
-                        console.log('Failed to create the channel. ');
-                        evtDisconnect();
-                        process.exit();
-                }
+                console.log('[createOneChannel] Successfully created the channel (%s).', channelName);
+                evtDisconnect();
+                process.exit();
 
             }, (err) => {
-                console.log('Failed to initialize the channel: ' + err.stack ? err.stack : err);
+                console.log('Failed to create the channel (%s) ', channelName);
+                console.log('Failed to create the channel:: %j '+ err.stack ? err.stack : err);
                 evtDisconnect();
                 process.exit();
             })
@@ -730,41 +977,53 @@ function joinChannel(chain, client, org) {
         var username = ORGS[org].username;
         var secret = ORGS[org].secret;
         console.log('[joinChannel] user=%s, secret=%s', username, secret);
+        var genesis_block = null;
 
         // add orderers
         chainAddOrderer(chain, client, org);
-
-        // add peers and events
-        channelAddPeerEvent(chain, client, org);
 
         //printChainInfo(chain);
 
         return hfc.newDefaultKeyValueStore({
                 path: testUtil.storePathForOrg(orgName)
-        })
-        .then((store) => {
+        }).then((store) => {
                 client.setStateStore(store);
-                return testUtil.getSubmitter(username, secret, client, false, org);
-        })
-        .then((admin) => {
+                client._userContext = null;
+                return testUtil.getOrderAdminSubmitter(client, org, svcFile)
+        }).then((admin) => {
                 console.log('[joinChannel:%s] Successfully enrolled user \'admin\'', org);
                 the_user = admin;
+                console.log('[joinChannel] orderer admin: ', admin);
 
                 nonce = utils.getNonce();
                 tx_id = hfc.buildTransactionID(nonce, the_user);
                 var request = {
-                        targets : targets,
                         txId :  tx_id,
                         nonce : nonce
                 };
-                console.log('[joinChannel:%s] request: ', org, request);
+                return chain.getGenesisBlock(request);
+        }).then((block) =>{
+                console.log('[joinChannel:org=%s:%s] Successfully got the genesis block', channelName, org);
+                genesis_block = block;
+
+                client._userContext = null;
+                return testUtil.getSubmitter(username, secret, client, true, org, svcFile);
+        }).then((admin) => {
+                console.log('[joinChannel] Successfully enrolled org:' + org + ' \'admin\'');
+                the_user = admin;
+                console.log('[joinChannel] org admin: ', admin);
+
+                // add peers and events
+                //channelAddPeerEvent(chain, client, org);
+                channelAddPeerEventJoin(chain, client, org);
+
+
                 var eventPromises = [];
                 //console.log('[joinChannel] for each', eventHubs);
 
                 eventHubs.forEach((eh) => {
                         let txPromise = new Promise((resolve, reject) => {
                                 let handle = setTimeout(reject, 30000);
-//                console.log('[joinChannel] for each eh', eh);
 
                                 eh.registerBlockEvent((block) => {
                                         clearTimeout(handle);
@@ -794,8 +1053,18 @@ function joinChannel(chain, client, org) {
                         eventPromises.push(txPromise);
                 });
 
+                //console.log('[joinChannel] targets: ', targets);
+                nonce = utils.getNonce();
+                tx_id = hfc.buildTransactionID(nonce, the_user);
+                let request = {
+                        targets : targets,
+                        block : genesis_block,
+                        txId :  tx_id,
+                        nonce : nonce
+                };
 
                 var sendPromise = chain.joinChannel(request);
+                console.log('[joinChannel] sendPromise ');
                 return Promise.all([sendPromise].concat(eventPromises));
         }, (err) => {
                 console.log('[joinChannel] Failed to enroll user \'admin\' due to error: ' + err.stack ? err.stack : err);
@@ -844,33 +1113,27 @@ function performance_main() {
     for (i=0; i<channelOrgName.length; i++ ) {
         org = channelOrgName[i];
         orgName=ORGS[org].name;
-        console.log('[performance_main]: org=%s, org Name= %s', org, orgName);
+        console.log('[performance_main] org= %s, org Name= %s', org, orgName);
         var client = new hfc();
 
-        if ( (transType.toUpperCase() == 'INSTALL') || (transType.toUpperCase() == 'INSTANTIATE') ) {
+        if ( transType.toUpperCase() == 'INSTALL' ) {
             var username = ORGS[org].username;
             var secret = ORGS[org].secret;
-            console.log('[performance_main] Deploy: user= %s, secret=%s', username, secret);
+            console.log('[performance_main] Deploy: user= %s, secret= %s', username, secret);
 
             hfc.newDefaultKeyValueStore({
                 path: testUtil.storePathForOrg(orgName)
             })
             .then((store) => {
                 client.setStateStore(store);
-                testUtil.getSubmitter(username, secret, client, false, org)
+                testUtil.getSubmitter(username, secret, client, true, org, svcFile)
                 .then(
                     function(admin) {
                         console.log('[performance_main:Nid=%d] Successfully enrolled user \'admin\'', Nid);
                         the_user = admin;
-                        if ( transType.toUpperCase() == 'INSTALL' ) {
-                            var chain = client.newChain(channelName);
-                            console.log('[performance_main] chain name: ', chain.getName());
-                            chaincodeInstall(chain, client, org);
-                        } else if ( transType.toUpperCase() == 'INSTANTIATE' ) {
-                            var chain = client.newChain(channelName);
-                            console.log('[performance_main] chain name: ', chain.getName());
-                            chaincodeInstantiate(chain, client, org);
-                        }
+                        var chain = client.newChain(channelName);
+                        console.log('[performance_main] chain name: ', chain.getName());
+                        chaincodeInstall(chain, client, org);
                     },
                     function(err) {
                         console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
@@ -880,6 +1143,42 @@ function performance_main() {
                     }
                 );
             });
+        } else if ( transType.toUpperCase() == 'INSTANTIATE' ) {
+            var username = ORGS[org].username;
+            var secret = ORGS[org].secret;
+            console.log('[performance_main] Deploy: user= %s, secret= %s', username, secret);
+
+            hfc.setConfigSetting('request-timeout', 60000);
+            hfc.newDefaultKeyValueStore({
+                path: testUtil.storePathForOrg(orgName)
+            })
+            .then((store) => {
+                client.setStateStore(store);
+                testUtil.getSubmitter(username, secret, client, false, org, svcFile)
+                .then(
+                    function(admin) {
+                        console.log('[performance_main:Nid=%d] Successfully enrolled user \'admin\'', Nid);
+                        the_user = admin;
+                        var chain = client.newChain(channelName);
+                        console.log('[performance_main] chain name: ', chain.getName());
+                        chaincodeInstantiate(chain, client, org);
+                    },
+                    function(err) {
+                        console.log('[Nid=%d] Failed to wait due to error: ', Nid, err.stack ? err.stack : err);
+                        evtDisconnect();
+
+                        return;
+                    }
+                );
+            });
+        } else if ( transType.toUpperCase() == 'CHANNEL' ) {
+            if ( channelOpt.action.toUpperCase() == 'CREATE' ) {
+                createOneChannel(client, org);
+            } else if ( channelOpt.action.toUpperCase() == 'JOIN' ) {
+                var chain = client.newChain(channelName);
+                console.log('[performance_main] chain name: ', chain.getName());
+                joinChannel(chain, client, org);
+            }
         } else if ( transType.toUpperCase() == 'INVOKE' ) {
             // spawn off processes for transactions
             for (var j = 0; j < nThread; j++) {
@@ -895,14 +1194,6 @@ function performance_main() {
 
                 workerProcess.on('close', function (code) {
                 });
-            }
-        } else if ( transType.toUpperCase() == 'CHANNEL' ) {
-            if ( channelOpt.action.toUpperCase() == 'CREATE' ) {
-                createOneChannel(client, org);
-            } else if ( channelOpt.action.toUpperCase() == 'JOIN' ) {
-                var chain = client.newChain(channelName);
-                console.log('[performance_main] chain name: ', chain.getName());
-                joinChannel(chain, client, org);
             }
         } else {
             console.log('[Nid=%d] invalid transType: %s', Nid, transType);
