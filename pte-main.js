@@ -760,13 +760,13 @@ function createOneChannel(client, org) {
                         consortium : 'SampleConsortium',
                         peers : {
                                 organizations : [{
-                                        id : 'PeerOrg1',
+                                        id : ORGS['org1'].name,
                                         //msp : { mspid : 'Org1MSP'},
                                         policies : {
 
                                         }
                                 },{
-                                        id : 'PeerOrg2',
+                                        id : ORGS['org2'].name,
                                         //msp : { mspid : 'Org2MSP'},
                                         policies : {
 
@@ -1154,7 +1154,7 @@ function performance_main() {
             })
             .then((store) => {
                 client.setStateStore(store);
-                testUtil.getSubmitter(username, secret, client, false, org, svcFile)
+                testUtil.getSubmitter(username, secret, client, true, org, svcFile)
                 .then(
                     function(admin) {
                         console.log('[performance_main:Nid=%d] Successfully enrolled user \'admin\'', Nid);

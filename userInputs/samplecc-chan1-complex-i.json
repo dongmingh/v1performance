@@ -12,7 +12,7 @@
     "nPeer": "4",
     "nOrg": "2",
     "nPeerPerOrg": "2",
-    "nThread": "2",
+    "nThread": "1",
     "nRequest": "0",
     "runDur": "600",
     "TLS": "disabled",
@@ -20,7 +20,8 @@
         "name": "testOrgsChannel1",
         "action":  "create",
         "orgName": [
-            "org1"
+            "org1",
+            "org2"
         ]
     },
     "burstOpt": {
@@ -30,7 +31,7 @@
         "burstDur1": "10000"
     },
     "mixOpt": {
-        "mixFreq": "2000"
+        "mixFreq": "100"
     },
     "constantOpt": {
         "recHist": "HIST",
@@ -41,7 +42,7 @@
     "ccOpt": {
         "keyStart": "200000",
         "payLoadMin": "1024",
-        "payLoadMax": "512000"
+        "payLoadMax": "1024"
     },
     "deploy": {
         "chaincodePath": "github.com/sample_cc",

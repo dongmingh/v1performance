@@ -41,7 +41,7 @@
     "ccOpt": {
         "keyStart": "100000",
         "payLoadMin": "1024",
-        "payLoadMax": "512000"
+        "payLoadMax": "1024"
     },
     "deploy": {
         "chaincodePath": "github.com/sample_cc",

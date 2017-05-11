@@ -136,9 +136,9 @@ function getAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
         var mspPath = ORGS[userOrg].mspPath;
-	var keyPath =  util.format(mspPath+'/peerOrganizations/%s.example.com/users/Admin@%s.example.com/msp/keystore', userOrg, userOrg);
+	var keyPath =  ORGS[userOrg].adminPath + '/keystore';
 	var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-	var certPath = util.format(mspPath+'/peerOrganizations/%s.example.com/users/Admin@%s.example.com/msp/signcerts', userOrg, userOrg);
+	var certPath = ORGS[userOrg].adminPath + '/signcerts';
 	var certPEM = readAllFiles(certPath)[0];
         console.log('[getAdmin] keyPath: %s', keyPath);
         console.log('[getAdmin] certPath: %s', certPath);
@@ -157,9 +157,9 @@ function getOrdererAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
         var mspPath = ORGS.orderer.mspPath;
-	var keyPath =  util.format(mspPath+'/ordererOrganizations/%s.example.com/users/Admin@%s.example.com/msp/keystore', 'orderer1', 'orderer1');
+	var keyPath =  ORGS.orderer.adminPath + '/keystore';
 	var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-	var certPath = util.format(mspPath+'/ordererOrganizations/%s.example.com/users/Admin@%s.example.com/msp/signcerts', 'orderer1', 'orderer1');
+	var certPath = ORGS.orderer.adminPath + '/signcerts';
 	var certPEM = readAllFiles(certPath)[0];
         console.log('[getOrdererAdmin] keyPath: %s', keyPath);
         console.log('[getOrdererAdmin] certPath: %s', certPath);

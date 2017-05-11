@@ -9,16 +9,25 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 - Fabric commit level: f3c61e6cc3b04915081b15bbed000b377b53c4c1
 - fabric-sdk-node commit level: 80d85084f574e593a634459e132eb8a552e80a7e
-- fabric-ca commit level: 77dc0ce08853615e6876db81fb9384c4e9c31209
-- PTE v1performance commit level: current (or 6e7909754fe427062f841d91ee9293aabcccafe3)
+- fabric-ca commit level: 4f8666363c13c48327edd4e75403a56b806d745b
+- PTE v1performance commit level: current
 
 ##Code Base for v1.0.0-alpha
 For v1.0.0-alpha support, use v1performance commit level  aa73747ccf5f511fbcd10a962dd1e588bde1a8b0.  Below is the v1.0.0-alpha commit levels.
 
 - Fabric commit level: fa3d88cde177750804c7175ae000e0923199735c
 - fabric-sdk-node commit level: 196d0484c884ab894374c73df89bfe047bcc9f00
-- fabric-ca commit level: 4f8666363c13c48327edd4e75403a56b806d745b
+- fabric-ca commit level: 29385879bc2931cce9ec833acf796129908b72fb
 - PTE v1performance commit level: aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`
+
+
+##Future items:
+
+- TLS is not supported (FAB-3126)
+- PTE needs to supports any number of organizations in a channel.  PTE supports two organizations per channel now (FAB-3809)
+- PTE can only send transactions to anchor peer of an organization.  It will need to be able to send transactions to any peer.
+- Endorsement policy is not supported yet.
+
 
 ##Pre-requisites
 

@@ -4,7 +4,7 @@
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
-    "invokeCheck": "FALSE",
+    "invokeCheck": "TRUE",
     "transMode": "Burst",
     "transType": "Invoke",
     "invokeType": "Move",
@@ -12,22 +12,23 @@
     "nPeer": "4",
     "nOrg": "2",
     "nPeerPerOrg": "2",
-    "nThread": "2",
+    "nThread": "1",
     "nRequest": "0",
-    "runDur": "600",
+    "runDur": "60",
     "TLS": "disabled",
     "channelOpt": {
         "name": "testOrgsChannel1",
         "action":  "create",
         "orgName": [
-            "org1"
+            "org1",
+            "org2"
         ]
     },
     "burstOpt": {
-        "burstFreq0":  "500",
-        "burstDur0":  "3000",
-        "burstFreq1": "2000",
-        "burstDur1": "10000"
+        "burstFreq0":  "5",
+        "burstDur0":  "500",
+        "burstFreq1": "20",
+        "burstDur1": "2000"
     },
     "mixOpt": {
         "mixFreq": "2000"
@@ -41,7 +42,7 @@
     "ccOpt": {
         "keyStart": "100000",
         "payLoadMin": "1024",
-        "payLoadMax": "512000"
+        "payLoadMax": "1024"
     },
     "deploy": {
         "chaincodePath": "github.com/sample_cc",

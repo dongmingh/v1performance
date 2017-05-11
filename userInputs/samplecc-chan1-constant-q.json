@@ -39,7 +39,7 @@
     },
     "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "10000",
+        "keyStart": "1000",
         "payLoadMin": "1024",
         "payLoadMax": "1024"
     },
