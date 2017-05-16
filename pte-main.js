@@ -541,22 +541,12 @@ function chaincodeInstall(chain, client, org) {
         });
 }
 
-//instantiate chaincode
-function chaincodeInstantiate(chain, client, org) {
-        console.log('[chaincodeInstantiate] org= %s, org name=%s, chain name=%s', org, orgName, chain.getName());
+function buildChaincodeProposal(the_user, upgrade, transientMap) {
+        let nonce = utils.getNonce();
+        let tx_id = hfc.buildTransactionID(nonce, the_user);
 
-        chainAddOrderer(chain, client, org);
-        //channelAddPeerEvent(chain, client, org);
-        channelAddAnchorPeer(chain, client, org);
-        //printChainInfo(chain);
-
-        chain.initialize()
-        .then((success) => {
-            console.log('[chaincodeInstantiate:Nid=%d] Successfully initialize chain[%s]', Nid, chain.getName());
-
-            nonce = utils.getNonce();
-            tx_id = hfc.buildTransactionID(nonce, the_user);
-            var request_instantiate = {
+        // send proposal to endorser
+        var request = {
                 chaincodePath: uiContent.deploy.chaincodePath,
                 chaincodeId: chaincode_id,
                 chaincodeVersion: chaincode_ver,
@@ -569,22 +559,12 @@ function chaincodeInstantiate(chain, client, org) {
                 // 'if signed by org1 admin, then that's the only signature required,
                 // but if that signature is missing, then the policy can also be fulfilled
                 // when members (non-admin) from both orgs signed'
-//                'endorsement-policy': {
 /*
-                    identities: [
-                        { role: { name: "member", mspId: "PeerOrg1" }},
-                        { role: { name: "member", mspId: "PeerOrg2" }}
-                    ],
-                    policy: {
-                        "1-of": [{ "signed-by": 0 }, { "signed-by": 1 }]
-                    }
-*/
-
-/*
+                'endorsement-policy': {
                         identities: [
-                                { role: { name: 'member', mspId: ORGS['testOrg1'].mspid }},
-                                { role: { name: 'member', mspId: ORGS['testOrg2'].mspid }},
-                                { role: { name: 'admin', mspId: ORGS['testOrg1'].mspid }}
+                                { role: { name: 'member', mspId: ORGS['org1'].mspid }},
+                                { role: { name: 'member', mspId: ORGS['org2'].mspid }},
+                                { role: { name: 'admin', mspId: ORGS['org1'].mspid }}
                         ],
                         policy: {
                                 '1-of': [
@@ -594,11 +574,40 @@ function chaincodeInstantiate(chain, client, org) {
                         }
                 }
 */
-            };
+        };
+
+        if(upgrade) {
+                // use this call to test the transient map support during chaincode instantiation
+                request.transientMap = transientMap;
+        }
+
+        return { request: request, tx_id: tx_id };
+}
+
+//instantiate chaincode
+function chaincodeInstantiate(chain, client, org) {
+        console.log('[chaincodeInstantiate] org= %s, org name=%s, chain name=%s', org, orgName, chain.getName());
+
+        chainAddOrderer(chain, client, org);
+        //channelAddPeerEvent(chain, client, org);
+        channelAddAnchorPeer(chain, client, org);
+        //printChainInfo(chain);
+
+        chain.initialize()
+        .then((success) => {
+            console.log('[chaincodeInstantiate:Nid=%d] Successfully initialize chain[%s]', Nid, chain.getName());
+            var upgrade = false;
+
+            var badTransientMap = { 'test1': 'transientValue' }; // have a different key than what the chaincode example_cc1.go expects in Init()
+            var transientMap = { 'test': 'transientValue' };
+            var request = buildChaincodeProposal(the_user, upgrade, badTransientMap);
+            tx_id = request.tx_id;
+            request = request.request;
+
 
             // sendInstantiateProposal
             //console.log('request_instantiate: ', request_instantiate);
-            return chain.sendInstantiateProposal(request_instantiate);
+            return chain.sendInstantiateProposal(request);
         },
         function(err) {
             console.log('Failed to initialize chain[%s] due to error: ', chain.getName(),  err.stack ? err.stack : err);
@@ -708,7 +717,7 @@ function readAllFiles(dir) {
         var certs = [];
         files.forEach((file_name) => {
                 let file_path = path.join(dir,file_name);
-                //console.log('[readAllFiles] looking at file ::'+file_path);
+                console.log('[readAllFiles] looking at file ::'+file_path);
                 let data = fs.readFileSync(file_path);
                 certs.push(data);
         });
@@ -719,12 +728,12 @@ function readAllFiles(dir) {
 function pushMSP(client, msps) {
 
     for (let key in ORGS) {
-        //console.log('[pushMSP] key: %s', key);
+        console.log('[pushMSP] key: %s, ORGS[key].mspid: %s', key, ORGS[key].mspid);
         if (key.indexOf('orderer') === 0) {
             var msp = {};
             msp.id = ORGS[key].mspid;
-            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/orderer1.example.com/msp/', 'cacerts'));
-            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/orderer1.example.com/msp/', 'admincerts'));
+            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/example.com/msp/', 'cacerts'));
+            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/example.com/msp/', 'admincerts'));
             msps.push(client.newMSP(msp));
         } else if (key.indexOf('org') === 0) {
             var msp = {};
@@ -773,7 +782,7 @@ function createOneChannel(client, org) {
                                         }
                                 }],
                                 policies : {
-                                        Admins  : {threshold : 'ANY'},
+                                        Admins  : {threshold : 'MAJORITY'},
                                         Writers : {threshold : 'ANY'},
                                         Readers : {threshold : 'ANY'},
                                 },
@@ -798,7 +807,7 @@ function createOneChannel(client, org) {
                 return testUtil.getOrderAdminSubmitter(client, org, svcFile);
             })
             .then((admin) => {
-                console.log('[createOneChannel] Successfully enrolled user \'admin\'');
+                console.log('[createOneChannel] Successfully enrolled user \'admin\' for orderer');
                 //console.log('test_input3: ', test_input3);
                 //console.log('orderer: ', orderer);
                 //console.log('msps: ', msps);

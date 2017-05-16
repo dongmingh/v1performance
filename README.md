@@ -7,9 +7,11 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 ##Code Base
 
-- Fabric commit level: f3c61e6cc3b04915081b15bbed000b377b53c4c1
-- fabric-sdk-node commit level: 80d85084f574e593a634459e132eb8a552e80a7e
-- fabric-ca commit level: 4f8666363c13c48327edd4e75403a56b806d745b
+release v1.0.0-alpha2
+
+- Fabric commit level: 6b6bfcfbd1e798a8a08fa9c3bf4dc0ff766a6b87
+- fabric-sdk-node commit level: f13f4b42e7155ec0dc3d7485b202bb6a6ca73aed
+- fabric-ca commit level: f5216c35e8ce46e8c04842ec529d2c1974b95894
 - PTE v1performance commit level: current
 
 ##Code Base for v1.0.0-alpha
@@ -25,8 +27,9 @@ For v1.0.0-alpha support, use v1performance commit level  aa73747ccf5f511fbcd10a
 
 - TLS is not supported (FAB-3126)
 - PTE needs to supports any number of organizations in a channel.  PTE supports two organizations per channel now (FAB-3809)
-- PTE can only send transactions to anchor peer of an organization.  It will need to be able to send transactions to any peer.
+- PTE can only send transactions to the anchor peer of an organization.  It will need to be able to send transactions to any peer.
 - Endorsement policy is not supported yet.
+- replace 'git clone https://github.com/hyperledger/fabric-sdk-node.git' with fabric-client and fabric-ca-client
 
 
 ##Pre-requisites
@@ -44,17 +47,17 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 1. cd $GOPATH/src/github.com/hyperledger
 - git clone https://github.com/hyperledger/fabric
 - cd fabric
-- git reset --hard f3c61e6cc3b04915081b15bbed000b377b53c4c1
+- git reset --hard 6b6bfcfbd1e798a8a08fa9c3bf4dc0ff766a6b87
 - make docker
 - cd ..
 - git clone https://github.com/hyperledger/fabric-ca
 - cd fabric-ca
-- git reset --hard 4f8666363c13c48327edd4e75403a56b806d745b
+- git reset --hard f5216c35e8ce46e8c04842ec529d2c1974b95894
 - make docker
 - cd ..
 - git clone https://github.com/hyperledger/fabric-sdk-node.git
 - cd fabric-sdk-node
-- git reset --hard 80d85084f574e593a634459e132eb8a552e80a7e
+- git reset --hard f13f4b42e7155ec0dc3d7485b202bb6a6ca73aed
 - rm -rf node_modules
 - npm install
 - gulp ca

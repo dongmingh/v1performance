@@ -94,11 +94,12 @@ var	tlsOptions = {
 };
 
 function getMember(username, password, client, userOrg, svcFile) {
-        hfc.addConfigFile(svcFile);
-        ORGS = hfc.getConfigSetting('test-network');
+	hfc.addConfigFile(svcFile);
+	ORGS = hfc.getConfigSetting('test-network');
 
 	var caUrl = ORGS[userOrg].ca.url;
-        console.log('[getMember] ca url: %s, name: %s, username: %s, password: %s', caUrl, ORGS[userOrg].ca.name, username, password);
+
+	console.log('getMember, name: '+username+', client.getUserContext('+username+', true)');
 
 	return client.getUserContext(username, true)
 	.then((user) => {
@@ -108,17 +109,24 @@ function getMember(username, password, client, userOrg, svcFile) {
 				return resolve(user);
 			}
 
-			// need to enroll it with CA server
-			var cop = new copService(caUrl, tlsOptions, ORGS[userOrg].ca.name);
+			var member = new User(username);
+			var cryptoSuite = null;
+			if (userOrg) {
+				cryptoSuite = client.newCryptoSuite({path: module.exports.storePathForOrg(ORGS[userOrg].name)});
+			} else {
+				cryptoSuite = client.newCryptoSuite();
+			}
+			member.setCryptoSuite(cryptoSuite);
 
-			var member;
+			// need to enroll it with CA server
+			var cop = new copService(caUrl, tlsOptions, ORGS[userOrg].ca.name, cryptoSuite);
+
 			return cop.enroll({
 				enrollmentID: username,
 				enrollmentSecret: password
 			}).then((enrollment) => {
 				console.log('Successfully enrolled user \'' + username + '\'');
 
-				member = new User(username);
 				return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
 			}).then(() => {
 				return client.setUserContext(member);
@@ -126,7 +134,6 @@ function getMember(username, password, client, userOrg, svcFile) {
 				return resolve(member);
 			}).catch((err) => {
 				console.log('Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
-				console.log();
 			});
 		});
 	});
@@ -136,12 +143,16 @@ function getAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
         var mspPath = ORGS[userOrg].mspPath;
-	var keyPath =  ORGS[userOrg].adminPath + '/keystore';
-	var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-	var certPath = ORGS[userOrg].adminPath + '/signcerts';
-	var certPEM = readAllFiles(certPath)[0];
+        var keyPath =  ORGS[userOrg].adminPath + '/keystore';
+        var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
+        var certPath = ORGS[userOrg].adminPath + '/signcerts';
+        var certPEM = readAllFiles(certPath)[0];
         console.log('[getAdmin] keyPath: %s', keyPath);
         console.log('[getAdmin] certPath: %s', certPath);
+
+	if (userOrg) {
+		client.newCryptoSuite({path: module.exports.storePathForOrg(ORGS[userOrg].name)});
+	}
 
 	return Promise.resolve(client.createUser({
 		username: 'peer'+userOrg+'Admin',
@@ -157,10 +168,10 @@ function getOrdererAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
         var mspPath = ORGS.orderer.mspPath;
-	var keyPath =  ORGS.orderer.adminPath + '/keystore';
-	var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-	var certPath = ORGS.orderer.adminPath + '/signcerts';
-	var certPEM = readAllFiles(certPath)[0];
+        var keyPath =  ORGS.orderer.adminPath + '/keystore';
+        var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
+        var certPath = ORGS.orderer.adminPath + '/signcerts';
+        var certPEM = readAllFiles(certPath)[0];
         console.log('[getOrdererAdmin] keyPath: %s', keyPath);
         console.log('[getOrdererAdmin] certPath: %s', certPath);
 
@@ -190,7 +201,7 @@ function readAllFiles(dir) {
 	var certs = [];
 	files.forEach((file_name) => {
 		let file_path = path.join(dir,file_name);
-		//console.log(' looking at file ::'+file_path);
+		console.log(' looking at file ::'+file_path);
 		let data = fs.readFileSync(file_path);
 		certs.push(data);
 	});

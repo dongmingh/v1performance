@@ -447,10 +447,11 @@ function channelAddAnchorPeer(chain, client, org) {
     console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddAnchorPeer] chain name: %s', Nid, pid, channelName, org, chain.getName());
     var peerTmp;
     var eh;
+    var data;
     for (let key in ORGS) {
         if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(ORGS[key].peer1['tls_cacerts']);
+                    data = fs.readFileSync(ORGS[key].peer1['tls_cacerts']);
                     peerTmp = client.newPeer(
                         ORGS[key].peer1.requests,
                         {
