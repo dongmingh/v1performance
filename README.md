@@ -25,7 +25,6 @@ For v1.0.0-alpha support, use v1performance commit level  aa73747ccf5f511fbcd10a
 
 ##Future items:
 
-- TLS is not supported (FAB-3126)
 - PTE needs to supports any number of organizations in a channel.  PTE supports two organizations per channel now (FAB-3809)
 - PTE can only send transactions to the anchor peer of an organization.  It will need to be able to send transactions to any peer.
 - Endorsement policy is not supported yet.
