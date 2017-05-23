@@ -130,6 +130,7 @@ Available SDK types are node, python and java. However, currently only node SDK 
         "TLS": "disabled",
         "channelOpt": {
             "name": "testOrg1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testOrgsChannel1.tx",
             "action":  "create",
             "orgName": [
                 "testOrg1"
@@ -222,6 +223,7 @@ where:
 
 + **channelOpt**: transType channel options
   - name: channel name
+  - channelTX: channel transaction file
   - action: channel action: create or join
   - orgName: name of organization for the test
 

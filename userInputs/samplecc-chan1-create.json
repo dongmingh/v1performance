@@ -15,7 +15,8 @@
     "runDur": "600",
     "TLS": "disabled",
     "channelOpt": {
-        "name": "testOrgsChannel1",
+        "name": "mychannel",
+        "channelTX": "channel-artifacts/channel.tx",
         "action":  "create",
         "orgName": [
             "org1"

@@ -78,6 +78,7 @@ console.log('chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_
 
 var channelOpt=uiContent.channelOpt;
 var channelName=channelOpt.name;
+var channelTX=channelOpt.channelTX;
 var channelOrgName = [];
 for (i=0; i<channelOpt.orgName.length; i++) {
     channelOrgName.push(channelOpt.orgName[i]);
@@ -755,42 +756,8 @@ function createOneChannel(client, org) {
 
         clientNewOrderer(client, org);
 
-        var ACCEPT_ALL = {
-                identities: [],
-                policy: {
-                        '0-of': []
-                }
-        };
-
-
-        var test_input3 = {
-                channel : {
-                        name : channelName,
-                        consortium : 'SampleConsortium',
-                        peers : {
-                                organizations : [{
-                                        id : ORGS['org1'].name,
-                                        //msp : { mspid : 'Org1MSP'},
-                                        policies : {
-
-                                        }
-                                },{
-                                        id : ORGS['org2'].name,
-                                        //msp : { mspid : 'Org2MSP'},
-                                        policies : {
-
-                                        }
-                                }],
-                                policies : {
-                                        Admins  : {threshold : 'MAJORITY'},
-                                        Writers : {threshold : 'ANY'},
-                                        Readers : {threshold : 'ANY'},
-                                },
-                        }
-                }
-        };
-
         var config = null;
+        var envelope_bytes = null;
         var signatures = [];
         var msps = [];
         var key;
@@ -804,18 +771,6 @@ function createOneChannel(client, org) {
             })
             .then((store) => {
                 client.setStateStore(store);
-                return testUtil.getOrderAdminSubmitter(client, org, svcFile);
-            })
-            .then((admin) => {
-                console.log('[createOneChannel] Successfully enrolled user \'admin\' for orderer');
-                //console.log('test_input3: ', test_input3);
-                //console.log('orderer: ', orderer);
-                //console.log('msps: ', msps);
-                return client.buildChannelConfig(test_input3, orderer, msps);
-            }).then((config_bytes) => {
-                console.log('\n***\n built config \n***\n');
-                console.log('Successfully built config update');
-                config = config_bytes;
 
                 key = 'org1';
                 username=ORGS[key].username;
@@ -824,8 +779,11 @@ function createOneChannel(client, org) {
                 return testUtil.getSubmitter(username, secret, client, true, key, svcFile);
             }).then((admin) => {
                 //the_user = admin;
-                console.log('[createOneChannel] admin : ', admin);
                 console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                envelope_bytes = fs.readFileSync(channelTX);
+                config = client.extractChannelConfig(envelope_bytes);
+                console.log('[createOneChannel] Successfull extracted the config update from the configtx envelope: ', channelTX);
+
                 var signature = client.signChannelConfig(config);
                 console.log('[createOneChannel] Successfully signed config update: ', key);
                 // collect signature from org1 admin

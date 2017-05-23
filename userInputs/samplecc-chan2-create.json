@@ -16,6 +16,7 @@
     "TLS": "disabled",
     "channelOpt": {
         "name": "testOrgsChannel2",
+        "channelTX": "channel-artifacts/channel.tx",
         "action":  "create",
         "orgName": [
             "org1"
