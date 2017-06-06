@@ -124,7 +124,7 @@ Available SDK types are node, python and java. However, currently only node SDK 
         "nOrderer": "1",
         "nOrg": "2",
         "nPeerPerOrg": "2",
-        "nThread": "4",
+        "nProc": "4",
         "nRequest": "0",
         "runDur": "600",
         "TLS": "disabled",
@@ -213,7 +213,7 @@ where:
 
 + **nPeerPerOrg**: number of peers per organization for the test
 
-+ **nThread**: number of threads for the test
++ **nProc**: number of processes for the test
 
 + **nRequest**: number of transactions to be executed for each thread
 
@@ -273,46 +273,71 @@ The service credentials contain the information of the network.  The following i
     {
         "test-network": {
                 "orderer": {
-                        "url": "grpc://10.120.223.35:5005",
-                        "server-hostname": "orderer0",
-                        "tls_cacerts": "../fixtures/tls/orderer/ca-cert.pem"
-                },
-                "testOrg1": {
-                        "name": "PeerOrg1",
-                        "mspid": "PeerOrg1",
-                        "ca": "http://10.120.223.35:7054",
-                        "username": "admin",
-                        "secret": "adminpw",
-                        "peer1": {
-                                "requests": "grpc://10.120.223.35:7061",
-                                "events": "grpc://10.120.223.35:6051",
-                                "server-hostname": "peer0",
-                                "tls_cacerts": "../fixtures/tls/peers/peer0/ca-cert.pem"
+                        "orderer1": {
+                                "name": "OrdererMSP",
+                                "mspid": "OrdererMSP",
+                                "mspPath": "./crypto-config",
+                                "adminPath": "./crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
+                                "comName": "example.com",
+                                "url": "grpcs://localhost:7050",
+                                "server-hostname": "orderer0.example.com",
+                                "tls_cacerts": "./crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/cacerts/ca.example.com-cert.pem"
                         },
-                        "peer2": {
-                                "requests": "grpc://10.120.223.35:7062",
-                                "events": "grpc://10.120.223.35:6052",
-                                "server-hostname": "peer1",
-                                "tls_cacerts": "../fixtures/tls/peers/peer1/ca-cert.pem"
+                        "orderer2": {
+                                "name": "OrdererMSP",
+                                "mspid": "OrdererMSP",
+                                "mspPath": "./crypto-config",
+                                "adminPath": "./crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
+                                "comName": "example.com",
+                                "url": "grpcs://localhost:8050",
+                                "server-hostname": "orderer1.example.com",
+                                "tls_cacerts": "./crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/msp/cacerts/ca.example.com-cert.pem"
                         }
                 },
-                "testOrg2": {
-                        "name": "PeerOrg2",
-                        "mspid": "PeerOrg2",
-                        "ca": "http://10.120.223.35:7055",
+                "org1": {
+                        "name": "Org1MSP",
+                        "mspid": "Org1MSP",
+                        "mspPath": "./crypto-config",
+                        "adminPath": "./crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp",
+                        "comName": "example.com",
+                        "ordererID": "orderer1",
+                        "ca": {
+                             "url":"https://localhost:7054",
+                             "name": "ca-org1"
+                        },
                         "username": "admin",
                         "secret": "adminpw",
                         "peer1": {
-                                "requests": "grpc://10.120.223.35:7063",
-                                "events": "grpc://10.120.223.35:6053",
-                                "server-hostname": "peer2",
-                                "tls_cacerts": "../fixtures/tls/peers/peer2/ca-cert.pem"
+                                "requests": "grpcs://localhost:7051",
+                                "events": "grpcs://localhost:7053",
+                                "server-hostname": "peer0.org1.example.com",
+                                "tls_cacerts": "./crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/cacerts/ca.org1.example.com-cert.pem"
+                        }
+                },
+                "org2": {
+                        "name": "Org2MSP",
+                        "mspid": "Org2MSP",
+                        "mspPath": "./crypto-config",
+                        "adminPath": "./crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp",
+                        "comName": "example.com",
+                        "ordererID": "orderer2",
+                        "ca": {
+                             "url":"https://localhost:8054",
+                             "name": "ca-org2"
+                        },
+                        "username": "admin",
+                        "secret": "adminpw",
+                        "peer1": {
+                                "requests": "grpcs://localhost:9051",
+                                "events": "grpcs://localhost:9053",
+                                "server-hostname": "peer0.org2.example.com",
+                                "tls_cacerts": "./crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/cacerts/ca.org2.example.com-cert.pem"
                         },
                         "peer2": {
-                                "requests": "grpc://10.120.223.35:7064",
-                                "events": "grpc://10.120.223.35:6054",
-                                "server-hostname": "peer3",
-                                "tls_cacerts": "../fixtures/tls/peers/peer3/ca-cert.pem"
+                                "requests": "grpcs://localhost:10051",
+                                "events": "grpcs://localhost:10053",
+                                "server-hostname": "peer1.org2.example.com",
+                                "tls_cacerts": "./crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp/cacerts/ca.org2.example.com-cert.pem"
                         }
                 }
         }
