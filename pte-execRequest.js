@@ -60,6 +60,7 @@ var tLocal;
 var i = 0;
 var inv_m = 0;    // counter of invoke move
 var inv_q = 0;    // counter of invoke query
+var evtTimeout = 0;    // counter of event timeout
 var IDone=0;
 var QDone=0;
 var recHist;
@@ -650,7 +651,7 @@ function eventRegister(tx, cb) {
                 } else {
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                         tCurr = new Date().getTime();
-                        console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister] completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org,  evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister] completed Rcvd(sent)=%d(%d) %s(%s) in %d ms, timestamp: start %d end %d, #event timeout: %d', Nid, pid, channelName, org,  evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr, evtTimeout);
                         if (invokeCheck.toUpperCase() == 'TRUE') {
                             arg0 = keyStart + inv_m - 1;
                             inv_q = inv_m - 1;
@@ -661,7 +662,10 @@ function eventRegister(tx, cb) {
                     }
                 }
             });
-        });
+        }).catch((err) => {
+	    evtTimeout++;
+	    //console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister] number of events timeout=%d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, evtTimeout, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+	});
 
         eventPromises.push(txPromise);
     });
