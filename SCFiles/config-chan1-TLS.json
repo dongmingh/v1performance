@@ -1,7 +1,7 @@
 {
 	"test-network": {
 		"orderer": {
-		        "orderer1": {
+		        "orderer0": {
 			        "name": "OrdererMSP",
 			        "mspid": "OrdererMSP",
 			        "mspPath": "./crypto-config",
@@ -11,7 +11,7 @@
                                 "server-hostname": "orderer0.example.com",
                                 "tls_cacerts": "./crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/cacerts/ca.example.com-cert.pem"
                         },
-		        "orderer2": {
+		        "orderer1": {
 			        "name": "OrdererMSP",
 			        "mspid": "OrdererMSP",
 			        "mspPath": "./crypto-config",
@@ -20,6 +20,26 @@
                                 "url": "grpcs://localhost:8050",
                                 "server-hostname": "orderer1.example.com",
                                 "tls_cacerts": "./crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/msp/cacerts/ca.example.com-cert.pem"
+                        },
+		        "orderer2": {
+			        "name": "OrdererMSP",
+			        "mspid": "OrdererMSP",
+			        "mspPath": "./crypto-config",
+			        "adminPath": "./crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
+			        "comName": "example.com",
+                                "url": "grpcs://localhost:9050",
+                                "server-hostname": "orderer2.example.com",
+                                "tls_cacerts": "./crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/cacerts/ca.example.com-cert.pem"
+                        },
+		        "orderer3": {
+			        "name": "OrdererMSP",
+			        "mspid": "OrdererMSP",
+			        "mspPath": "./crypto-config",
+			        "adminPath": "./crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
+			        "comName": "example.com",
+                                "url": "grpcs://localhost:10050",
+                                "server-hostname": "orderer3.example.com",
+                                "tls_cacerts": "./crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/cacerts/ca.example.com-cert.pem"
                         }
                 },
 		"org1": {
@@ -28,7 +48,7 @@
 			"mspPath": "./crypto-config",
 			"adminPath": "./crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp",
 			"comName": "example.com",
-			"ordererID": "orderer1",
+			"ordererID": "orderer0",
 			"ca": {
                              "url":"https://localhost:7054",
 			     "name": "ca-org1"
@@ -48,7 +68,7 @@
 			"mspPath": "./crypto-config",
 			"adminPath": "./crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp",
 			"comName": "example.com",
-			"ordererID": "orderer2",
+			"ordererID": "orderer1",
 			"ca": {
                              "url":"https://localhost:8054",
 			     "name": "ca-org2"
