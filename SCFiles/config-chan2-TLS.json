@@ -7,7 +7,7 @@
 			        "mspPath": "./crypto-config",
 			        "adminPath": "./crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
 			        "comName": "example.com",
-                                "url": "grpcs://localhost:8050",
+                                "url": "grpcs://localhost:7050",
                                 "server-hostname": "orderer0.example.com",
                                 "tls_cacerts": "./crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/cacerts/ca.example.com-cert.pem"
                         },

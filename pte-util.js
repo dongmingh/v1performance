@@ -28,6 +28,9 @@ var User = require('fabric-client/lib/User.js');
 var CryptoSuite = require('fabric-client/lib/impl/CryptoSuite_ECDSA_AES.js');
 var KeyStore = require('fabric-client/lib/impl/CryptoKeyStore.js');
 var ecdsaKey = require('fabric-client/lib/impl/ecdsa/key.js');
+//var Constants = require('./constants.js');
+
+var logger = require('fabric-client/lib/utils.js').getLogger('TestUtil');
 
 module.exports.CHAINCODE_PATH = 'github.com/example_cc';
 module.exports.CHAINCODE_UPGRADE_PATH = 'github.com/example_cc1';
@@ -37,6 +40,25 @@ module.exports.END2END = {
 	chaincodeId: 'end2end',
 	chaincodeVersion: 'v0'
 };
+
+// all temporary files and directories are created under here
+/*
+var tempdir = Constants.tempdir;
+
+logger.info(util.format(
+        '\n\n*******************************************************************************' +
+        '\n*******************************************************************************' +
+        '\n*                                          ' +
+        '\n* Using temp dir: %s' +
+        '\n*                                          ' +
+        '\n*******************************************************************************' +
+        '\n*******************************************************************************\n', tempdir));
+
+module.exports.getTempDir = function() {
+        fs.ensureDirSync(tempdir);
+        return tempdir;
+};
+*/
 
 // directory for file based KeyValueStore
 module.exports.KVS = '/tmp/hfc-test-kvs';
@@ -99,22 +121,24 @@ function getMember(username, password, client, userOrg, svcFile) {
 
 	var caUrl = ORGS[userOrg].ca.url;
 
-	console.log('getMember, name: '+username+', client.getUserContext('+username+', true)');
+	console.log('[getMember] getMember, name: '+username+', client.getUserContext('+username+', true)');
 
 	return client.getUserContext(username, true)
 	.then((user) => {
 		return new Promise((resolve, reject) => {
 			if (user && user.isEnrolled()) {
-				console.log('Successfully loaded member from persistence');
+				console.log('[getMember] Successfully loaded member from persistence');
 				return resolve(user);
 			}
 
 			var member = new User(username);
-			var cryptoSuite = null;
-			if (userOrg) {
-				cryptoSuite = client.newCryptoSuite({path: module.exports.storePathForOrg(ORGS[userOrg].name)});
-			} else {
-				cryptoSuite = client.newCryptoSuite();
+			var cryptoSuite = client.getCryptoSuite();
+                        if (!cryptoSuite) {
+			    cryptoSuite = hfc.newCryptoSuite();
+			    if (userOrg) {
+				cryptoSuite.setCryptoKeyStore(Client.newCryptoKeyStore({path: module.exports.storePathForOrg(ORGS[userOrg].name)}));
+				client.setCryptoSuite(cryptoSuite);
+			    }
 			}
 			member.setCryptoSuite(cryptoSuite);
 
@@ -125,15 +149,19 @@ function getMember(username, password, client, userOrg, svcFile) {
 				enrollmentID: username,
 				enrollmentSecret: password
 			}).then((enrollment) => {
-				console.log('Successfully enrolled user \'' + username + '\'');
+				console.log('[getMember] Successfully enrolled user \'' + username + '\'');
 
 				return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
 			}).then(() => {
-				return client.setUserContext(member);
+                                var skipPersistence = false;
+                                if (!client.getStateStore()) {
+                                    skipPersistence = true;
+                                }
+				return client.setUserContext(member, skipPersistence);
 			}).then(() => {
 				return resolve(member);
 			}).catch((err) => {
-				console.log('Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
+				console.log('[getMember] Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
 			});
 		});
 	});
@@ -142,7 +170,6 @@ function getMember(username, password, client, userOrg, svcFile) {
 function getAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
-        var mspPath = ORGS[userOrg].mspPath;
         var keyPath =  ORGS[userOrg].adminPath + '/keystore';
         var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
         var certPath = ORGS[userOrg].adminPath + '/signcerts';
@@ -150,8 +177,10 @@ function getAdmin(client, userOrg, svcFile) {
         console.log('[getAdmin] keyPath: %s', keyPath);
         console.log('[getAdmin] certPath: %s', certPath);
 
+        var cryptoSuite = hfc.newCryptoSuite();
 	if (userOrg) {
-		client.newCryptoSuite({path: module.exports.storePathForOrg(ORGS[userOrg].name)});
+                cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: module.exports.storePathForOrg(ORGS[userOrg].name)}));
+                client.setCryptoSuite(cryptoSuite);
 	}
 
 	return Promise.resolve(client.createUser({
@@ -168,7 +197,6 @@ function getOrdererAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
         var ordererID = ORGS[userOrg].ordererID;
-        var mspPath = ORGS['orderer'][ordererID].mspPath;
         var keyPath =  ORGS['orderer'][ordererID].adminPath + '/keystore';
         var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
         var certPath = ORGS['orderer'][ordererID].adminPath + '/signcerts';
@@ -202,7 +230,7 @@ function readAllFiles(dir) {
 	var certs = [];
 	files.forEach((file_name) => {
 		let file_path = path.join(dir,file_name);
-		console.log(' looking at file ::'+file_path);
+		console.log('[readAllFiles] looking at file ::'+file_path);
 		let data = fs.readFileSync(file_path);
 		certs.push(data);
 	});

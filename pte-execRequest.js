@@ -106,16 +106,16 @@ console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] TLS: %s', Nid, pid, c
 console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] channelOrgName.length: %d, channelOrgName: %s', Nid, pid, channelName, org, channelOrgName.length, channelOrgName);
 
 var client = new hfc();
-var chain = client.newChain(channelName);
+var channel = client.newChannel(channelName);
 
 invokeCheck = uiContent.invokeCheck;
-console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] invokeCheck: ', Nid, pid, channelName, org, invokeCheck);
+console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] invokeCheck: ', Nid, pid, channel.getName(), org, invokeCheck);
 
 var channelID = uiContent.channelID;
 chaincode_id = uiContent.chaincodeID+channelID;
 chaincode_ver = uiContent.chaincodeVer;
 chain_id = uiContent.chainID+channelID;
-console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] chaincode_id: %s, chain_id: %s', Nid, pid, channelName, org, chaincode_id, chain_id);
+console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] chaincode_id: %s, chain_id: %s', Nid, pid, channel.getName(), org, chaincode_id, chain_id);
 
 //set log level
 var logLevel;
@@ -124,11 +124,11 @@ var logLevel;
     } else {
         logLevel=uiContent.logLevel;
     }
-console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] logLevel: %s', Nid, pid, channelName, org, logLevel);
+console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] logLevel: %s', Nid, pid, channel.getName(), org, logLevel);
 logger.setLevel(logLevel);
 
 var svcFile = uiContent.SCFile[0].ServiceCredentials;
-console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] svcFile: %s, org: %s', Nid, pid, channelName, org, svcFile, org);
+console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] svcFile: %s, org: %s', Nid, pid, channel.getName(), org, svcFile, org);
 hfc.addConfigFile(path.join(__dirname, svcFile));
 var ORGS = hfc.getConfigSetting('test-network');
 var orgName = ORGS[org].orgName;
@@ -146,12 +146,12 @@ var nPeerPerOrg = parseInt(uiContent.nPeerPerOrg);
 var nPeer = nOrg * nPeerPerOrg;
 
 var nOrderer = parseInt(uiContent.nOrderer);
-console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', Nid, pid, channelName, org,  nOrderer, nPeer, transMode, transType, invokeType, nRequest);
+console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', Nid, pid, channel.getName(), org,  nOrderer, nPeer, transMode, transType, invokeType, nRequest);
 
 var runDur=0;
 if ( nRequest == 0 ) {
    runDur = parseInt(uiContent.runDur);
-   console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', Nid, pid, channelName, org, nOrderer, nPeer, transMode, transType, invokeType, runDur);
+   console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] nOrderer: %d, nPeer: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', Nid, pid, channel.getName(), org, nOrderer, nPeer, transMode, transType, invokeType, runDur);
    // convert runDur from second to ms
    runDur = 1000*runDur;
 }
@@ -169,9 +169,9 @@ if ( ccType == 'ccchecker') {
     payLoadMax = parseInt(uiContent.ccOpt.payLoadMax)/2;
     arg0 = keyStart;
     console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] ccchecker chaincode setting: keyStart=%d payLoadMin=%d payLoadMax=%d',
-                 Nid, pid, channelName, org, keyStart, parseInt(uiContent.ccOpt.payLoadMin), parseInt(uiContent.ccOpt.payLoadMax));
+                 Nid, pid, channel.getName(), org, keyStart, parseInt(uiContent.ccOpt.payLoadMin), parseInt(uiContent.ccOpt.payLoadMax));
 }
-console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] ccType: %s, keyStart: %d', Nid, pid, channelName, org, ccType, keyStart);
+console.log('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] ccType: %s, keyStart: %d', Nid, pid, channel.getName(), org, ccType, keyStart);
 //construct invoke request
 var testInvokeArgs = [];
 for (i=0; i<uiContent.invoke.move.args.length; i++) {
@@ -191,19 +191,15 @@ function getMoveRequest() {
     }
     //console.log('d:id:chan:org=%d:%d:%s:%s getMoveRequest] testInvokeArgs[1]', Nid, pid, channelName, org, testInvokeArgs[1]);
 
-    nonce = utils.getNonce();
-    tx_id = hfc.buildTransactionID(nonce, the_user);
-    utils.setConfigSetting('E2E_TX_ID', tx_id);
-    logger.info('setConfigSetting("E2E_TX_ID") = %s', tx_id);
+    tx_id = client.newTransactionID();
+    utils.setConfigSetting('E2E_TX_ID', tx_id.getTransactionID());
+    //logger.info('setConfigSetting("E2E_TX_ID") = %s', tx_id);
 
     request_invoke = {
         chaincodeId : chaincode_id,
-        chaincodeVersion : chaincode_ver,
-        chainId: channelName,
         fcn: uiContent.invoke.move.fcn,
         args: testInvokeArgs,
-        txId: tx_id,
-        nonce: nonce
+        txId: tx_id
     };
 
 
@@ -229,14 +225,10 @@ function getQueryRequest() {
     }
     //console.log('d:id:chan:org=%d:%d:%s:%s getQueryRequest] testQueryArgs[1]', Nid, pid, channelName, org, testQueryArgs[1]);
 
-    nonce = utils.getNonce();
-    tx_id = hfc.buildTransactionID(nonce, the_user);
+    tx_id = client.newTransactionID();
     request_query = {
         chaincodeId : chaincode_id,
-        chaincodeVersion : chaincode_ver,
-        chainId: channelName,
         txId: tx_id,
-        nonce: nonce,
         fcn: uiContent.invoke.query.fcn,
         args: testQueryArgs
     };
@@ -245,8 +237,8 @@ function getQueryRequest() {
 }
 
 
-function assignThreadPeer(chain, client) {
-    console.log('[Nid:id:chan=%d:%d:%s assignThreadPeer] chain name: %s', Nid, pid, channelName, chain.getName());
+function assignThreadPeer(channel, client) {
+    console.log('[Nid:id=%d:%d assignThreadPeer] channel name: %s', Nid, pid, channel.getName());
     var peerIdx=0;
     var peerTmp;
     var eh;
@@ -265,11 +257,11 @@ function assignThreadPeer(chain, client) {
                         }
                     );
                     targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
+                    channel.addPeer(peerTmp);
                 } else {
                     peerTmp = client.newPeer( ORGS[key1][key].requests);
                     targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
+                    channel.addPeer(peerTmp);
                 }
 
                     eh=new EventHub(client);
@@ -293,11 +285,11 @@ function assignThreadPeer(chain, client) {
             }
         }
     }
-    //console.log('[Nid:id:chan=%d:%d:%s assignThreadPeer] add peer: ', Nid, pid, channelName, chain.getPeers());
+    console.log('[Nid:id:channal=%d:%d:%s assignThreadPeer] add peer: ', Nid, pid, channel.getName(), channel.getPeers());
 }
 
-function assignThreadOrgPeer(chain, client, org) {
-    console.log('[Nid:id:chan:org=%d:%d:%s:%s assignThreadOrgPeer] chain name: %s', Nid, pid, channelName, org, chain.getName());
+function assignThreadOrgPeer(channel, client, org) {
+    console.log('[Nid:id:org:channel=%d:%d:%s:%s assignThreadOrgPeer]', Nid, pid, org, channel.getName());
     var peerIdx=0;
     var peerTmp;
     var eh;
@@ -315,14 +307,14 @@ function assignThreadOrgPeer(chain, client, org) {
                             }
                         );
                         targets.push(peerTmp);
-                        chain.addPeer(peerTmp);
+                        channel.addPeer(peerTmp);
                     } else {
                         peerTmp = client.newPeer( ORGS[org][key].requests);
                         //targets.push(peerTmp);
-                        chain.addPeer(peerTmp);
+                        channel.addPeer(peerTmp);
                     }
 
-                    eh=new EventHub(client);
+                    eh=client.newEventHub();
                     if (TLS.toUpperCase() == 'ENABLED') {
                         eh.setPeerAddr(
                             ORGS[org][key].events,
@@ -341,12 +333,12 @@ function assignThreadOrgPeer(chain, client, org) {
             }
         }
     }
-    //console.log('[Nid:id:chan:org=%d:%d:%s:%s assignThreadOrgPeer] add peer: ', Nid, pid, channelName, org, chain.getPeers());
+    console.log('[Nid:id:chan:org=%d:%d:%s:%s assignThreadOrgPeer] add peer: ', Nid, pid, channelName, org, channel.getPeers());
 }
 
 
-function channelAddPeer(chain, client, org) {
-    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeer] chain name: ', Nid, pid, channelName, org, chain.getName());
+function channelAddPeer(channel, client, org) {
+    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeer]', Nid, pid, channelName, org);
     var peerTmp;
     var eh;
     for (let key in ORGS[org]) {
@@ -362,21 +354,21 @@ function channelAddPeer(chain, client, org) {
                         }
                     );
                     targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
+                    channel.addPeer(peerTmp);
                 } else {
                     peerTmp = client.newPeer( ORGS[org][key].requests);
                     targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
+                    channel.addPeer(peerTmp);
                 }
             }
         }
     }
-    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeer] add peer: ', Nid, pid, channelName, org, chain.getPeers());
+    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeer] ', Nid, pid, channelName, org);
 }
 
 
-function channelAddPeerEvent(chain, client, org) {
-    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeerEvent] chain name: ', Nid, pid, channelName, org, chain.getName());
+function channelAddPeerEvent(channel, client, org) {
+    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeerEvent]', Nid, pid, channelName, org);
             var eh;
             var peerTmp;
             for (let key in ORGS[org]) {
@@ -397,9 +389,9 @@ function channelAddPeerEvent(chain, client, org) {
                             console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeerEvent] peer: ', Nid, pid, channelName, org, ORGS[org][key].requests);
                         }
                         targets.push(peerTmp);
-                        chain.addPeer(peerTmp);
+                        channel.addPeer(peerTmp);
 
-                        eh=new EventHub(client);
+                        eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
@@ -416,20 +408,20 @@ function channelAddPeerEvent(chain, client, org) {
                         console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeerEvent] requests: %s, events: %s ', Nid, pid, channelName, org, ORGS[org][key].requests, ORGS[org][key].events);
                     }
                 }
-                //console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeerEvent] add peer: ', Nid, pid, channelName, org, chain.getPeers());
+                //console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeerEvent] add peer: ', Nid, pid, channelName, org, channel.getPeers());
                 //console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddPeerEvent] event: ', Nid, pid, channelName, org, eventHubs);
             }
 }
 
-function channelAddOrderer(chain, client, org) {
+function channelAddOrderer(channel, client, org) {
     var ordererID = ORGS[org].ordererID;
-    console.log('[Nid:id:chan:org:ordererID=%d:%d:%s:%s:%s channelAddOrderer] chain name: ', Nid, pid, channelName, org, ordererID, chain.getName());
+    console.log('[Nid:id:chan:org:ordererID=%d:%d:%s:%s:%s channelAddOrderer] ', Nid, pid, channelName, org, ordererID );
     if (TLS.toUpperCase() == 'ENABLED') {
         var caRootsPath = ORGS['orderer'][ordererID].tls_cacerts;
         let data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
-        chain.addOrderer(
+        channel.addOrderer(
             new Orderer(
                 ORGS['orderer'][ordererID].url,
                 {
@@ -439,14 +431,14 @@ function channelAddOrderer(chain, client, org) {
             )
         );
     } else {
-        chain.addOrderer( new Orderer(ORGS['orderer'][ordererID].url));
+        channel.addOrderer(client.orderer(ORGS['orderer'][ordererID].url));
         console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer url: ', Nid, pid, channelName, org, ORGS['orderer'][ordererID].url);
     }
-    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer in the chain: ', Nid, pid, channelName, org, chain.getOrderers());
+    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] ', Nid, pid, channelName, org);
 }
 
-function channelAddAnchorPeer(chain, client, org) {
-    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddAnchorPeer] chain name: %s', Nid, pid, channelName, org, chain.getName());
+function channelAddAnchorPeer(channel, client, org) {
+    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddAnchorPeer] ', Nid, pid, channelName, org );
     var peerTmp;
     var eh;
     var data;
@@ -463,17 +455,17 @@ function channelAddAnchorPeer(chain, client, org) {
                         }
                     );
                     targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
+                    channel.addPeer(peerTmp);
                 } else {
                     console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddAnchorPeer] key: %s, peer1: %s', Nid, pid, channelName, org, key, ORGS[org].peer1.requests);
                     peerTmp = client.newPeer( ORGS[key].peer1.requests);
                     targets.push(peerTmp);
-                    chain.addPeer(peerTmp);
+                    channel.addPeer(peerTmp);
                 }
                 }
 
                 if ( (invokeType.toUpperCase() == 'MOVE') && ( key == org ) ) {
-                    eh=new EventHub(client);
+                    eh=client.newEventHub();
                     if (TLS.toUpperCase() == 'ENABLED') {
                         eh.setPeerAddr(
                             ORGS[key].peer1.events,
@@ -491,7 +483,7 @@ function channelAddAnchorPeer(chain, client, org) {
                 }
         }
     }
-    console.log('[[Nid:id=%d:%d] channelAddAnchorPeer] get peer: ', Nid, pid, chain.getPeers());
+    console.log('[[Nid:id=%d:%d] channelAddAnchorPeer] ', Nid, pid);
     //console.log('[[Nid:id=%d:%d] channelAddAnchorPeer] event: ', Nid, pid, eventHubs);
 }
 
@@ -514,26 +506,39 @@ function execTransMode() {
     console.log('[Nid:id:chan:org=%d:%d:%s:%s execTransMode] user= %s, secret=%s', Nid, pid, channelName, org, username, secret);
 
 
+    var cryptoSuite = hfc.newCryptoSuite();
+//    var useStore = false;
+    var useStore = true;
+    if (useStore) {
+        cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: testUtil.storePathForOrg(orgName)}));
+        client.setCryptoSuite(cryptoSuite);
+    }
+
 
     //enroll user
-    hfc.newDefaultKeyValueStore({
-        path: testUtil.storePathForOrg(orgName)
-    }).then(
-        function (store) {
-            client.setStateStore(store);
-
+    var promise;
+    if (useStore) {
+        promise = hfc.newDefaultKeyValueStore({
+                  path: testUtil.storePathForOrg(orgName)});
+    } else {
+        promise = Promise.resolve(useStore);
+    }
+    return promise.then((store) => {
+        if (store) {
+             client.setStateStore(store);
+        }
             client._userContext = null;
-            testUtil.getSubmitter(username, secret, client, true, org, svcFile)
-            .then(
+        return testUtil.getSubmitter(username, secret, client, true, org, svcFile);
+    }).then(
                 function(admin) {
 
                     console.log('[Nid:id:chan:org=%d:%d:%s:%s execTransMode] Successfully loaded user \'admin\'', Nid, pid, channelName, org);
                     the_user = admin;
 
-                    channelAddOrderer(chain, client, org)
+                    channelAddOrderer(channel, client, org)
 
-                    channelAddAnchorPeer(chain, client, org);
-                    //assignThreadOrgPeer(chain, client, org);
+                    channelAddAnchorPeer(channel, client, org);
+                    //assignThreadOrgPeer(channel, client, org);
 
 	            tCurr = new Date().getTime();
                     var tSynchUp=tStart-tCurr;
@@ -542,7 +547,7 @@ function execTransMode() {
                     }
 	            console.log('[Nid:id:chan:org=%d:%d:%s:%s execTransMode] execTransMode: tCurr= %d, tStart= %d, time to wait=%d', Nid, pid, channelName, org, tCurr, tStart, tSynchUp);
                     // execute transactions
-                    chain.initialize()
+                    channel.initialize()
                     .then((success) => {
                     setTimeout(function() {
                         if (transMode.toUpperCase() == 'SIMPLE') {
@@ -563,7 +568,6 @@ function execTransMode() {
                             process.exit(1);
                         }
                     }, tSynchUp);
-                    });
                 },
                 function(err) {
                     console.log('[Nid:id:chan:org=%d:%d:%s:%s execTransMode] Failed to wait due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
@@ -632,9 +636,9 @@ function getTxRequest(results) {
 
 var evtRcv=0;
 function eventRegister(tx, cb) {
-    var txId = tx.toString();
+    //var txId = tx.toString();
 
-    var deployId = tx_id.toString();
+    var deployId = tx.getTransactionID();
     var eventPromises = [];
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
@@ -722,7 +726,6 @@ function eventRegister_latency(tx, cb) {
 
         eventPromises.push(txPromise);
     });
-    //var sendPromise = chain.sendTransaction(txRequest);
     cb(eventPromises);
     
 /*
@@ -750,7 +753,7 @@ function invoke_move_latency() {
 
     getMoveRequest();
 
-    chain.sendTransactionProposal(request_invoke)
+    channel.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
@@ -758,7 +761,7 @@ function invoke_move_latency() {
             getTxRequest(results);
             eventRegister_latency(request_invoke.txId, function(sendPromise) {
 
-                var sendPromise = chain.sendTransaction(txRequest);
+                var sendPromise = channel.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
 
@@ -811,7 +814,7 @@ function invoke_move_simple(freq) {
 
     getMoveRequest();
 
-    chain.sendTransactionProposal(request_invoke)
+    channel.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
@@ -819,7 +822,7 @@ function invoke_move_simple(freq) {
             getTxRequest(results);
             eventRegister(request_invoke.txId, function(sendPromise) {
 
-                var sendPromise = chain.sendTransaction(txRequest);
+                var sendPromise = channel.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
                     //tCurr = new Date().getTime();
@@ -859,7 +862,7 @@ function invoke_query_simple(freq) {
     inv_q++;
 
     getQueryRequest();
-    chain.queryByChaincode(request_query)
+    channel.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
             isExecDone('Query');
@@ -931,15 +934,15 @@ function invoke_move_const(freq) {
     var t1 = new Date().getTime();
     getMoveRequest();
 
-    chain.sendTransactionProposal(request_invoke)
+    channel.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
 
             getTxRequest(results);
-            eventRegister(request_invoke.txId, function(sendPromise) {
+            eventRegister(tx_id, function(sendPromise) {
 
-                var sendPromise = chain.sendTransaction(txRequest);
+                var sendPromise = channel.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
                     //tCurr = new Date().getTime();
@@ -999,7 +1002,7 @@ function invoke_query_const(freq) {
     inv_q++;
 
     getQueryRequest();
-    chain.queryByChaincode(request_query)
+    channel.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
             // output
@@ -1087,7 +1090,7 @@ function invoke_move_mix(freq) {
 
     getMoveRequest();
 
-    chain.sendTransactionProposal(request_invoke)
+    channel.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
@@ -1095,7 +1098,7 @@ function invoke_move_mix(freq) {
             getTxRequest(results);
             eventRegister(request_invoke.txId, function(sendPromise) {
 
-                var sendPromise = chain.sendTransaction(txRequest);
+                var sendPromise = channel.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
                     //tCurr = new Date().getTime();
@@ -1132,7 +1135,7 @@ function invoke_query_mix(freq) {
     inv_q++;
 
     getQueryRequest();
-    chain.queryByChaincode(request_query)
+    channel.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
                 isExecDone('Move');
@@ -1193,7 +1196,7 @@ function invoke_move_proposal() {
 
     getMoveRequest();
 
-    chain.sendTransactionProposal(request_invoke)
+    channel.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
@@ -1284,7 +1287,7 @@ function invoke_move_burst() {
 
     getMoveRequest();
 
-    chain.sendTransactionProposal(request_invoke)
+    channel.sendTransactionProposal(request_invoke)
     .then(
         function(results) {
             var proposalResponses = results[0];
@@ -1292,7 +1295,7 @@ function invoke_move_burst() {
             getTxRequest(results);
             eventRegister(request_invoke.txId, function(sendPromise) {
 
-                var sendPromise = chain.sendTransaction(txRequest);
+                var sendPromise = channel.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
                 .then((results) => {
                     //tCurr = new Date().getTime();
@@ -1333,7 +1336,7 @@ function invoke_query_burst() {
     getBurstFreq();
 
     getQueryRequest();
-    chain.queryByChaincode(request_query)
+    channel.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
             isExecDone('Query');
