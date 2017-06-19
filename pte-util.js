@@ -30,7 +30,7 @@ var KeyStore = require('fabric-client/lib/impl/CryptoKeyStore.js');
 var ecdsaKey = require('fabric-client/lib/impl/ecdsa/key.js');
 //var Constants = require('./constants.js');
 
-var logger = require('fabric-client/lib/utils.js').getLogger('TestUtil');
+var logger = require('fabric-client/lib/utils.js').getLogger('PTE util');
 
 module.exports.CHAINCODE_PATH = 'github.com/example_cc';
 module.exports.CHAINCODE_UPGRADE_PATH = 'github.com/example_cc1';
@@ -41,24 +41,6 @@ module.exports.END2END = {
 	chaincodeVersion: 'v0'
 };
 
-// all temporary files and directories are created under here
-/*
-var tempdir = Constants.tempdir;
-
-logger.info(util.format(
-        '\n\n*******************************************************************************' +
-        '\n*******************************************************************************' +
-        '\n*                                          ' +
-        '\n* Using temp dir: %s' +
-        '\n*                                          ' +
-        '\n*******************************************************************************' +
-        '\n*******************************************************************************\n', tempdir));
-
-module.exports.getTempDir = function() {
-        fs.ensureDirSync(tempdir);
-        return tempdir;
-};
-*/
 
 // directory for file based KeyValueStore
 module.exports.KVS = '/tmp/hfc-test-kvs';
@@ -121,13 +103,13 @@ function getMember(username, password, client, userOrg, svcFile) {
 
 	var caUrl = ORGS[userOrg].ca.url;
 
-	console.log('[getMember] getMember, name: '+username+', client.getUserContext('+username+', true)');
+	logger.info('[getMember] getMember, name: '+username+', client.getUserContext('+username+', true)');
 
 	return client.getUserContext(username, true)
 	.then((user) => {
 		return new Promise((resolve, reject) => {
 			if (user && user.isEnrolled()) {
-				console.log('[getMember] Successfully loaded member from persistence');
+				logger.info('[getMember] Successfully loaded member from persistence');
 				return resolve(user);
 			}
 
@@ -149,7 +131,7 @@ function getMember(username, password, client, userOrg, svcFile) {
 				enrollmentID: username,
 				enrollmentSecret: password
 			}).then((enrollment) => {
-				console.log('[getMember] Successfully enrolled user \'' + username + '\'');
+				logger.info('[getMember] Successfully enrolled user \'' + username + '\'');
 
 				return member.setEnrollment(enrollment.key, enrollment.certificate, ORGS[userOrg].mspid);
 			}).then(() => {
@@ -161,7 +143,7 @@ function getMember(username, password, client, userOrg, svcFile) {
 			}).then(() => {
 				return resolve(member);
 			}).catch((err) => {
-				console.log('[getMember] Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
+				logger.error('[getMember] Failed to enroll and persist user. Error: ' + err.stack ? err.stack : err);
 			});
 		});
 	});
@@ -174,8 +156,8 @@ function getAdmin(client, userOrg, svcFile) {
         var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
         var certPath = ORGS[userOrg].adminPath + '/signcerts';
         var certPEM = readAllFiles(certPath)[0];
-        console.log('[getAdmin] keyPath: %s', keyPath);
-        console.log('[getAdmin] certPath: %s', certPath);
+        logger.debug('[getAdmin] keyPath: %s', keyPath);
+        logger.debug('[getAdmin] certPath: %s', certPath);
 
         var cryptoSuite = hfc.newCryptoSuite();
 	if (userOrg) {
@@ -201,8 +183,8 @@ function getOrdererAdmin(client, userOrg, svcFile) {
         var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
         var certPath = ORGS['orderer'][ordererID].adminPath + '/signcerts';
         var certPEM = readAllFiles(certPath)[0];
-        console.log('[getOrdererAdmin] keyPath: %s', keyPath);
-        console.log('[getOrdererAdmin] certPath: %s', certPath);
+        logger.debug('[getOrdererAdmin] keyPath: %s', keyPath);
+        logger.debug('[getOrdererAdmin] certPath: %s', certPath);
 
 	return Promise.resolve(client.createUser({
 		username: 'ordererAdmin',
@@ -230,7 +212,7 @@ function readAllFiles(dir) {
 	var certs = [];
 	files.forEach((file_name) => {
 		let file_path = path.join(dir,file_name);
-		console.log('[readAllFiles] looking at file ::'+file_path);
+		logger.debug('[readAllFiles] looking at file ::'+file_path);
 		let data = fs.readFileSync(file_path);
 		certs.push(data);
 	});
@@ -263,7 +245,7 @@ module.exports.getSubmitter = function(username, secret, client, peerOrgAdmin, o
 	}
 
 	if (peerAdmin) {
-		console.log(' >>>> getting the org admin');
+		logger.info(' >>>> getting the org admin');
 		return getAdmin(client, userOrg, svcFile);
 	} else {
 		return getMember(username, secret, client, userOrg, svcFile);
