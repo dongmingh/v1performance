@@ -143,6 +143,7 @@ Available SDK types are node, python and java. However, currently only node SDK 
             "burstDur1": "10000"
         },
         "mixOpt": {
+            "mixQuery": "TRUE",
             "mixFreq": "2000"
         },
         "constantOpt": {
@@ -236,6 +237,7 @@ where:
 
 + **mixOpt**: each invoke is followed by a query on every thread. This parameter is valid only the transMode is set to **Mix**.
 
+  - mixQuery: print out every query result if set to TRUE
   - mixFreq: frequency in ms for the transaction rate. This value should be set based on the characteristics of the chaincode to avoid the failure of the immediate query.
 
 + **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to **Constant**.

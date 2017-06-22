@@ -41,12 +41,11 @@ var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
 var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
-var _commonProto = grpc.load(path.join(__dirname, 'node_modules/fabric-client/lib/protos/common/common.proto')).common;
 
 var logger = utils.getLogger('PTE main');
 
-//var gopath=process.env.GOPATH;
-//logger.info('GOPATH: ', gopath);
+var gopath=process.env.GOPATH;
+logger.info('GOPATH: ', gopath);
 
 utils.setConfigSetting('crypto-keysize', 256);
 
@@ -144,7 +143,7 @@ function clientNewOrderer(client, org) {
     } else {
         orderer = client.newOrderer(ORGS['orderer'][ordererID].url);
     }
-    logger.debug('[clientNewOrderer] orderer: %s', ORGS['orderer'][ordererID].url);
+    logger.info('[clientNewOrderer] orderer: %s', ORGS['orderer'][ordererID].url);
 }
 
 function chainAddOrderer(channel, client, org) {
@@ -169,7 +168,7 @@ function chainAddOrderer(channel, client, org) {
             client.newOrderer(ORGS['orderer'][ordererID].url)
         );
     }
-    logger.debug('[chainAddOrderer] channel name: ', channel.getName());
+    logger.debug('[chainAddOrderer] channel peers: ', channel.getPeers());
 }
 
 function channelAddAllPeer(chain, client) {
@@ -216,6 +215,7 @@ function channelAddAllPeer(chain, client) {
             }
         }
     }
+    logger.debug('[channelAddAllPeer] channel peers: ', channel.getPeers());
 }
 
 function channelRemoveAllPeer(channel, client) {
@@ -295,6 +295,7 @@ function channelAddAnchorPeer(channel, client, org) {
             }
         }
     }
+    logger.debug('[channelAddAnchorPeer] channel peers: ', channel.getPeers());
 }
 
 function channelAddPeer(channel, client, org) {
@@ -323,6 +324,7 @@ function channelAddPeer(channel, client, org) {
             }
         }
     }
+    logger.debug('[channelAddPeer] channel peers: ', channel.getPeers());
 }
 
 function channelRemovePeer(channel, client, org) {
@@ -492,9 +494,6 @@ function chaincodeInstall(channel, client, org) {
 
     channelAddPeer(channel, client, org);
     //printChainInfo(channel);
-
-    //TODO: Probably this property is configurable ?
-    process.env.GOPATH = __dirname;
 
     //sendInstallProposal
     var request_install = {
@@ -1016,7 +1015,7 @@ function joinChannel(channel, client, org) {
 
                 if(results[0] && results[0][0] && results[0][0].response && results[0][0].response.status == 200) {
                         logger.info('[joinChannel] Successfully joined peers in (%s:%s)', channelName, orgName);
-                        evtDisconnect();
+                        //evtDisconnect();
                 } else {
                         logger.error('[joinChannel] Failed to join peers in (%s:%s)', channelName, orgName);
                         evtDisconnect();

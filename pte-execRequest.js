@@ -40,7 +40,7 @@ var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
 var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
-var _commonProto = grpc.load(path.join(__dirname, 'node_modules/fabric-client/lib/protos/common/common.proto')).common;
+//var _commonProto = grpc.load(path.join(__dirname, 'node_modules/fabric-client/lib/protos/common/common.proto')).common;
 
 var logger = utils.getLogger('PTE exec');
 
@@ -52,7 +52,7 @@ utils.setConfigSetting('crypto-keysize', 256);
 // local vars
 var tmp;
 var tCurr;
-var tEnd;
+var tEnd=0;
 var tLocal;
 var i = 0;
 var inv_m = 0;    // counter of invoke move
@@ -884,6 +884,26 @@ var devFreq;
 function getRandomNum(min0, max0) {
         return Math.floor(Math.random() * (max0-min0)) + min0;
 }
+
+function invoke_move_const_go(t1, freq) {
+
+    var freq_n=freq;
+    if ( devFreq > 0 ) {
+        freq_n=getRandomNum(freq-devFreq, freq+devFreq);
+    }
+    tCurr = new Date().getTime();
+    t1 = tCurr - t1;
+    if ( t1 < freq_n ) {
+       freq_n = freq_n - t1;
+    } else {
+       freq_n = 0;
+    }
+    setTimeout(function(){
+        invoke_move_const(freq);
+    },freq_n);
+
+}
+
 // invoke_move_const
 function invoke_move_const(freq) {
     inv_m++;
@@ -892,8 +912,7 @@ function invoke_move_const(freq) {
     getMoveRequest();
 
     channel.sendTransactionProposal(request_invoke)
-    .then(
-        function(results) {
+    .then((results) => {
             var proposalResponses = results[0];
 
             getTxRequest(results);
@@ -916,20 +935,7 @@ function invoke_move_const(freq) {
 
                     isExecDone('Move');
                     if ( IDone != 1 ) {
-                        var freq_n=freq;
-                        if ( devFreq > 0 ) {
-                            freq_n=getRandomNum(freq-devFreq, freq+devFreq);
-                        }
-                        tCurr = new Date().getTime();
-                        t1 = tCurr - t1;
-                        if ( t1 < freq_n ) {
-                           freq_n = freq_n - t1;
-                        } else {
-                           freq_n = 0;
-                        }
-                        setTimeout(function(){
-                            invoke_move_const(freq);
-                        },freq_n);
+                        invoke_move_const_go(t1, freq);
                     } else {
                         tCurr = new Date().getTime();
                         logger.info('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_const] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
@@ -939,15 +945,20 @@ function invoke_move_const(freq) {
 
                 }).catch((err) => {
                     logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_const] Failed to send transaction due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
-                    evtDisconnect();
-                    return;
+                    invoke_move_const_go(t1, freq);
+                    //evtDisconnect();
+                    //return;
                 })
             },
             function(err) {
-                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_const] Failed to send transaction proposal due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
-                evtDisconnect();
+                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_const] Failed to send event register due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
+                invoke_move_const_go(t1, freq);
+                //evtDisconnect();
             })
 
+        }).catch((err) => {
+                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_const] Failed to send transaction proposal due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
+                invoke_move_const_go(t1, freq);
         });
 }
 
@@ -978,6 +989,7 @@ function invoke_query_const(freq) {
                 },freq_n);
             } else {
                 tCurr = new Date().getTime();
+                logger.info('[Nid:id:chan:org=%d:%d:%s:%s invoke_query_const] query result response_payloads length:', Nid, pid, channelName, org, response_payloads.length);
                 for(let j = 0; j < response_payloads.length; j++) {
                     logger.info('[Nid:id:chan:org=%d:%d:%s:%s invoke_query_const] query result:', Nid, pid, channelName, org, response_payloads[j].toString('utf8'));
                 }
@@ -1040,14 +1052,21 @@ function execModeConstant() {
 }
 
 // mix mode
+function invoke_move_mix_go(freq) {
+                        setTimeout(function(){
+                            arg0--;
+                            invoke_query_mix(freq);
+                        },freq);
+}
+
 function invoke_move_mix(freq) {
     inv_m++;
 
+    var t1 = new Date().getTime();
     getMoveRequest();
 
     channel.sendTransactionProposal(request_invoke)
-    .then(
-        function(results) {
+    .then((results) => {
             var proposalResponses = results[0];
 
             getTxRequest(results);
@@ -1058,10 +1077,7 @@ function invoke_move_mix(freq) {
                 .then((results) => {
 
                     if ( IDone != 1 ) {
-                        setTimeout(function(){
-                            arg0--;
-                            invoke_query_mix(freq);
-                        },freq);
+                        invoke_move_mix_go(freq);
                     } else {
                         tCurr = new Date().getTime();
                         logger.info('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_mix] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
@@ -1071,15 +1087,20 @@ function invoke_move_mix(freq) {
 
                 }).catch((err) => {
                     logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_mix] Failed to send transaction due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
-                    evtDisconnect();
-                    return;
+                    invoke_move_mix_go(freq);
+                    //evtDisconnect();
+                    //return;
                 })
             },
             function(err) {
-                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_mix] Failed to send transaction proposal due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
-                evtDisconnect();
+                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_mix] Failed to send event register due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
+                invoke_move_mix_go(freq);
+                //evtDisconnect();
             })
 
+        }).catch((err) => {
+                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_mix] Failed to send transaction proposal due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
+                invoke_move_mix_go(freq);
         });
 }
 
@@ -1091,6 +1112,11 @@ function invoke_query_mix(freq) {
     channel.queryByChaincode(request_query)
     .then(
         function(response_payloads) {
+                if (mixQuery.toUpperCase() == 'TRUE') {
+                    for(let j = 0; j < response_payloads.length; j++) {
+                        logger.info('[Nid:id:chan:org=%d:%d:%s:%s invoke_query_mix] query result:', Nid, pid, channelName, org, response_payloads[j].toString('utf8'));
+                    }
+                }
                 isExecDone('Move');
                 if ( IDone != 1 ) {
                     invoke_move_mix(freq);
@@ -1105,20 +1131,26 @@ function invoke_query_mix(freq) {
         },
         function(err) {
             logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_query_mix] Failed to send query due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
-            evtDisconnect();
-            return;
+            invoke_move_mix(freq);
+            //evtDisconnect();
+            //return;
         })
     .catch(
         function(err) {
             logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_query_mix] %s failed: ', Nid, pid, channelName, org, transType,  err.stack ? err.stack : err);
-            evtDisconnect();
+            invoke_move_mix(freq);
+            //evtDisconnect();
         }
     );
 
 }
+
+var mixQuery;
 function execModeMix() {
 
     // send proposal to endorser
+    mixQuery = uiContent.mixOpt.mixQuery;
+    logger.info('[Nid:id:chan:org=%d:%d:%s:%s execModeMix] mixQuery: %s', Nid, pid, channelName, org, mixQuery);
     if ( transType.toUpperCase() == 'INVOKE' ) {
         // no need to check since a query is issued after every invoke
         invokeCheck = 'FALSE';
@@ -1231,6 +1263,13 @@ function getBurstFreq() {
 }
 
 // invoke_move_burst
+
+function invoke_move_burst_go(){
+    setTimeout(function(){
+        invoke_move_burst();
+    },bFreq);
+}
+
 function invoke_move_burst() {
     inv_m++;
     // set up burst traffic duration and frequency
@@ -1239,8 +1278,7 @@ function invoke_move_burst() {
     getMoveRequest();
 
     channel.sendTransactionProposal(request_invoke)
-    .then(
-        function(results) {
+    .then((results) => {
             var proposalResponses = results[0];
 
             getTxRequest(results);
@@ -1252,9 +1290,7 @@ function invoke_move_burst() {
 
                     isExecDone('Move');
                     if ( IDone != 1 ) {
-                        setTimeout(function(){
-                            invoke_move_burst();
-                        },bFreq);
+                        invoke_move_burst_go();
                     } else {
                         tCurr = new Date().getTime();
                         logger.info('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_burst] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
@@ -1264,15 +1300,20 @@ function invoke_move_burst() {
 
                 }).catch((err) => {
                     logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_burst] Failed to send transaction due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
-                    evtDisconnect();
+                    invoke_move_burst_go();
+                    //evtDisconnect();
                     return;
                 })
             },
             function(err) {
-                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_burst] Failed to send transaction proposal due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
-                evtDisconnect();
+                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_burst] Failed to send eventRegister due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
+                invoke_move_burst_go();
+                //evtDisconnect();
             })
 
+        }).catch((err) => {
+                logger.error('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_burst] Failed to send transaction proposal due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
+                invoke_move_burst_go();
         });
 }
 
