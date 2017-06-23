@@ -93,6 +93,7 @@ var org=process.argv[6];
 logger.info('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] input parameters: uiFile=%s, tStart=%d', Nid, pid, channelName, org, uiFile, tStart);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 var TLS=uiContent.TLS;
+var targetPeers=uiContent.targetPeers;
 var channelOpt=uiContent.channelOpt;
 var channelOrgName = [];
 var channelName = channelOpt.name;
@@ -280,12 +281,13 @@ function assignThreadOrgPeer(channel, client, org) {
     var peerIdx=0;
     var peerTmp;
     var eh;
+    var data;
     for (let key in ORGS[org]) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (peerIdx == pid % nPeerPerOrg) {
                     if (TLS.toUpperCase() == 'ENABLED') {
-                        let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                        data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
                         peerTmp = client.newPeer(
                             ORGS[org][key].requests,
                             {
@@ -521,8 +523,11 @@ function execTransMode() {
 
                     channelAddOrderer(channel, client, org)
 
-                    channelAddAnchorPeer(channel, client, org);
-                    //assignThreadOrgPeer(channel, client, org);
+                    if (targetPeers.toUpperCase() == 'ANCHOR') {
+                        channelAddAnchorPeer(chain, client, org);
+                    } else {
+                        assignThreadOrgPeer(chain, client, org);
+                    }
 
 	            tCurr = new Date().getTime();
                     var tSynchUp=tStart-tCurr;

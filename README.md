@@ -121,6 +121,7 @@ Available SDK types are node, python and java. However, currently only node SDK 
         "transMode": "Simple",
         "transType": "Invoke",
         "invokeType": "Move",
+        "targetPeers": "Anchor",
         "nOrderer": "1",
         "nOrg": "2",
         "nPeerPerOrg": "2",
@@ -207,6 +208,10 @@ where:
 + **invokeType**: invoke transaction type.  This parameter is valid only if the transType is set to invoke
   - Move: move transaction
   - Query: query transaction
+
++ **targetPeers**: the target peers that transactions will sent to
+  - Anchor: only send to anchor peers
+  - All: send to all peers
 
 + **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.  One orderer is assigned to one thread with round robin. PTE currently only supports 1 orderer.
 
@@ -476,6 +481,7 @@ To execute invoke (move) transactions, set the transType to Invoke and invokeTyp
     "transMode": "Constant",
     "transType": "Invoke",
     "invokeType": "Move",
+    "targetPeers": "Anchor",
     "nOrderer": "1",
     "nOrg": "2",
     "nPeerPerOrg": "2",
@@ -503,6 +509,7 @@ To execute invoke (move) transactions, set the transType to Invoke and invokeTyp
     "transMode": "Constant",
     "transType": "Invoke",
     "invokeType": "Query",
+    "targetPeers": "Anchor",
     "nOrderer": "1",
     "nOrg": "2",
     "nPeerPerOrg": "2",

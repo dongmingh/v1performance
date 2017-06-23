@@ -8,6 +8,7 @@
     "transMode": "Simple",
     "transType": "Channel",
     "invokeType": "Move",
+    "targetPeers": "Anchor",
     "nOrderer": "1",
     "nPeer": "4",
     "nProc": "4",
