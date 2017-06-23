@@ -723,198 +723,114 @@ function readAllFiles(dir) {
         return certs;
 }
 
-
 //create channel
-function createOneChannel(client, org) {
-        orgName = ORGS[org].name;
-        logger.info('[createOneChannel] org= %s, org name= %s', org, orgName);
-        var username = ORGS[org].username;
-        var secret = ORGS[org].secret;
-        logger.info('[createOneChannel] user= %s, secret= %s', username, secret);
+function createOneChannel(client ,channelOrgName) {
 
-        clientNewOrderer(client, org);
+    var config;
+    var envelope_bytes;
+    var signatures = [];
+    var key;
 
-        var config = null;
-        var envelope_bytes = null;
-        var signatures = [];
-        var key;
+    var username ;
+    var secret;
+    var submitter = null;
 
-        utils.setConfigSetting('key-value-store', 'fabric-client/lib/impl/FileKeyValueStore.js');
+    utils.setConfigSetting('key-value-store', 'fabric-client/lib/impl/FileKeyValueStore.js');
 
-            hfc.newDefaultKeyValueStore({
-                path: testUtil.storePathForOrg(orgName)
-            })
-            .then((store) => {
-                client.setStateStore(store);
-                var cryptoSuite = hfc.newCryptoSuite();
-                cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: testUtil.storePathForOrg(orgName)}));
-                client.setCryptoSuite(cryptoSuite);
+    var channelTX=channelOpt.channelTX;
+    logger.info('[createOneChannel] channelTX: ', channelTX);
+    envelope_bytes = fs.readFileSync(channelTX);
+    config = client.extractChannelConfig(envelope_bytes);
+    logger.info('[createOneChannel] Successfull extracted the config update from the configtx envelope: ', channelTX);
 
-                key = 'org1';
-                username=ORGS[key].username;
-                secret=ORGS[key].secret;
-                client._userContext = null;
-                return testUtil.getSubmitter(username, secret, client, true, key, svcFile);
-            }).then((admin) => {
-                //the_user = admin;
-                logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', key);
-                var channelTX=channelOpt.channelTX;
-                logger.info('[createOneChannel] channelTX: ', channelTX);
-                envelope_bytes = fs.readFileSync(channelTX);
-                config = client.extractChannelConfig(envelope_bytes);
-                logger.info('[createOneChannel] Successfull extracted the config update from the configtx envelope: ', channelTX);
+    clientNewOrderer(client, channelOrgName[0]);
 
-                var signature = client.signChannelConfig(config);
-                logger.info('[createOneChannel] Successfully signed config update: ', key);
-                // collect signature from org1 admin
-                // TODO: signature counting against policies on the orderer
-                // at the moment is being investigated, but it requires this
-                // weird double-signature from each org admin
-                signatures.push(signature);
-                signatures.push(signature);
-                //logger.info('[createOneChannel] org-signature: ', signature);
+    hfc.newDefaultKeyValueStore({
+        path: testUtil.storePathForOrg(orgName)
+    }).then((store) => {
+        client.setStateStore(store);
+    var submitePromises= [];
+    channelOrgName.forEach((org) => {
+        submitter = new Promise(function (resolve,reject) {
+            username=ORGS[org].username;
+            secret=ORGS[org].secret;
+            orgName = ORGS[org].name;
+            logger.info('[createOneChannel] org= %s, org name= %s', org, orgName);
+            client._userContext = null;
+            resolve(testUtil.getSubmitter(username, secret, client, true, org, svcFile));
+        });
+    submitePromises.push(submitter);
+    });
+    // all the orgs
+    return Promise.all(submitePromises);
+})
+.then((results) => {
+        results.forEach(function(result){
+        var signature = client.signChannelConfig(config);
+        logger.info('[createOneChannel] Successfully signed config update for one organization ');
+        // collect signature from org1 admin
+        // TODO: signature counting against policies on the orderer
+        // at the moment is being investigated, but it requires this
+        // weird double-signature from each org admin
+        signatures.push(signature);
+        signatures.push(signature);
+    });
+    return signatures;
+}).then((sigs) =>{
+        client._userContext = null;
+    return testUtil.getOrderAdminSubmitter(client, 'orderer', svcFile);
+}).then((admin) => {
+        the_user = admin;
+    logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', "orderer");
+    var signature = client.signChannelConfig(config);
+    logger.info('[createOneChannel] Successfully signed config update: ', "orderer");
+    logger.info('[createOneChannel] admin : ', admin);
+    // collect signature from org1 admin
+    // TODO: signature counting against policies on the orderer
+    // at the moment is being investigated, but it requires this
+    // weird double-signature from each org admin
+    signatures.push(signature);
+    signatures.push(signature);
 
-                key = 'org2';
-                username=ORGS[key].username;
-                secret=ORGS[key].secret;
-                client._userContext = null;
-                return testUtil.getSubmitter(username, secret, client, true, key, svcFile);
-            }).then((admin) => {
-                //the_user = admin;
-                logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', key);
-                var signature = client.signChannelConfig(config);
-                logger.info('[createOneChannel] Successfully signed config update: ', key);
-                // collect signature from org1 admin
-                // TODO: signature counting against policies on the orderer
-                // at the moment is being investigated, but it requires this
-                // weird double-signature from each org admin
-                signatures.push(signature);
-                signatures.push(signature);
-                //logger.info('[createOneChannel] org-signature: ', signature);
+    //logger.info('[createOneChannel] signatures: ', signatures);
+    logger.info('[createOneChannel] done signing: %s', channelName);
 
-                key='org1';
-                client._userContext = null;
-                return testUtil.getOrderAdminSubmitter(client, key, svcFile);
-            }).then((admin) => {
-                the_user = admin;
-                logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', key);
-                var signature = client.signChannelConfig(config);
-                logger.info('[createOneChannel] Successfully signed config update: ', key);
-                logger.debug('[createOneChannel] admin : ', admin);
-                // collect signature from org1 admin
-                // TODO: signature counting against policies on the orderer
-                // at the moment is being investigated, but it requires this
-                // weird double-signature from each org admin
-                signatures.push(signature);
-                signatures.push(signature);
-                //logger.info('[createOneChannel] orderer-signature: ', signature);
-                key='org2';
-                client._userContext = null;
-                return testUtil.getOrderAdminSubmitter(client, key, svcFile);
-            }).then((admin) => {
-                the_user = admin;
-                logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', key);
-                var signature = client.signChannelConfig(config);
-                logger.info('[createOneChannel] Successfully signed config update: ', key);
-                logger.debug('[createOneChannel] admin : ', admin);
-                // collect signature from org1 admin
-                // TODO: signature counting against policies on the orderer
-                // at the moment is being investigated, but it requires this
-                // weird double-signature from each org admin
-                signatures.push(signature);
-                signatures.push(signature);
-                //logger.info('[createOneChannel] orderer-signature: ', signature);
-
-                // sign config for all org
-/*
-
-                for (let key in ORGS) {
-                    logger.info('[createOneChannel] key: %s ', key);
-
-                    if ( key.indexOf('org') === 0) {
-                    username=ORGS[key].username;
-                    secret=ORGS[key].secret;
-                    logger.info('[createOneChannel] key: %s, username: %s, secret: %s', key, username, secret);
-                        client._userContext = null;
-                        testUtil.getSubmitter(username, secret, client, true, key, svcFile)
-                        .then((admin) => {
-                                logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', key);
-                                var signature = client.signChannelConfig(config);
-                                logger.info('[createOneChannel] Successfully signed config update: ', key);
-                                // collect signature from org1 admin
-                                // TODO: signature counting against policies on the orderer
-                                // at the moment is being investigated, but it requires this
-                                // weird double-signature from each org admin
-                                signatures.push(signature);
-                                signatures.push(signature);
-                                logger.info('[createOneChannel] org-signature: ', signature);
-                            }
-                        )
-                    } 
-                }
-                    var key='orderer';
-                        client._userContext = null;
-                        testUtil.getOrderAdminSubmitter(client, key, svcFile)
-                        .then((admin) => {
-                                the_user = admin;
-                                logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', key);
-                                var signature = client.signChannelConfig(config);
-                                logger.info('[createOneChannel] Successfully signed config update: ', key);
-                                // collect signature from org1 admin
-                                // TODO: signature counting against policies on the orderer
-                                // at the moment is being investigated, but it requires this
-                                // weird double-signature from each org admin
-                                signatures.push(signature);
-                                signatures.push(signature);
-                                logger.info('[createOneChannel] orderer-signature: ', signature);
-                            }
-                        )
-*/
-
-
-                //logger.info('[createOneChannel] signatures: ', signatures);
-                logger.info('[createOneChannel] done signing: %s', channelName);
-
-                // build up the create request
-                //let nonce = utils.getNonce();
-                //let tx_id = Client.buildTransactionID(nonce, the_user);
-                let tx_id = client.newTransactionID();
-                var request = {
-                        config: config,
-                        signatures : signatures,
-                        name : channelName,
-                        orderer : orderer,
-                        txId  : tx_id
-                };
-
-                logger.debug('request: ',request);
-                return client.createChannel(request);
-            }, (err) => {
-                logger.error('Failed to enroll user \'admin\'. ' + err);
-                evtDisconnect();
-                process.exit();
-            })
-            .then((result) => {
-
-                logger.info('[createOneChannel] Successfully created the channel (%s).', channelName);
-                evtDisconnect();
-                process.exit();
-
-            }, (err) => {
-                logger.error('Failed to create the channel: (%s) ', channelName);
-                logger.error('Failed to create the channel: %j '+ err.stack ? err.stack : err);
-                evtDisconnect();
-                process.exit();
-            })
-            .then((nothing) => {
-                logger.info('Successfully waited to make sure new channel was created.');
-                evtDisconnect();
-                process.exit();
-            }, (err) => {
-                logger.error('Failed due to error: ' + err.stack ? err.stack : err);
-                evtDisconnect();
-                process.exit();
-            });
+    // build up the create request
+    let nonce = utils.getNonce();
+    let tx_id = Client.buildTransactionID(nonce, the_user);
+    var request = {
+        config: config,
+        signatures : signatures,
+        name : channelName,
+        orderer : orderer,
+        txId  : tx_id,
+        nonce : nonce
+    };
+    logger.info('request: ',request);
+    return client.createChannel(request);
+}, (err) => {
+        logger.error('Failed to enroll user \'admin\'. ' + err);
+        evtDisconnect();
+        process.exit();
+    }).then((result) => {
+        logger.info('[createOneChannel] Successfully created the channel (%s).', channelName);
+    evtDisconnect();
+    process.exit();
+}, (err) => {
+        logger.error('Failed to create the channel (%s) ', channelName);
+        logger.error('Failed to create the channel:: %j '+ err.stack ? err.stack : err);
+        evtDisconnect();
+        process.exit();
+    })
+.then((nothing) => {
+        logger.info('Successfully waited to make sure new channel was created.');
+    evtDisconnect();
+    process.exit();
+}, (err) => {
+        logger.error('Failed due to error: ' + err.stack ? err.stack : err);
+        evtDisconnect();
+        process.exit();
+    });
 }
 
 // join channel
@@ -1047,6 +963,7 @@ function joinOneChannel(channel, client, org) {
 
 // performance main
 function performance_main() {
+    var channelCreated = 0;
     // send proposal to endorser
     for (i=0; i<channelOrgName.length; i++ ) {
         org = channelOrgName[i];
@@ -1112,7 +1029,11 @@ function performance_main() {
             });
         } else if ( transType.toUpperCase() == 'CHANNEL' ) {
             if ( channelOpt.action.toUpperCase() == 'CREATE' ) {
-                createOneChannel(client, org);
+                // create channel once
+                if(channelCreated == 0) {
+                    createOneChannel(client, channelOrgName);
+                    channelCreated = 1;
+                }
             } else if ( channelOpt.action.toUpperCase() == 'JOIN' ) {
                 var channel = client.newChannel(channelName);
                 logger.info('[performance_main] channel name: ', channelName);
