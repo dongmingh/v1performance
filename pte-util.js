@@ -44,8 +44,8 @@ module.exports.END2END = {
 
 // directory for file based KeyValueStore
 module.exports.KVS = '/tmp/hfc-test-kvs';
-module.exports.storePathForOrg = function(org) {
-	return module.exports.KVS + '_' + org;
+module.exports.storePathForOrg = function(networkid, org) {
+	return module.exports.KVS + '_' + networkid + '_' + org;
 };
 
 // temporarily set $GOPATH to the test fixture folder
@@ -97,7 +97,7 @@ var	tlsOptions = {
 	verify: false
 };
 
-function getMember(username, password, client, userOrg, svcFile) {
+function getMember(username, password, client, nid, userOrg, svcFile) {
 	hfc.addConfigFile(svcFile);
 	ORGS = hfc.getConfigSetting('test-network');
 
@@ -118,7 +118,7 @@ function getMember(username, password, client, userOrg, svcFile) {
                         if (!cryptoSuite) {
 			    cryptoSuite = hfc.newCryptoSuite();
 			    if (userOrg) {
-				cryptoSuite.setCryptoKeyStore(Client.newCryptoKeyStore({path: module.exports.storePathForOrg(ORGS[userOrg].name)}));
+				cryptoSuite.setCryptoKeyStore(Client.newCryptoKeyStore({path: module.exports.storePathForOrg(nid, ORGS[userOrg].name)}));
 				client.setCryptoSuite(cryptoSuite);
 			    }
 			}
@@ -149,7 +149,7 @@ function getMember(username, password, client, userOrg, svcFile) {
 	});
 }
 
-function getAdmin(client, userOrg, svcFile) {
+function getAdmin(client, nid, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
         var keyPath =  ORGS[userOrg].adminPath + '/keystore';
@@ -161,7 +161,7 @@ function getAdmin(client, userOrg, svcFile) {
 
         var cryptoSuite = hfc.newCryptoSuite();
 	if (userOrg) {
-                cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: module.exports.storePathForOrg(ORGS[userOrg].name)}));
+                cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: module.exports.storePathForOrg(nid, ORGS[userOrg].name)}));
                 client.setCryptoSuite(cryptoSuite);
 	}
 
@@ -223,7 +223,7 @@ module.exports.getOrderAdminSubmitter = function(client, userOrg, svcFile) {
 	return getOrdererAdmin(client, userOrg, svcFile);
 };
 
-module.exports.getSubmitter = function(username, secret, client, peerOrgAdmin, org, svcFile) {
+module.exports.getSubmitter = function(username, secret, client, peerOrgAdmin, nid, org, svcFile) {
 	if (arguments.length < 2) throw new Error('"client" and "test" are both required parameters');
 
 	var peerAdmin, userOrg;
@@ -246,8 +246,8 @@ module.exports.getSubmitter = function(username, secret, client, peerOrgAdmin, o
 
 	if (peerAdmin) {
 		logger.info(' >>>> getting the org admin');
-		return getAdmin(client, userOrg, svcFile);
+		return getAdmin(client, nid, userOrg, svcFile);
 	} else {
-		return getMember(username, secret, client, userOrg, svcFile);
+		return getMember(username, secret, client, nid, userOrg, svcFile);
 	}
 };

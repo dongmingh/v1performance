@@ -487,7 +487,7 @@ function chaincodeInstall(channel, client, org) {
     logger.info('[chaincodeInstall] org: %s, org Name: %s, channel name: %s', org, orgName, channel.getName());
 
     var cryptoSuite = hfc.newCryptoSuite();
-    cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: testUtil.storePathForOrg(orgName)}));
+    cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: testUtil.storePathForOrg(Nid, orgName)}));
     client.setCryptoSuite(cryptoSuite);
 
     chainAddOrderer(channel, client, org);
@@ -584,7 +584,7 @@ function buildChaincodeProposal(client, the_user, upgrade, transientMap) {
 //instantiate chaincode
 function chaincodeInstantiate(channel, client, org) {
         var cryptoSuite = Client.newCryptoSuite();
-        cryptoSuite.setCryptoKeyStore(Client.newCryptoKeyStore({path: testUtil.storePathForOrg(orgName)}));
+        cryptoSuite.setCryptoKeyStore(Client.newCryptoKeyStore({path: testUtil.storePathForOrg(Nid, orgName)}));
         client.setCryptoSuite(cryptoSuite);
 
         logger.info('[chaincodeInstantiate] org= %s, org name=%s, channel name=%s', org, orgName, channel.getName());
@@ -746,7 +746,7 @@ function createOneChannel(client ,channelOrgName) {
     clientNewOrderer(client, channelOrgName[0]);
 
     hfc.newDefaultKeyValueStore({
-        path: testUtil.storePathForOrg(orgName)
+        path: testUtil.storePathForOrg(Nid, orgName)
     }).then((store) => {
         client.setStateStore(store);
     var submitePromises= [];
@@ -757,7 +757,7 @@ function createOneChannel(client ,channelOrgName) {
             orgName = ORGS[org].name;
             logger.info('[createOneChannel] org= %s, org name= %s', org, orgName);
             client._userContext = null;
-            resolve(testUtil.getSubmitter(username, secret, client, true, org, svcFile));
+            resolve(testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile));
         });
     submitePromises.push(submitter);
     });
@@ -848,7 +848,7 @@ function joinChannel(channel, client, org) {
         //printChainInfo(channel);
 
         return hfc.newDefaultKeyValueStore({
-                path: testUtil.storePathForOrg(orgName)
+                path: testUtil.storePathForOrg(Nid, orgName)
         }).then((store) => {
                 client.setStateStore(store);
                 client._userContext = null;
@@ -868,7 +868,7 @@ function joinChannel(channel, client, org) {
                 genesis_block = block;
 
                 client._userContext = null;
-                return testUtil.getSubmitter(username, secret, client, true, org, svcFile);
+                return testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile);
         }).then((admin) => {
                 logger.info('[joinChannel] Successfully enrolled org:' + org + ' \'admin\'');
                 the_user = admin;
@@ -977,11 +977,11 @@ function performance_main() {
             logger.info('[performance_main] Deploy: user= %s, secret= %s', username, secret);
 
             hfc.newDefaultKeyValueStore({
-                path: testUtil.storePathForOrg(orgName)
+                path: testUtil.storePathForOrg(Nid, orgName)
             })
             .then((store) => {
                 client.setStateStore(store);
-                testUtil.getSubmitter(username, secret, client, true, org, svcFile)
+                testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile)
                 .then(
                     function(admin) {
                         logger.info('[performance_main:Nid=%d] Successfully enrolled user \'admin\'', Nid);
@@ -1007,11 +1007,11 @@ function performance_main() {
 
             hfc.setConfigSetting('request-timeout', 60000);
             hfc.newDefaultKeyValueStore({
-                path: testUtil.storePathForOrg(orgName)
+                path: testUtil.storePathForOrg(Nid, orgName)
             })
             .then((store) => {
                 client.setStateStore(store);
-                testUtil.getSubmitter(username, secret, client, true, org, svcFile)
+                testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile)
                 .then(
                     function(admin) {
                         logger.info('[performance_main:Nid=%d] Successfully enrolled user \'admin\'', Nid);

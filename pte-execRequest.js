@@ -496,7 +496,7 @@ function execTransMode() {
 //    var useStore = false;
     var useStore = true;
     if (useStore) {
-        cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: testUtil.storePathForOrg(orgName)}));
+        cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: testUtil.storePathForOrg(Nid,orgName)}));
         client.setCryptoSuite(cryptoSuite);
     }
 
@@ -505,7 +505,7 @@ function execTransMode() {
     var promise;
     if (useStore) {
         promise = hfc.newDefaultKeyValueStore({
-                  path: testUtil.storePathForOrg(orgName)});
+                  path: testUtil.storePathForOrg(Nid, orgName)});
     } else {
         promise = Promise.resolve(useStore);
     }
@@ -514,7 +514,7 @@ function execTransMode() {
              client.setStateStore(store);
         }
             client._userContext = null;
-        return testUtil.getSubmitter(username, secret, client, true, org, svcFile);
+        return testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile);
     }).then(
                 function(admin) {
 
