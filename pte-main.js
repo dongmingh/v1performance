@@ -778,7 +778,7 @@ function createOneChannel(client ,channelOrgName) {
     return signatures;
 }).then((sigs) =>{
         client._userContext = null;
-    return testUtil.getOrderAdminSubmitter(client, 'orderer', svcFile);
+    return testUtil.getOrderAdminSubmitter(client, channelOrgName[0], svcFile);
 }).then((admin) => {
         the_user = admin;
     logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', "orderer");
@@ -797,7 +797,7 @@ function createOneChannel(client ,channelOrgName) {
 
     // build up the create request
     let nonce = utils.getNonce();
-    let tx_id = Client.buildTransactionID(nonce, the_user);
+    let tx_id = client.newTransactionID();
     var request = {
         config: config,
         signatures : signatures,

@@ -524,9 +524,9 @@ function execTransMode() {
                     channelAddOrderer(channel, client, org)
 
                     if (targetPeers.toUpperCase() == 'ANCHOR') {
-                        channelAddAnchorPeer(chain, client, org);
+                        channelAddAnchorPeer(channel, client, org);
                     } else {
-                        assignThreadOrgPeer(chain, client, org);
+                        assignThreadOrgPeer(channel, client, org);
                     }
 
 	            tCurr = new Date().getTime();
