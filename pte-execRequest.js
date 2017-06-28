@@ -90,7 +90,6 @@ var Nid = parseInt(process.argv[3]);
 var uiFile = process.argv[4];
 var tStart = parseInt(process.argv[5]);
 var org=process.argv[6];
-logger.info('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] input parameters: uiFile=%s, tStart=%d', Nid, pid, channelName, org, uiFile, tStart);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 var TLS=uiContent.TLS;
 var targetPeers=uiContent.targetPeers;
@@ -100,6 +99,7 @@ var channelName = channelOpt.name;
 for (i=0; i<channelOpt.orgName.length; i++) {
     channelOrgName.push(channelOpt.orgName[i]);
 }
+logger.info('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] input parameters: uiFile=%s, tStart=%d', Nid, pid, channelName, org, uiFile, tStart);
 logger.info('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] TLS: %s', Nid, pid, channelName, org, TLS.toUpperCase());
 logger.info('[Nid:id:chan:org=%d:%d:%s:%s pte-execRequest] channelOrgName.length: %d, channelOrgName: %s', Nid, pid, channelName, org, channelOrgName.length, channelOrgName);
 
@@ -418,7 +418,7 @@ function channelAddOrderer(channel, client, org) {
             )
         );
     } else {
-        channel.addOrderer(client.orderer(ORGS['orderer'][ordererID].url));
+        channel.addOrderer(new Orderer(ORGS['orderer'][ordererID].url));
         logger.info('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer url: ', Nid, pid, channelName, org, ORGS['orderer'][ordererID].url);
     }
     logger.info('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer: %j ', Nid, pid, channelName, org, channel.getOrderers());
@@ -667,18 +667,17 @@ function eventRegister(tx, cb) {
 }
 
 function eventRegister_latency(tx, cb) {
-    var txId = tx.toString();
 
-    var deployId = tx_id.toString();
+    var deployId = tx.getTransactionID();
     var eventPromises = [];
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
             let handle = setTimeout(reject, 600000);
-            evtRcv++;
 
             eh.registerTxEvent(deployId.toString(), (tx, code) => {
                 clearTimeout(handle);
                 eh.unregisterTxEvent(deployId);
+                evtRcv++;
 
                 if (code !== 'VALID') {
                     logger.info('[Nid:id:chan:org=%d:%d:%s:%s eventRegister_latency] The invoke transaction was invalid, code = ', Nid, pid, channelName, org, code);
@@ -699,6 +698,8 @@ function eventRegister_latency(tx, cb) {
                     }
                 }
             });
+        }).catch((err) => {
+            logger.info('[Nid:id:chan:org=%d:%d:%s:%s eventRegister_latency] eventHub error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
         });
 
         eventPromises.push(txPromise);
@@ -725,7 +726,7 @@ function invoke_move_latency() {
             var proposalResponses = results[0];
 
             getTxRequest(results);
-            eventRegister_latency(request_invoke.txId, function(sendPromise) {
+            eventRegister_latency(tx_id, function(sendPromise) {
 
                 var sendPromise = channel.sendTransaction(txRequest);
                 return Promise.all([sendPromise].concat(eventPromises))
@@ -1058,10 +1059,10 @@ function execModeConstant() {
 
 // mix mode
 function invoke_move_mix_go(freq) {
-                        setTimeout(function(){
-                            arg0--;
-                            invoke_query_mix(freq);
-                        },freq);
+    setTimeout(function(){
+        arg0--;
+        invoke_query_mix(freq);
+    },freq);
 }
 
 function invoke_move_mix(freq) {

@@ -1,11 +1,11 @@
 {
-    "channelID": "_ch2",
+    "channelID": "_ch1",
     "chaincodeID": "sample_cc",
     "chaincodeVer": "v0",
     "chainID": "testchainid",
     "logLevel": "ERROR",
-    "invokeCheck": "TRUE",
-    "transMode": "Constant",
+    "invokeCheck": "FALSE",
+    "transMode": "Mix",
     "transType": "Invoke",
     "invokeType": "Move",
     "targetPeers": "Anchor",
@@ -14,11 +14,11 @@
     "nOrg": "2",
     "nPeerPerOrg": "2",
     "nProc": "1",
-    "nRequest": "1000",
+    "nRequest": "0",
     "runDur": "600",
     "TLS": "enabled",
     "channelOpt": {
-        "name": "testorgschannel2",
+        "name": "testOrgsChannel1",
         "action":  "create",
         "orgName": [
             "org1",
@@ -32,22 +32,22 @@
         "burstDur1": "10000"
     },
     "mixOpt": {
-        "mixQuery": "false",
-        "mixFreq": "3000"
+        "mixQuery": "TRUE",
+        "mixFreq": "100"
     },
     "constantOpt": {
         "recHist": "HIST",
-        "constFreq": "0",
-        "devFreq": "0"
+        "constFreq": "400",
+        "devFreq": "100"
     },
     "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "1000",
+        "keyStart": "200000",
         "payLoadMin": "1024",
         "payLoadMax": "1024"
     },
     "deploy": {
-        "chaincodePath": "github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",
+        "chaincodePath": "github.com/sample_cc",
         "fcn": "init",
         "args": []
     },
@@ -62,6 +62,6 @@
         }
     },
     "SCFile": [
-		{"ServiceCredentials":"SCFiles/config-chan2-TLS.json"}
+		{"ServiceCredentials":"SCFiles/config-chan1-TLS.json"}
 	]
 }

@@ -5,9 +5,25 @@
 
 The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup/) to interact with a [Hyperledger Fabric](https://github.com/hyperledger/fabric) network.
 
-##Code Base
+##Code Base for v1.0.0-RC1
 
-release v1.0.0-alpha2
+- Fabric commit level: b17afeb9da2ae34ce9dd76de558fbd23623fb186
+- fabric-sdk-node commit level: 244e916517f1c42d04b61eb55ea239cd94052846
+- fabric-ca commit level: fec4d76fa2c8162b735be2376ec831ff815209c6
+- PTE v1performance commit level: current
+
+Note with PTE on RC1:
+
+- Change cacerts to tlscacerts for both orderer and peer in config json in SCFiles directory. Below is an example of changes for orderer.
+
+was:
+  `"tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/cacerts/ca.example.com-cert.pem"`
+
+now:
+  `"tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"`
+
+ 
+##Code Base for v1.0.0-alpha2
 
 - Fabric commit level: 6b6bfcfbd1e798a8a08fa9c3bf4dc0ff766a6b87
 - fabric-sdk-node commit level: f13f4b42e7155ec0dc3d7485b202bb6a6ca73aed
