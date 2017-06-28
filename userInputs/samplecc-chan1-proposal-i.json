@@ -18,7 +18,7 @@
     "TLS": "enabled",
     "channelOpt": {
         "name": "mychannel",
-        "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testOrgsChannel1.tx",
+        "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
         "action":  "create",
         "orgName": [
             "org1"

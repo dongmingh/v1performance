@@ -14,7 +14,8 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](
 
 Note with PTE on RC1:
 
-- Change cacerts to tlscacerts for both orderer and peer in config json in SCFiles directory. Below is an example of changes for orderer.
+- channel name must be lower case
+- Change cacerts to tlscacerts for both orderer and peer in config json in SCFiles directory. Below is an example of change for orderer.
 
 was:
   `"tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/cacerts/ca.example.com-cert.pem"`
