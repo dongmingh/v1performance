@@ -784,7 +784,6 @@ function createOneChannel(client ,channelOrgName) {
     logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', "orderer");
     var signature = client.signChannelConfig(config);
     logger.info('[createOneChannel] Successfully signed config update: ', "orderer");
-    logger.info('[createOneChannel] admin : ', admin);
     // collect signature from org1 admin
     // TODO: signature counting against policies on the orderer
     // at the moment is being investigated, but it requires this
@@ -806,7 +805,7 @@ function createOneChannel(client ,channelOrgName) {
         txId  : tx_id,
         nonce : nonce
     };
-    logger.info('request: ',request);
+    //logger.info('request: ',request);
     return client.createChannel(request);
 }, (err) => {
         logger.error('Failed to enroll user \'admin\'. ' + err);
