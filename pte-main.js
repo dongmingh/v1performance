@@ -930,6 +930,7 @@ function joinChannel(channel, client, org) {
 
                 if(results[0] && results[0][0] && results[0][0].response && results[0][0].response.status == 200) {
                         logger.info('[joinChannel] Successfully joined peers in (%s:%s)', channelName, orgName);
+                        process.exit();
                         //evtDisconnect();
                 } else {
                         logger.error('[joinChannel] Failed to join peers in (%s:%s)', channelName, orgName);
