@@ -217,10 +217,12 @@ where:
   -  Latency: one transaction type and rate only, the subsequent transaction is sent when the event message (ledger update is completed) of the previous transaction is received
 
 + **transType**: transaction type
-  - Channel: channel activities specified in channelOpt.action
-  - Install: install chaincode
-  - Instantiate: instantiate chaincode on the organizations listed in the orgName of channelOpt
-  - Invoke: invokes transaction
+  - Channel: channel activities specified in channelOpt.action, multiple org is not permitted on channelOpt:orgName
+  - Install: install chaincode, multiple org is not permitted on channelOpt:orgName
+  - Instantiate: instantiate chaincode on the organizations listed in the orgName of channelOpt, multiple org is permitted on channelOpt:orgName
+  - Invoke: invokes transaction, multiple org is permitted on channelOpt:orgName
+  
+  - notes that in case of multiple org is not permitted, user can specify multiple user input json file in runCases.txt that the desired action (install etc) can be performed on multiple org.
 
 + **invokeType**: invoke transaction type.  This parameter is valid only if the transType is set to invoke
   - Move: move transaction
@@ -246,7 +248,7 @@ where:
 + **channelOpt**: transType channel options
   - name: channel name
   - channelTX: channel transaction file
-  - action: channel action: create or join
+  - action: channel action: create or join.
   - orgName: name of organization for the test
 
 + **burstOpt**: the frequencies and duration for Burst transaction mode traffic. Currently, two transaction rates are supported. The traffic will issue one transaction every burstFreq0 ms for burstDur0 ms, then one transaction every burstFreq1 ms for burstDur1 ms, then the pattern repeats. These parameters are valid only if the transMode is set to **Burst**.
