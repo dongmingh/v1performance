@@ -327,6 +327,36 @@ function channelAddPeer(channel, client, org) {
     logger.debug('[channelAddPeer] channel peers: ', channel.getPeers());
 }
 
+function channelAddPeer1(channel, client, org) {
+    logger.info('[channelAddPeer1] channel name: %s, org: %s', channel.getName(), org);
+    var peerTmp;
+    var eh;
+    for (let key in ORGS[org]) {
+        if (ORGS[org].hasOwnProperty(key)) {
+            if (key.indexOf('peer') === 0) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                    peerTmp = client.newPeer(
+                        ORGS[org][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[org][key]['server-hostname']
+                        }
+                    );
+                    targets.push(peerTmp);
+                    channel.addPeer(peerTmp);
+                } else {
+                    peerTmp = client.newPeer( ORGS[org][key].requests);
+                    targets.push(peerTmp);
+                    channel.addPeer(peerTmp);
+                }
+                break;
+            }
+        }
+    }
+    logger.debug('[channelAddPeer1] org: %s, channel peers: ', org, channel.getPeers());
+}
+
 function channelRemovePeer(channel, client, org) {
     logger.info('[channelRemovePeer] channel name: ', channel.getName());
     var peerTmp;
@@ -591,7 +621,12 @@ function chaincodeInstantiate(channel, client, org) {
 
         chainAddOrderer(channel, client, org);
         //channelAddPeerEvent(chain, client, org);
-        channelAddAnchorPeer(channel, client, org);
+        //channelAddAnchorPeer(channel, client, org);
+        var ivar=0
+        for (ivar=0; ivar<channelOrgName.length; ivar++ ) {
+            var orgInstantiate = channelOrgName[ivar];
+            channelAddPeer1(channel, client, orgInstantiate);
+        }
         //printChainInfo(channel);
 
         channel.initialize()
@@ -1003,9 +1038,9 @@ function performance_main() {
         } else if ( transType.toUpperCase() == 'INSTANTIATE' ) {
             var username = ORGS[org].username;
             var secret = ORGS[org].secret;
-            logger.info('[performance_main] Deploy: user= %s, secret= %s', username, secret);
+            logger.info('[performance_main] instantiate: user= %s, secret= %s', username, secret);
 
-            hfc.setConfigSetting('request-timeout', 60000);
+            hfc.setConfigSetting('request-timeout', 200000);
             hfc.newDefaultKeyValueStore({
                 path: testUtil.storePathForOrg(Nid, orgName)
             })

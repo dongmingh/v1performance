@@ -42,7 +42,7 @@ For v1.0.0-alpha support, use v1performance commit level  aa73747ccf5f511fbcd10a
 
 ##Future items:
 
-- PTE needs to supports any number of organizations in a channel.  PTE supports two organizations per channel now (FAB-3809)
+- PTE needs to supports any number of organizations in a channel.  PTE supports two organizations per channel now (FAB-3809, in review)
 - PTE can only send transactions to the anchor peer of an organization.  It will need to be able to send transactions to any peer.
 - Endorsement policy is not supported yet.
 - replace 'git clone https://github.com/hyperledger/fabric-sdk-node.git' with fabric-client and fabric-ca-client
@@ -219,7 +219,7 @@ where:
 + **transType**: transaction type
   - Channel: channel activities specified in channelOpt.action
   - Install: install chaincode
-  - Instantiate: instantiate chaincode
+  - Instantiate: instantiate chaincode on the organizations listed in the orgName of channelOpt
   - Invoke: invokes transaction
 
 + **invokeType**: invoke transaction type.  This parameter is valid only if the transType is set to invoke
@@ -228,11 +228,10 @@ where:
 
 + **targetPeers**: the target peers that transactions will sent to
   - Anchor: only send to anchor peers
-  - All: send to all peers
 
-+ **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.  One orderer is assigned to one thread with round robin. PTE currently only supports 1 orderer.
++ **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.
 
-+ **nOrg**: number of organitzations for the test
++ **nOrg**: number of organizations for the test
 
 + **nPeerPerOrg**: number of peers per organization for the test
 
@@ -242,7 +241,7 @@ where:
 
 + **runDur**: run duration in seconds to be executed if nRequest is 0
 
-+ **TLS**: TLS setting for the test: Disabled or Enabled, ONLY **Disabled** is supported now.
++ **TLS**: TLS setting for the test: Disabled or Enabled.
 
 + **channelOpt**: transType channel options
   - name: channel name
