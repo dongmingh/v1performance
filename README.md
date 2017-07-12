@@ -5,6 +5,13 @@
 
 The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) SDK](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup/) to interact with a [Hyperledger Fabric](https://github.com/hyperledger/fabric) network.
 
+##Code Base for v1.0.0
+
+- Fabric commit level: f56a82e36e040e1c1a986edfceac014ba1516571
+- fabric-sdk-node commit level: 974bafcb1059c4cb8dda54a9e9d0afc6d87854c5
+- fabric-ca commit level: 74f8f4d4c29e45a79a8849efb057dbd8de3ae8d0
+- PTE v1performance commit level: current
+- 
 ##Code Base for v1.0.0-RC1
 
 - Fabric commit level: b17afeb9da2ae34ce9dd76de558fbd23623fb186
@@ -63,17 +70,17 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 1. cd $GOPATH/src/github.com/hyperledger
 - git clone https://github.com/hyperledger/fabric
 - cd fabric
-- git reset --hard 6b6bfcfbd1e798a8a08fa9c3bf4dc0ff766a6b87
+- git reset --hard f56a82e36e040e1c1a986edfceac014ba1516571
 - make docker
 - cd ..
 - git clone https://github.com/hyperledger/fabric-ca
 - cd fabric-ca
-- git reset --hard f5216c35e8ce46e8c04842ec529d2c1974b95894
+- git reset --hard 74f8f4d4c29e45a79a8849efb057dbd8de3ae8d0
 - make docker
 - cd ..
 - git clone https://github.com/hyperledger/fabric-sdk-node.git
 - cd fabric-sdk-node
-- git reset --hard f13f4b42e7155ec0dc3d7485b202bb6a6ca73aed
+- git reset --hard 974bafcb1059c4cb8dda54a9e9d0afc6d87854c5
 - rm -rf node_modules
 - npm install
 - gulp ca
