@@ -70,7 +70,7 @@ var channelID = uiContent.channelID;
 var chaincode_id = uiContent.chaincodeID+channelID;
 var chaincode_ver = uiContent.chaincodeVer;
 var chain_id = uiContent.chainID+channelID;
-logger.info('chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
+logger.info('Nid: %d, chaincode_id: %s, chaincode_ver: %s, chain_id: %s', Nid, chaincode_id, chaincode_ver, chain_id);
 
 var channelOpt=uiContent.channelOpt;
 var channelName=channelOpt.name;

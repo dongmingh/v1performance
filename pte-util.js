@@ -152,12 +152,24 @@ function getMember(username, password, client, nid, userOrg, svcFile) {
 function getAdmin(client, nid, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
-        var keyPath =  ORGS[userOrg].adminPath + '/keystore';
-        var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-        var certPath = ORGS[userOrg].adminPath + '/signcerts';
-        var certPEM = readAllFiles(certPath)[0];
-        logger.debug('[getAdmin] keyPath: %s', keyPath);
-        logger.debug('[getAdmin] certPath: %s', certPath);
+        var keyPath;
+        var keyPEM;
+        var certPath;
+        var certPEM;
+
+        if (typeof ORGS[userOrg].admin_cert !== 'undefined') {
+            logger.info(' %s admin_cert defined', userOrg);
+            keyPEM = ORGS[userOrg].priv;
+            certPEM = ORGS[userOrg].admin_cert;
+        } else {
+            logger.info(' %s admin_cert undefined', userOrg);
+            keyPath =  ORGS[userOrg].adminPath + '/keystore';
+            keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
+            certPath = ORGS[userOrg].adminPath + '/signcerts';
+            certPEM = readAllFiles(certPath)[0];
+            logger.debug('[getAdmin] keyPath: %s', keyPath);
+            logger.debug('[getAdmin] certPath: %s', certPath);
+        }
 
         var cryptoSuite = hfc.newCryptoSuite();
 	if (userOrg) {
@@ -178,13 +190,24 @@ function getAdmin(client, nid, userOrg, svcFile) {
 function getOrdererAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
+        var keyPath;
+        var keyPEM;
+        var certPath;
+        var certPEM;
         var ordererID = ORGS[userOrg].ordererID;
-        var keyPath =  ORGS['orderer'][ordererID].adminPath + '/keystore';
-        var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-        var certPath = ORGS['orderer'][ordererID].adminPath + '/signcerts';
-        var certPEM = readAllFiles(certPath)[0];
-        logger.debug('[getOrdererAdmin] keyPath: %s', keyPath);
-        logger.debug('[getOrdererAdmin] certPath: %s', certPath);
+        if (typeof ORGS['orderer'][ordererID].admin_cert !== 'undefined') {
+            logger.info(' %s admin_cert defined', userOrg);
+            keyPEM = ORGS['orderer'][ordererID].priv;
+            certPEM = ORGS['orderer'][ordererID].admin_cert;
+        } else {
+            logger.info(' %s admin_cert undefined', userOrg);
+            keyPath =  ORGS['orderer'][ordererID].adminPath + '/keystore';
+            keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
+            certPath = ORGS['orderer'][ordererID].adminPath + '/signcerts';
+            certPEM = readAllFiles(certPath)[0];
+            logger.debug('[getOrdererAdmin] keyPath: %s', keyPath);
+            logger.debug('[getOrdererAdmin] certPath: %s', certPath);
+        }
 
 	return Promise.resolve(client.createUser({
 		username: 'ordererAdmin',
