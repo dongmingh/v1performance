@@ -42,10 +42,7 @@ var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
 
-var logger = utils.getLogger('PTE main');
-
 var gopath=process.env.GOPATH;
-logger.info('GOPATH: ', gopath);
 
 utils.setConfigSetting('crypto-keysize', 256);
 
@@ -55,14 +52,16 @@ var webUser = null;
 var tmp;
 var i=0;
 
-//testUtil.setupChaincodeDeploy();
-
-
 // input: userinput json file
+var PTEid = parseInt(process.argv[5]);
+var loggerMsg='PTE ' + PTEid + ' main';
+var logger = utils.getLogger(loggerMsg);
+logger.info('GOPATH: ', gopath);
+
 var Nid = parseInt(process.argv[2]);
 var uiFile = process.argv[3];
 var tStart = parseInt(process.argv[4]);
-logger.info('input parameters: Nid=%d, uiFile=%s, tStart=%d', Nid, uiFile, tStart);
+logger.info('input parameters: Nid=%d, uiFile=%s, tStart=%d PTEid=%d', Nid, uiFile, tStart, PTEid);
 var uiContent = JSON.parse(fs.readFileSync(uiFile));
 
 var TLS=uiContent.TLS;
@@ -1077,7 +1076,7 @@ function performance_main() {
         } else if ( transType.toUpperCase() == 'INVOKE' ) {
             // spawn off processes for transactions
             for (var j = 0; j < nProc; j++) {
-                var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart, org]);
+                var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart, org, PTEid]);
 
                 workerProcess.stdout.on('data', function (data) {
                     logger.info('stdout: ' + data);

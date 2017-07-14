@@ -5,13 +5,24 @@
 # example: ./pte_driver.sh runCases.txt
 #
 #    runCases.txt:
-#    node userInputs/userInput-samplecc-i.json
-#    node userInputs/userInput-samplecc-q.json
+#    sdk=node userInputs/userInput-samplecc-i.json
+#    sdk=node userInputs/userInput-samplecc-q.json
 #
 
+#echo "input vars: $# "
 inFile=$1
+iPTE=0
+tStart=0
+
+# if called from pte_mge.sh, then set vars from inputs
+if [ $# -gt 1 ]; then
+    iPTE=$2
+    tStart=$3
+fi
+
+echo "$0 inFile= $inFile, tStart=$tStart iPTE=$iPTE "
 EXENODE=pte-main.js
-nNetwork=0
+nInstances=0
 
 while read line
 do
@@ -50,16 +61,18 @@ echo "Node Array: ${nodeArray[@]}"
 
 # node requests
 function nodeProc {
-    nNetwork=${#nodeArray[@]}
-    tWait=$[nNetwork*4000+10000]
-    tCurr=`date +%s%N | cut -b1-13`
-    tStart=$[tCurr+tWait]
-    echo "nNetwork: $nNetwork, tStart: $tStart"
+    nInstances=${#nodeArray[@]}
+    if [ $tStart -eq 0 ]; then
+        tWait=$[nInstances*4000+10000]
+        tCurr=`date +%s%N | cut -b1-13`
+        tStart=$[tCurr+tWait]
+    fi
+    echo "iPTE: $iPTE, nInstances: $nInstances, tStart: $tStart"
 
     BCN=0
     for i in ${nodeArray[@]}; do
         echo "execution: $i"
-        node $EXENODE $BCN $i $tStart &
+        node $EXENODE $BCN $i $tStart $iPTE &
         let BCN+=1
     done
 }

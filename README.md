@@ -103,7 +103,8 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 
 ##Scripts
 
-- pte_driver.sh: the performance traffic engine
+- pte_mgr.sh: the PTE manager to manage multiple PTEs
+- pte_driver.sh: the performance traffic engine driver
 - pte-main.js: the PTE main js
 - pte-execRequest.js: A Node js executing transaction requests
 - pte-util.js: the PTE utility js
@@ -111,19 +112,43 @@ To build and test, the following pre-requisites must be installed first, see [Hy
 
 ##Usage
 
+`./pte_mgr.sh <PTE mgr input file>`
+
+- PTE mgr input file: the file contains all PTEs run cases
+
 `./pte_driver.sh <run cases file>`
 
 - run cases file: the file contains all user specified test cases
 
 
-####Examples
+#### Examples
+
+###### pte_mgr.sh
+
+This is used to manage multiple PTEs.
+
+- ./pte_mgr.sh userInputs/PTEMgr-constant.txt
+
+where PTEMgr-constant.txt is
+
+    driver=pte userInputs/runCases-constant-i.txt
+    driver=pte userInputs/runCases-constant-q.tx
+
+The above command will execute two PTE commands with the same starting time: 
+
+    ./pte_driver.sh runCases-constant-i.txt
+    ./pte_driver.sh runCases-constant-q.txt
+
+###### pte_driver.sh
+
+This is used for single PTE.
 
 - ./pte_driver.sh userInputs/runCases.txt
 
 The above command will execute the transaction tests listed in the runCases.txt.
 
 
-##runCases.txt file, in directory userInputs
+## runCases.txt file, in directory userInputs
 
 This file contains all test cases to be executed.  Each line is a test case and includes two parameters: SDK type and user input file.  Below is an example of the runCases.txt containing two test cases using Node SDK:
 

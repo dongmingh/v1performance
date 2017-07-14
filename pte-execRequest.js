@@ -42,7 +42,9 @@ var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
 //var _commonProto = grpc.load(path.join(__dirname, 'node_modules/fabric-client/lib/protos/common/common.proto')).common;
 
-var logger = utils.getLogger('PTE exec');
+var PTEid=process.argv[7];
+var loggerMsg='PTE '+PTEid+' exec';
+var logger = utils.getLogger(loggerMsg);
 
 const crypto = require('crypto');
 
@@ -931,7 +933,7 @@ function invoke_move_const(freq) {
                     // hist output
                     if ( recHist == 'HIST' ) {
                         tCurr = new Date().getTime();
-                        buff = Nid +':'+ pid + ':' + channelName +':' + org + ' ' + transType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
+                        buff = PTEid +':'+ Nid +':'+ pid + ':' + channelName +':' + org + ' ' + transType[0]+':'+invokeType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
                         fs.appendFile(ofile, buff, function(err) {
                             if (err) {
                                return logger.error(err);
@@ -980,7 +982,7 @@ function invoke_query_const(freq) {
             // output
             if ( recHist == 'HIST' ) {
                 tCurr = new Date().getTime();
-                buff = Nid +':'+ pid + ':' + channelName +':' + org + ' ' + transType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
+                buff = PTEid +':'+ Nid +':'+ pid + ':' + channelName +':' + org + ' ' + transType[0] +':'+invokeType[0]+ ':' + inv_q + ' time:'+ tCurr + '\n';
                 fs.appendFile(ofile, buff, function(err) {
                     if (err) {
                        return logger.error(err);
