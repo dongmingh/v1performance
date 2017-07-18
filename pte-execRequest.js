@@ -328,6 +328,57 @@ function assignThreadOrgPeer(channel, client, org) {
 }
 
 
+function assignThreadPeerList(channel, client, org) {
+    logger.info('[Nid:chan:org:id=%d:%s:%s:%d assignThreadPeerList]', Nid, channel.getName(), org, pid);
+    var peerTmp;
+    var eh;
+    var data;
+    var listOpt=uiContent.listOpt;
+    var peername;
+    for(var key in listOpt) {
+        for (i = 0; i < listOpt[key].length; i++) {
+            if (ORGS[key].hasOwnProperty(listOpt[key][i])) {
+                peername = listOpt[key][i];
+                console.log(peername);
+                if (peername.indexOf('peer') === 0) {
+                    if (TLS.toUpperCase() == 'ENABLED') {
+                        data = fs.readFileSync(ORGS[key][peername]['tls_cacerts']);
+                        peerTmp = client.newPeer(
+                            ORGS[key][peername].requests,
+                            {
+                                pem: Buffer.from(data).toString(),
+                                'ssl-target-name-override': ORGS[key][peername]['server-hostname']
+                            }
+                        );
+                        targets.push(peerTmp);
+                        channel.addPeer(peerTmp);
+                    } else {
+                        peerTmp = client.newPeer(ORGS[key][peername].requests);
+                        //targets.push(peerTmp);
+                        channel.addPeer(peerTmp);
+                    }
+
+                    eh = client.newEventHub();
+                    if (TLS.toUpperCase() == 'ENABLED') {
+                        eh.setPeerAddr(
+                            ORGS[key][peername].events,
+                            {
+                                pem: Buffer.from(data).toString(),
+                                'ssl-target-name-override': ORGS[key][peername]['server-hostname']
+                            }
+                        );
+                    } else {
+                        eh.setPeerAddr(ORGS[key][peername].events);
+                    }
+                    eh.connect();
+                    eventHubs.push(eh);
+                }
+            }
+        }
+    }
+    logger.info('[Nid:chan:org:id=%d:%s:%s:%d assignThreadPeerList] add peer: ', Nid, channelName, org, pid, channel.getPeers());
+}
+
 function channelAddPeer(channel, client, org) {
     logger.info('[Nid:chan:org:id=%d:%s:%s:%d channelAddPeer]', Nid, channelName, org, pid);
     var peerTmp;
@@ -527,6 +578,8 @@ function execTransMode() {
 
                     if (targetPeers.toUpperCase() == 'ANCHOR') {
                         channelAddAnchorPeer(channel, client, org);
+                    } else if (targetPeers.toUpperCase() == 'LIST'){
+                        assignThreadPeerList(channel,client,org);
                     } else {
                         assignThreadOrgPeer(channel, client, org);
                     }

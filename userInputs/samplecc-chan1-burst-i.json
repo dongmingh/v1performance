@@ -25,6 +25,10 @@
             "org2"
         ]
     },
+    "listOpt": {
+        "org1": ["peer1"],
+        "org2": ["peer1"]
+    },
     "burstOpt": {
         "burstFreq0":  "5",
         "burstDur0":  "500",

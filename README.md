@@ -186,6 +186,10 @@ Available SDK types are node, python and java. However, currently only node SDK 
                 "testOrg1"
             ]
         },
+        "listOpt": {
+            "org1": ["peer1"],
+            "org2": ["peer1"]
+        },
         "burstOpt": {
             "burstFreq0":  "500",
             "burstDur0":  "3000",
@@ -260,8 +264,9 @@ where:
   - Move: move transaction
   - Query: query transaction
 
-+ **targetPeers**: the target peers that transactions will sent to
++ **targetPeers**: the target peers that transactions will sent to (default: all peers)
   - Anchor: only send to anchor peers
+  - List: only send to a set of peers, see listOpt for details.
 
 + **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.
 
@@ -282,6 +287,13 @@ where:
   - channelTX: channel transaction file
   - action: channel action: create or join.
   - orgName: name of organization for the test
+
++ **listOpt**: targetPeers List mode options, set the peers you want to send to group by org
+  - org: peers array of the org, such as :
+  `              "listOpt": {
+                     "org1": ["peer1","peer2"],
+                     "org2": ["peer1"]
+                 }`
 
 + **burstOpt**: the frequencies and duration for Burst transaction mode traffic. Currently, two transaction rates are supported. The traffic will issue one transaction every burstFreq0 ms for burstDur0 ms, then one transaction every burstFreq1 ms for burstDur1 ms, then the pattern repeats. These parameters are valid only if the transMode is set to **Burst**.
   - burstFreq0: frequency in ms for the first transaction rate
