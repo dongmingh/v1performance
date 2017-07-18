@@ -121,7 +121,7 @@ var svcFile = uiContent.SCFile[0].ServiceCredentials;
 logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] svcFile: %s, org: %s', Nid, channel.getName(), org, pid, svcFile, org);
 hfc.addConfigFile(path.join(__dirname, svcFile));
 var ORGS = hfc.getConfigSetting('test-network');
-var orgName = ORGS[org].orgName;
+var orgName = ORGS[org].name;
 
 var users =  hfc.getConfigSetting('users');
 
