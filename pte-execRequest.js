@@ -339,7 +339,6 @@ function assignThreadPeerList(channel, client, org) {
         for (i = 0; i < listOpt[key].length; i++) {
             if (ORGS[key].hasOwnProperty(listOpt[key][i])) {
                 peername = listOpt[key][i];
-                console.log(peername);
                 if (peername.indexOf('peer') === 0) {
                     if (TLS.toUpperCase() == 'ENABLED') {
                         data = fs.readFileSync(ORGS[key][peername]['tls_cacerts']);
