@@ -265,8 +265,8 @@ where:
   - Query: query transaction
 
 + **targetPeers**: the target peers that transactions will sent to
-  - OrgAnchors: send to the anchor peer (peer1) of the organization being executed in the current process
-  - AllAnchor: send to the anchor peers of all organizations
+  - OrgAnchor: send to the anchor peer (peer1) of the organization being executed in the current process
+  - AllAnchors: send to the anchor peers of all organizations
   - OrgPeers: send to all peers in the organization being executed in the current process
   - AllPeers: send to all peers in all organizations
   - List: only send to the peers given in listOpt, see listOpt below for details
