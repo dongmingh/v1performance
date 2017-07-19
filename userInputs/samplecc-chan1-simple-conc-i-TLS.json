@@ -8,7 +8,7 @@
     "transMode": "Constant",
     "transType": "Invoke",
     "invokeType": "Move",
-    "targetPeers": "Anchor",
+    "targetPeers": "AllAnchors",
     "nOrderer": "1",
     "nPeer": "1",
     "nOrg": "1",

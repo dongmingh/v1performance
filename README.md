@@ -174,7 +174,7 @@ Available SDK types are node, python and java. However, currently only node SDK 
         "nOrderer": "1",
         "nOrg": "2",
         "nPeerPerOrg": "2",
-        "nProc": "4",
+        "nProcPerOrg": "4",
         "nRequest": "0",
         "runDur": "600",
         "TLS": "disabled",
@@ -264,9 +264,12 @@ where:
   - Move: move transaction
   - Query: query transaction
 
-+ **targetPeers**: the target peers that transactions will sent to (default: all peers)
-  - Anchor: only send to anchor peers
-  - List: only send to a set of peers, see listOpt for details.
++ **targetPeers**: the target peers that transactions will sent to
+  - OrgAnchors: send to the anchor peer (peer1) of the organization being executed in the current process
+  - AllAnchor: send to the anchor peers of all organizations
+  - OrgPeers: send to all peers in the organization being executed in the current process
+  - AllPeers: send to all peers in all organizations
+  - List: only send to the peers given in listOpt, see listOpt below for details
 
 + **nOrderer**: number of orderers for traffic, this number shall not exceed the actual number of orderers in the network, or some transactions may fail.
 
@@ -274,7 +277,7 @@ where:
 
 + **nPeerPerOrg**: number of peers per organization for the test
 
-+ **nProc**: number of processes for the test
++ **nProcPerOrg**: number of processes per organization for the test
 
 + **nRequest**: number of transactions to be executed for each thread
 

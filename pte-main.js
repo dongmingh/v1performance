@@ -91,8 +91,8 @@ var users =  hfc.getConfigSetting('users');
 
 var transType = uiContent.transType;
 var nRequest = parseInt(uiContent.nRequest);
-var nProc = parseInt(uiContent.nProc);
-logger.info('nProc ', nProc);
+var nProcPerOrg = parseInt(uiContent.nProcPerOrg);
+logger.info('nProcPerOrg ', nProcPerOrg);
 var tCurr;
 
 
@@ -105,7 +105,7 @@ var tx_id = null;
 var nonce = null;
 
 var the_user = null;
-var g_len = nProc;
+var g_len = nProcPerOrg;
 
 var cfgtxFile;
 var allEventhubs = [];
@@ -1075,7 +1075,7 @@ function performance_main() {
             }
         } else if ( transType.toUpperCase() == 'INVOKE' ) {
             // spawn off processes for transactions
-            for (var j = 0; j < nProc; j++) {
+            for (var j = 0; j < nProcPerOrg; j++) {
                 var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart, org, PTEid]);
 
                 workerProcess.stdout.on('data', function (data) {
