@@ -131,17 +131,13 @@ var transMode = uiContent.transMode;
 var transType = uiContent.transType;
 var invokeType = uiContent.invokeType;
 var nRequest = parseInt(uiContent.nRequest);
-//var nOrg = parseInt(uiContent.nOrg);
-//var nPeerPerOrg = parseInt(uiContent.nPeerPerOrg);
-//var nPeer = nOrg * nPeerPerOrg;
 
-var nOrderer = parseInt(uiContent.nOrderer);
-logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] nOrderer: %d, transMode: %s, transType: %s, invokeType: %s, nRequest: %d', Nid, channel.getName(), org, pid,  nOrderer, transMode, transType, invokeType, nRequest);
+logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] transMode: %s, transType: %s, invokeType: %s, nRequest: %d', Nid, channel.getName(), org, pid,  transMode, transType, invokeType, nRequest);
 
 var runDur=0;
 if ( nRequest == 0 ) {
    runDur = parseInt(uiContent.runDur);
-   logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] nOrderer: %d, transMode: %s, transType: %s, invokeType: %s, runDur: %d', Nid, channel.getName(), org, pid, nOrderer, transMode, transType, invokeType, runDur);
+   logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] transMode: %s, transType: %s, invokeType: %s, runDur: %d', Nid, channel.getName(), org, pid, transMode, transType, invokeType, runDur);
    // convert runDur from second to ms
    runDur = 1000*runDur;
 }

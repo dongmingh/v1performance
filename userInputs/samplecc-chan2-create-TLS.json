@@ -9,8 +9,6 @@
     "transType": "Channel",
     "invokeType": "Move",
     "targetPeers": "AllAnchors",
-    "nOrderer": "1",
-    "nPeer": "4",
     "nProcPerOrg": "4",
     "nRequest": "1000",
     "runDur": "600",
