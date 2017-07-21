@@ -186,12 +186,13 @@ There are two ways to control transaction execution:
     "nProcPerOrg": "4",
     "nRequest": "1000",
     "runDur": "600",
-    "TLS": "Disabled",
+    "TLS": "Enabled",
     ```
     And set the channel name in channelOpt:
     ```
     "channelOpt": {
         "name": "testchannel1",
+        "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -209,12 +210,13 @@ There are two ways to control transaction execution:
     "nProcPerOrg": "4",
     "nRequest": "1000",
     "runDur": "600",
-    "TLS": "Disabled",
+    "TLS": "Enabled",
     ```
     And set the channel name in channelOpt:
     ```
     "channelOpt": {
         "name": "testchannel1",
+        "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
         "action":  "create",
         "orgName": [
             "testOrg1"
@@ -255,6 +257,7 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         ```
         "channelOpt": {
             "name": "testchannel1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
             "action":  "create",
             "orgName": [
                 "testOrg1"
@@ -266,6 +269,7 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         ```
         "channelOpt": {
             "name": "testchannel1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
             "action":  "join",
             "orgName": [
                 "testOrg1"
@@ -292,6 +296,7 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         ```
         "channelOpt": 
             "name":  "testchannel1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
             "action":  "create",
             "orgName": [
                 "testOrg1"
@@ -306,17 +311,19 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         "transType": "instantiate",
         "invokeType": "Move",
         ```
-        and set channelOpt name to the channel name:
+        and set channelOpt name to the channel name and specify the list of organizations that the chaincode will be instantiated:
         ```
         "channelOpt": {
             "name":  "testchannel1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
             "action":  "create",
             "orgName": [
-                "testOrg1"
+                "testOrg1",
+                "testOrg3"
             ]
         },
         ```
-        Note that action and orgName are ignored.
+        Note that action is ignored.
 
 ## Chaincodes
 The following chaincodes are tested and supported:
@@ -337,10 +344,12 @@ See userInput-samplecc.json for example of userInput file. Take the following st
 The output includes network id, process id, transaction type, total transactions, completed transactions, failed transactions, starting time, ending time, and elapsed time.
 * For example, consider a test case that has 4 processes driving a single peer. The output shows that network 0 process 0 executed 1000 moves with no failure in 406530 ms, network 0 process 1 executed 1000 moves with no failure in 400421 ms, and so on.  Note that the starting and ending timestamps are provided:
 
+    ```
     stdout: [Nid:id=0:3] eventRegister: completed 1000(1000) Invoke(Move) in 259473 ms, timestamp: start 1492024894518 end 1492025153991
     stdout: [Nid:id=0:2] eventRegister: completed 1000(1000) Invoke(Move) in 364174 ms, timestamp: start 1492024894499 end 1492025258673
     stdout: [Nid:id=0:1] eventRegister: completed 1000(1000) Invoke(Move) in 400421 ms, timestamp: start 1492024894500 end 1492025294921
     stdout: [Nid:id=0:0] eventRegister: completed 1000(1000) Invoke(Move) in 406530 ms, timestamp: start 1492024894498 end 1492025301028
+    ```
 
 ## Reference
 
@@ -363,11 +372,11 @@ The output includes network id, process id, transaction type, total transactions
         "runDur": "600",
         "TLS": "enabled",
         "channelOpt": {
-            "name": "testOrg1",
-            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testOrgsChannel1.tx",
+            "name": "testchannel1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
             "action":  "create",
             "orgName": [
-                "testOrg1"
+                "org1"
             ]
         },
         "burstOpt": {
