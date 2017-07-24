@@ -664,7 +664,7 @@ function chaincodeInstantiate(channel, client, org) {
                 all_good = all_good & one_good;
             }
             if (all_good) {
-                logger.info(util.format('[chaincodeInstantiate] Successfully sent chaincode instantiation Proposal and received ProposalResponse: Status - %s, message - "%s", metadata - "%s", endorsement signature: %s', proposalResponses[0].response.status, proposalResponses[0].response.message, proposalResponses[0].response.payload, proposalResponses[0].endorsement.signature));
+                logger.info(util.format('[chaincodeInstantiate] Successfully sent chaincode instantiation Proposal and received ProposalResponse: Status - %s', proposalResponses[0].response.status));
 
 
                 var request = {
@@ -681,8 +681,6 @@ function chaincodeInstantiate(channel, client, org) {
 
                         eh.registerTxEvent(deployId.toString(), (tx, code) => {
                             var tCurr1=new Date().getTime();
-                            //logger.info('[chaincodeInstantiate] tCurr=%d, The chaincode instantiate transaction time=%d', tCurr, tCurr1-tCurr);
-                            //logger.info('[chaincodeInstantiate] The chaincode instantiate transaction has been committed on peer '+ eh.ep.addr);
                             clearTimeout(handle);
                             eh.unregisterTxEvent(deployId);
 
