@@ -325,6 +325,35 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         ```
         Note that action is ignored.
 
+* ### Query Blockchain Information Operations
+    For any query blockchain information activities (query block), set transType to `QueryBlock`:
+    ```
+    "transMode": "Constant",
+    "transType": "QueryBlock",
+    "invokeType": "Move",
+    ```
+    * ### Query Blockchain information
+        To query the length (number of transactions) in blocks, set org, peer, startBlock, and endBlock in queryBlockOpt:
+        ```
+        "queryBlockOpt": {
+            "org":  "org1",
+            "peer":  "peer1",
+            "startBlock":  "6590",
+            "endBlock":  "6800"
+        },
+
+        ```
+        The output will be as follow:
+
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6598:10:10
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6599:10:20
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6600:10:30
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6601:10:40
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6602:8:48
+        info: [PTE 0 main]: [queryBlockchainInfo] blocks= 6598:6602, totalLength= 48
+
+        
+
 ## Chaincodes
 The following chaincodes are tested and supported:
 
@@ -371,6 +400,12 @@ The output includes network id, process id, transaction type, total transactions
         "nRequest": "0",
         "runDur": "600",
         "TLS": "enabled",
+        "queryBlockOpt": {
+            "org":  "org1",
+            "peer":  "peer1",
+            "startBlock":  "6590",
+            "endBlock":  "6800"
+        },
         "channelOpt": {
             "name": "testchannel1",
             "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
@@ -441,6 +476,7 @@ where:
     * **Channel**: channel activities specified in channelOpt.action
     * **Install**: install chaincode
     * **Instantiate**: instantiate chaincode
+    * **QueryBlock**: query blockchain information
     * **Invoke**: invokes transaction
 * **invokeType**: invoke transaction type. This parameter is valid only if the transType is set to invoke
     * **Move**: move transaction
@@ -455,6 +491,11 @@ where:
 * **nRequest**: number of transactions to be executed for each process
 * **runDur**: run duration in seconds to be executed if nRequest is 0
 * **TLS**: TLS setting for the test: Disabled or Enabled.
+* **queryBlock**: query blockchain information options
+    * **org**: the org name to be queried
+    * **peer**: the peer to be queried
+    * **startBlock**: the starting block
+    * **endBlock**: the ending block. If the the ending block is greater than the chain height in the peer, eBlock will be set to the chain height.
 * **channelOpt**: transType channel options
     * **name**: channel name
     * **channelTX**: channel transaction file

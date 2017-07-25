@@ -116,6 +116,10 @@ var targets = [];
 var eventHubs=[];
 var orderer;
 
+var sBlock = 0;
+var eBlock = 0;
+var qOrg ;
+var qPeer ;
 
 function printChainInfo(channel) {
     logger.info('[printChainInfo] channel name: ', channel.getName());
@@ -167,7 +171,7 @@ function chainAddOrderer(channel, client, org) {
             client.newOrderer(ORGS['orderer'][ordererID].url)
         );
     }
-    logger.debug('[chainAddOrderer] channel peers: ', channel.getPeers());
+    logger.info('[chainAddOrderer] channel orderers: ', channel.getOrderers());
 }
 
 function channelAddAllPeer(chain, client) {
@@ -323,7 +327,37 @@ function channelAddPeer(channel, client, org) {
             }
         }
     }
-    logger.debug('[channelAddPeer] channel peers: ', channel.getPeers());
+    logger.info('[channelAddPeer] channel peers: ', channel.getPeers());
+}
+
+function channelAddQIPeer(channel, client, qorg, qpeer) {
+    logger.info('[channelAddQIPeer] channel name: ', channel.getName());
+    logger.info('[channelAddQIPeer] qorg %s qpeer: ', qorg,qpeer);
+    var peerTmp;
+    var eh;
+    for (let key in ORGS[qorg]) {
+        if (ORGS[qorg].hasOwnProperty(key)) {
+            if (key.indexOf(qpeer) === 0) {
+                if (TLS.toUpperCase() == 'ENABLED') {
+                    let data = fs.readFileSync(ORGS[qorg][key]['tls_cacerts']);
+                    peerTmp = client.newPeer(
+                        ORGS[qorg][key].requests,
+                        {
+                            pem: Buffer.from(data).toString(),
+                            'ssl-target-name-override': ORGS[qorg][key]['server-hostname']
+                        }
+                    );
+                    targets.push(peerTmp);
+                    channel.addPeer(peerTmp);
+                } else {
+                    peerTmp = client.newPeer( ORGS[qorg][key].requests);
+                    targets.push(peerTmp);
+                    channel.addPeer(peerTmp);
+                }
+            }
+        }
+    }
+    logger.info('[channelAddQIPeer] channel peers: ', channel.getPeers());
 }
 
 function channelAddPeer1(channel, client, org) {
@@ -993,7 +1027,82 @@ function joinOneChannel(channel, client, org) {
 
 }
 
-// performance main
+function queryBlockchainInfo(channel, client, org) {
+
+    logger.info('[queryBlockchainInfo] channel (%s)', channelName);
+    var username = ORGS[org].username;
+    var secret = ORGS[org].secret;
+    //logger.info('[queryBlockchainInfo] user=%s, secret=%s', username, secret);
+    sBlock = uiContent.queryInfoOpt.startBlock;
+    eBlock = uiContent.queryInfoOpt.endBlock;
+    qOrg = uiContent.queryInfoOpt.org;
+    qPeer = uiContent.queryInfoOpt.peer;
+    logger.info('[queryBlockchainInfo] query block info org:peer:start:end=%s:%s:%d:%d', qOrg, qPeer, sBlock, eBlock);
+
+    utils.setConfigSetting('key-value-store','fabric-client/lib/impl/FileKeyValueStore.js');
+    var cryptoSuite = hfc.newCryptoSuite();
+    cryptoSuite.setCryptoKeyStore(hfc.newCryptoKeyStore({path: testUtil.storePathForOrg(Nid, orgName)}));
+    client.setCryptoSuite(cryptoSuite);
+
+    chainAddOrderer(channel, client, org);
+
+    channelAddQIPeer(channel, client, qOrg, qPeer);
+
+    return Client.newDefaultKeyValueStore({
+            path: testUtil.storePathForOrg(orgName)
+    }).then( function (store) {
+            client.setStateStore(store);
+            return testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile);
+    }).then((admin) => {
+            logger.info('[queryBlockchainInfo] Successfully enrolled user \'admin\'');
+            the_user = admin;
+
+            return channel.initialize();
+    }).then((success) => {
+            logger.info('[queryBlockchainInfo] Successfully initialized channel');
+            return channel.queryInfo();
+    }).then((blockchainInfo) => {
+            var blockHeight = blockchainInfo.height - 1;
+            logger.info('[queryBlockchainInfo] Channel queryInfo() returned block height='+blockchainInfo.height);
+            if ( eBlock > blockHeight ) {
+                 logger.info('[queryBlockchainInfo] eBlock:block height = %d:%d', eBlock, blockHeight);
+                 logger.info('[queryBlockchainInfo] reset eBlock to block height');
+                 eBlock = blockHeight;
+            }
+            //var block;
+
+            var qBlks = [];
+            for (i = sBlock; i <= eBlock; i++) {
+                qBlks.push(parseInt(i));
+            }
+
+            var qPromises = [];
+            var qi = 0;
+            var qb = null;
+            qBlks.forEach((qi) => {
+                qb = new Promise(function(resolve, reject) {
+                    resolve(channel.queryBlock(qi));
+                });
+                qPromises.push(qb);
+            });
+            return Promise.all(qPromises);
+            //return channel.queryBlock(6590);
+    }).then((block) => {
+            var totalLength=0;
+            block.forEach(function(block){
+
+                totalLength = totalLength + block.data.data.length;
+                logger.info('[queryBlockchainInfo] block:Length:accu length= %d:%d:%d', block.header.number, block.data.data.length, totalLength);
+            });
+            logger.info('[queryBlockchainInfo] blocks= %d:%d, totalLength= %j', sBlock, eBlock, totalLength);
+            process.exit();
+
+    }).catch((err) => {
+            throw new Error(err.stack ? err.stack : err);
+    });
+
+}
+
 function performance_main() {
     var channelCreated = 0;
     // send proposal to endorser
@@ -1071,6 +1180,10 @@ function performance_main() {
                 logger.info('[performance_main] channel name: ', channelName);
                 joinChannel(channel, client, org);
             }
+        } else if ( transType.toUpperCase() == 'QUERYBLOCK' ) {
+            var channel = client.newChannel(channelName);
+            logger.info('[performance_main] channel name: ', channelName);
+            queryBlockchainInfo(channel, client, org);
         } else if ( transType.toUpperCase() == 'INVOKE' ) {
             // spawn off processes for transactions
             for (var j = 0; j < nProcPerOrg; j++) {
