@@ -1033,10 +1033,10 @@ function queryBlockchainInfo(channel, client, org) {
     var username = ORGS[org].username;
     var secret = ORGS[org].secret;
     //logger.info('[queryBlockchainInfo] user=%s, secret=%s', username, secret);
-    sBlock = uiContent.queryInfoOpt.startBlock;
-    eBlock = uiContent.queryInfoOpt.endBlock;
-    qOrg = uiContent.queryInfoOpt.org;
-    qPeer = uiContent.queryInfoOpt.peer;
+    sBlock = uiContent.queryBlockOpt.startBlock;
+    eBlock = uiContent.queryBlockOpt.endBlock;
+    qOrg = uiContent.queryBlockOpt.org;
+    qPeer = uiContent.queryBlockOpt.peer;
     logger.info('[queryBlockchainInfo] query block info org:peer:start:end=%s:%s:%d:%d', qOrg, qPeer, sBlock, eBlock);
 
     utils.setConfigSetting('key-value-store','fabric-client/lib/impl/FileKeyValueStore.js');
