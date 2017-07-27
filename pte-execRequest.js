@@ -110,7 +110,7 @@ logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] channelOrgName.length
 var client = new hfc();
 var channel = client.newChannel(channelName);
 
-if ( typeof( uiContent.eventOpt.timeout ) !== 'undefined') {
+if ( (typeof( uiContent.eventOpt ) !== 'undefined') && (typeof( uiContent.eventOpt.timeout ) !== 'undefined') ) {
     evtTimeout = uiContent.eventOpt.timeout;
 } else {
     evtTimeout = 120000;
