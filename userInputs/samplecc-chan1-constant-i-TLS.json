@@ -27,10 +27,6 @@
         "burstFreq1": "2000",
         "burstDur1": "10000"
     },
-    "listOpt": {
-        "org1": ["peer1"],
-        "org2": ["peer1"]
-    },
     "mixOpt": {
         "mixQuery": "false",
         "mixFreq": "3000"
@@ -39,6 +35,13 @@
         "recHist": "HIST",
         "constFreq": "0",
         "devFreq": "0"
+    },
+    "listOpt": {
+        "org1": ["peer1"],
+        "org2": ["peer1"]
+    },
+    "eventOpt": {
+        "timeout": "2400000"
     },
     "ccType": "ccchecker",
     "ccOpt": {

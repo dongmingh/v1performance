@@ -815,22 +815,22 @@ function createOneChannel(client ,channelOrgName) {
         path: testUtil.storePathForOrg(Nid, orgName)
     }).then((store) => {
         client.setStateStore(store);
-    var submitePromises= [];
-    channelOrgName.forEach((org) => {
-        submitter = new Promise(function (resolve,reject) {
-            username=ORGS[org].username;
-            secret=ORGS[org].secret;
-            orgName = ORGS[org].name;
-            logger.info('[createOneChannel] org= %s, org name= %s', org, orgName);
-            client._userContext = null;
-            resolve(testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile));
+        var submitePromises= [];
+        channelOrgName.forEach((org) => {
+            submitter = new Promise(function (resolve,reject) {
+                username=ORGS[org].username;
+                secret=ORGS[org].secret;
+                orgName = ORGS[org].name;
+                logger.info('[createOneChannel] org= %s, org name= %s', org, orgName);
+                client._userContext = null;
+                resolve(testUtil.getSubmitter(username, secret, client, true, Nid, org, svcFile));
+            });
+            submitePromises.push(submitter);
         });
-    submitePromises.push(submitter);
-    });
-    // all the orgs
-    return Promise.all(submitePromises);
-})
-.then((results) => {
+        // all the orgs
+        return Promise.all(submitePromises);
+    })
+    .then((results) => {
         results.forEach(function(result){
         var signature = client.signChannelConfig(config);
         logger.info('[createOneChannel] Successfully signed config update for one organization ');
@@ -840,58 +840,58 @@ function createOneChannel(client ,channelOrgName) {
         // weird double-signature from each org admin
         signatures.push(signature);
         signatures.push(signature);
-    });
-    return signatures;
-}).then((sigs) =>{
+        });
+        return signatures;
+    }).then((sigs) =>{
         client._userContext = null;
-    return testUtil.getOrderAdminSubmitter(client, channelOrgName[0], svcFile);
-}).then((admin) => {
+        return testUtil.getOrderAdminSubmitter(client, channelOrgName[0], svcFile);
+    }).then((admin) => {
         the_user = admin;
-    logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', "orderer");
-    var signature = client.signChannelConfig(config);
-    logger.info('[createOneChannel] Successfully signed config update: ', "orderer");
-    // collect signature from org1 admin
-    // TODO: signature counting against policies on the orderer
-    // at the moment is being investigated, but it requires this
-    // weird double-signature from each org admin
-    signatures.push(signature);
-    signatures.push(signature);
+        logger.info('[createOneChannel] Successfully enrolled user \'admin\' for', "orderer");
+        var signature = client.signChannelConfig(config);
+        logger.info('[createOneChannel] Successfully signed config update: ', "orderer");
+        // collect signature from org1 admin
+        // TODO: signature counting against policies on the orderer
+        // at the moment is being investigated, but it requires this
+        // weird double-signature from each org admin
+        signatures.push(signature);
+        signatures.push(signature);
 
-    //logger.info('[createOneChannel] signatures: ', signatures);
-    logger.info('[createOneChannel] done signing: %s', channelName);
+        //logger.info('[createOneChannel] signatures: ', signatures);
+        logger.info('[createOneChannel] done signing: %s', channelName);
 
-    // build up the create request
-    let nonce = utils.getNonce();
-    let tx_id = client.newTransactionID();
-    var request = {
-        config: config,
-        signatures : signatures,
-        name : channelName,
-        orderer : orderer,
-        txId  : tx_id,
-        nonce : nonce
-    };
-    //logger.info('request: ',request);
-    return client.createChannel(request);
-}, (err) => {
+        // build up the create request
+        let nonce = utils.getNonce();
+        let tx_id = client.newTransactionID();
+        var request = {
+            config: config,
+            signatures : signatures,
+            name : channelName,
+            orderer : orderer,
+            txId  : tx_id,
+            nonce : nonce
+        };
+        //logger.info('request: ',request);
+        return client.createChannel(request);
+    }, (err) => {
         logger.error('Failed to enroll user \'admin\'. ' + err);
         evtDisconnect();
         process.exit();
     }).then((result) => {
         logger.info('[createOneChannel] Successfully created the channel (%s).', channelName);
-    evtDisconnect();
-    process.exit();
-}, (err) => {
+        evtDisconnect();
+        process.exit();
+    }, (err) => {
         logger.error('Failed to create the channel (%s) ', channelName);
         logger.error('Failed to create the channel:: %j '+ err.stack ? err.stack : err);
         evtDisconnect();
         process.exit();
     })
-.then((nothing) => {
+    .then((nothing) => {
         logger.info('Successfully waited to make sure new channel was created.');
-    evtDisconnect();
-    process.exit();
-}, (err) => {
+        evtDisconnect();
+        process.exit();
+    }, (err) => {
         logger.error('Failed due to error: ' + err.stack ? err.stack : err);
         evtDisconnect();
         process.exit();
