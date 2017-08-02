@@ -2,7 +2,30 @@
 # Performance Traffic Engine - PTE
 
 The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) Node SDK](https://fabric-sdk-node.github.io/index.html)
-to interact with a [Hyperledger Fabric](http://hyperledger-fabric.readthedocs.io/en/latest/) network.
+to interact with a [Hyperledger Fabric](http://hyperledger-fabric.readthedocs.io/en/latest/) network by sending requests to and receiving responses from one or more components of network.   PTE is designed to meet two-fold requirements:
+
+1. to handle the complexity of the Hyperledger Fabric network, e.g., locations and number of network, number of channels, organizations, peers, orderers etc.
+2. to support various test cases, e.g., various chaincodes, transaction number, duration, mode, type, and payload size etc, 
+
+In order to meet the two-fold requirements above, flexibility and modularity are the primary design concepts of PTE regarding implementation and usage.  Moreover, PTE allows users to specify many options, see below for available options. The design of PTE is demonstrated in the diagram below:
+
+![](PTE-concept.png)
+
+
+In brief, PTE has the following features:
+
+- channel: creates and joins channel
+- chaincode: installs and instantiates user specified chaincode
+- transactions: delivers transactions to the targeted peers with specified transaction mode and type
+- network: interacts with local and/or remote networks simultaneously
+- scaling: easy to work with any number of networks, orderers, peers
+- events: opens and listens to event port and keep the number of events received
+- blockchain information: queries blockchain height and number of transactions
+- results: provides test results
+- multiple PTEs: easy to manage multiple PTEs
+
+
+
 
 ## Table Of Contents:
 - [Prerequisites](#prerequisites)
@@ -61,6 +84,7 @@ Below is the v1.0.0-alpha commit levels.
 
 - Endorsement policy is not supported yet.
 - Replace `git clone https://github.com/hyperledger/fabric-sdk-node.git` with fabric-client and fabric-ca-client.
+
 
 
 ## Prerequisites
@@ -123,11 +147,12 @@ If planning to run your Fabric network locally, you'll need docker and a bit mor
     - Create your own version of PTEMgr.txt (if use pte_mgr.sh), runCases.txt and User Input json files, according to the test requirements. Use the desired chaincode name, channel name, organizations, etc. Using the information in your own network profiles, remember to "create" all channels, and "join" and "install" for each org, to ensure all peers are set up correctly. Additional information can be found below.
 
 ## Running PTE
+
 Before attempting to run PTE ensure your network is running!
 If you do not have access to a Fabric network, please see the section on [Creating a local Fabric network](#creating-a-local-fabric-network).
 
 ### Usage
-There are two ways of executing PTE: pte_mgr.sh and pte_driver.sh. pte_mgr.sh can be used to manage multiple PTEs while pte_driver.sh can manage one PTE.
+There are two ways to execute PTE: pte_mgr.sh and pte_driver.sh. pte_mgr.sh can be used to manage multiple PTEs while pte_driver.sh can only manage one PTE.
 
 ##### pte_mgr.sh
 
@@ -323,7 +348,7 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
             ]
         },
         ```
-        Note that action is ignored.
+        Note that action is ignored. PTE instantiates chaincode on all peers of each organization listed in channelOpt.orgName. **Recommendation: instantiate a chaincode on the organization before sending a transaction to any peer of that organization.**
 
 * ### Query Blockchain Information Operations
     For any query blockchain information activities (query block), set transType to `QueryBlock`:
@@ -338,19 +363,21 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         "queryBlockOpt": {
             "org":  "org1",
             "peer":  "peer1",
-            "startBlock":  "6590",
-            "endBlock":  "6800"
+            "startBlock":  "195",
+            "endBlock":  "200"
         },
 
         ```
-        The output will be as follow:
+        The following is the output with startBlock=195 and endBlock=200. The output includes the block height and the number of transactions from startBlock to endBlock.
 
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6598:10:10
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6599:10:20
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6600:10:30
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6601:10:40
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 6602:8:48
-        info: [PTE 0 main]: [queryBlockchainInfo] blocks= 6598:6602, totalLength= 48
+        info: [PTE 0 main]: [queryBlockchainInfo] Channel queryInfo() returned block height=202
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 195:10:10
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 196:10:20
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 197:10:30
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 198:10:40
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 199:10:50
+        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 200:10:60
+        info: [PTE 0 main]: [queryBlockchainInfo] blocks= 195:200, totalLength= 60
 
         
 

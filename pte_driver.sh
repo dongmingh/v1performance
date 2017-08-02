@@ -35,17 +35,17 @@ do
 
    case $sdkType in
      sdk=node)
-       echo "sdk type spported: $sdkType"
+       echo "sdk type supported: $sdkType"
        nodeArray[${#nodeArray[@]}]=$userinput
        ;;
 
      sdk=python)
-       echo "sdk type unspported: $sdkType"
+       echo "sdk type unsupported: $sdkType"
        pythonArray[${#pythonArray[@]}]=$userinput
        ;;
 
      sdk=java)
-       echo "sdk type unspported: $sdkType"
+       echo "sdk type unsupported: $sdkType"
        javaArray[${#javaArray[@]}]=$userinput
        ;;
 

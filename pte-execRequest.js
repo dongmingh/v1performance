@@ -69,7 +69,6 @@ var ofile;
 var invokeCheck;
 var chaincode_id;
 var chaincode_ver;
-var chain_id;
 var tx_id = null;
 var nonce = null;
 var the_user = null;
@@ -122,8 +121,7 @@ logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] invokeCheck: ', Nid, 
 var channelID = uiContent.channelID;
 chaincode_id = uiContent.chaincodeID+channelID;
 chaincode_ver = uiContent.chaincodeVer;
-chain_id = uiContent.chainID+channelID;
-logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] chaincode_id: %s, chain_id: %s', Nid, channel.getName(), org, pid, chaincode_id, chain_id);
+logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] chaincode_id: %s', Nid, channel.getName(), org, pid, chaincode_id );
 
 var svcFile = uiContent.SCFile[0].ServiceCredentials;
 logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] svcFile: %s, org: %s', Nid, channel.getName(), org, pid, svcFile, org);
@@ -748,7 +746,7 @@ function eventRegister(tx, cb) {
     var eventPromises = [];
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
-            let handle = setTimeout(function(){eh.unregisterTxEvent(deployId.toString());
+            let handle = setTimeout(function(){eh.unregisterTxEvent(deployId);
             evtTimeoutCnt++;
             evtCount = evtRcv + evtTimeoutCnt;
             if ( ( IDone == 1 ) && ( inv_m == evtCount )  ) {

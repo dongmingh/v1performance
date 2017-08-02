@@ -24,7 +24,7 @@ do
 
    case $driverType in
      driver=pte)
-       echo "driver type spported: $driverType"
+       echo "driver type supported: $driverType"
        pteArray[${#pteArray[@]}]=$userinput
        ;;
 
