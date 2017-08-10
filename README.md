@@ -636,9 +636,13 @@ The service credentials contain the information of the network and are stored in
     - `sh ./download-dockerimages.sh -c x86_64-1.0.0-alpha2 -f x86_64-1.0.0-alpha2`
 - If you do not have an existing network already, you can start a network using the Fabric e2e example:
     - `cd $GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/`
-    - Edit `network_setup.sh` and change **COMPOSE_FILE**:
+    - Edit `
+    - setup.sh` and change **COMPOSE_FILE**:
         ````
+        #COMPOSE_FILE=docker-compose-cli.yaml
         COMPOSE_FILE=docker-compose-e2e.yaml
+        ...
+        #docker logs -f cli
        ````
     - `./network_setup.sh up`
 - Alternatively, consider using the [NetworkLauncher](https://github.com/dongmingh/v1Launcher) tool:
