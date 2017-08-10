@@ -233,6 +233,7 @@ function assignThreadAllPeers(channel, client, org) {
     var peerTmp;
     var eh;
     var data;
+    var event_connected = false;
     for (let key1 in ORGS) {
         if (ORGS.hasOwnProperty(key1)) {
             for (let key in ORGS[key1]) {
@@ -255,7 +256,7 @@ function assignThreadAllPeers(channel, client, org) {
                     channel.addPeer(peerTmp);
                 }
 
-                if ( (invokeType.toUpperCase() == 'MOVE') && ( key1 == org ) ) {
+                if ( (invokeType.toUpperCase() == 'MOVE') && ( key1 == org ) && !event_connected) {
                     eh = client.newEventHub();
                     if (TLS.toUpperCase() == 'ENABLED') {
                         eh.setPeerAddr(
@@ -270,6 +271,7 @@ function assignThreadAllPeers(channel, client, org) {
                     }
                     eh.connect();
                     eventHubs.push(eh);
+                    event_connected= true;
                 }
                 }
             }
@@ -384,6 +386,7 @@ function assignThreadPeerList(channel, client, org) {
     var data;
     var listOpt=uiContent.listOpt;
     var peername;
+    var event_connected = false;
     for(var key in listOpt) {
         for (i = 0; i < listOpt[key].length; i++) {
             if (ORGS[key].hasOwnProperty(listOpt[key][i])) {
@@ -406,7 +409,7 @@ function assignThreadPeerList(channel, client, org) {
                         channel.addPeer(peerTmp);
                     }
 
-                    if ( (invokeType.toUpperCase() == 'MOVE') && ( key == org ) ) {
+                    if ( (invokeType.toUpperCase() == 'MOVE') && ( key == org ) && !event_connected ) {
                         eh = client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
                             eh.setPeerAddr(
@@ -421,6 +424,7 @@ function assignThreadPeerList(channel, client, org) {
                         }
                         eh.connect();
                         eventHubs.push(eh);
+                        event_connected = true;
                     }
                 }
             }
