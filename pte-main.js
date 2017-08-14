@@ -521,7 +521,7 @@ function channelAddEvent(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            var data = fs.readFileSync(ORGS[key1][key]['tls_cacerts']);
+                            var data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
