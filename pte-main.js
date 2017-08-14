@@ -521,6 +521,7 @@ function channelAddEvent(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
+                            var data = fs.readFileSync(ORGS[key1][key]['tls_cacerts']);
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -534,9 +535,9 @@ function channelAddEvent(channel, client, org) {
                         eh.connect();
                         eventHubs.push(eh);
                         logger.info('[channelAddEvent] requests: %s, events: %s ', ORGS[org][key].requests, ORGS[org][key].events);
+                        break;
                     }
                 }
-                logger.info('[channelAddEvent] event: ', eventHubs);
             }
 }
 
@@ -659,6 +660,7 @@ function chaincodeInstantiate(channel, client, org) {
             var orgInstantiate = channelOrgName[ivar];
             channelAddPeer1(channel, client, orgInstantiate);
         }
+        channelAddEvent(channel, client, org);
         //printChainInfo(channel);
 
         channel.initialize()
