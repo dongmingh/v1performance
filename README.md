@@ -645,10 +645,10 @@ The service credentials contain the information of the network and are stored in
         #docker logs -f cli
        ````
     - `./network_setup.sh up`
-- Alternatively, consider using the [NetworkLauncher](https://github.com/dongmingh/v1Launcher) tool:
-    - `cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test`
-    - `git clone https://github.com/dongmingh/v1Launcher`
-    - `cd v1Launcher`
+- Alternatively, consider using the [NetworkLauncher](https://github.com/hyperledger/fabric-test/tree/master/tools/NL) tool:
+    - `cd $GOPATH/src/github.com/hyperledger/`
+    - `git clone https://github.com/hyperledger/fabric-test`
+    - `cd tools/NL`
     - `./NetworkLauncher.sh -?`
 
 
