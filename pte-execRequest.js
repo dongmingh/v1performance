@@ -822,7 +822,7 @@ function eventRegister(tx, cb) {
                 //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] txidList size: %d, timeout tx_id: %s ', Nid, channelName, org, pid, txidList.getSize(), deployId.toString());
             evtTimeoutCnt++;
             evtCount = evtRcv + evtTimeoutCnt;
-            logger.error('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] The invoke transaction (%s) timeout (%d).', Nid, channelName, org, pid, deployId.toString(), evtTimeoutCnt);
+            logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] The invoke transaction (%s) timeout (%d).', Nid, channelName, org, pid, deployId.toString(), evtTimeoutCnt);
             if ( ( IDone == 1 ) && ( inv_m == evtCount )  ) {
                 tCurr = new Date().getTime();
                 logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] completed Rcvd(sent)=%d(%d) %s(%s) in %d ms, timestamp: start %d end %d, #event timeout: %d', Nid, channelName, org, pid,  evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr, evtTimeoutCnt);
