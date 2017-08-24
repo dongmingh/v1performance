@@ -7,7 +7,7 @@
     "transMode": "Constant",
     "transType": "Invoke",
     "invokeType": "Move",
-    "targetPeers": "OrgAnchor",
+    "targetPeers": "List",
     "nProcPerOrg": "1",
     "nRequest": "1000",
     "runDur": "600",
@@ -40,7 +40,8 @@
         "org2": ["peer1"]
     },
     "eventOpt": {
-        "timeout": "2400000"
+        "listener": "Transaction",
+        "timeout": "240000"
     },
     "ccType": "ccchecker",
     "ccOpt": {

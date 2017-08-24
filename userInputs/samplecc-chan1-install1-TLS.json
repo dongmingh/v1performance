@@ -19,10 +19,6 @@
             "org1"
         ]
     },
-    "listOpt": {
-        "org1": ["peer1"],
-        "org2": ["peer1"]
-    },
     "burstOpt": {
         "burstFreq0":  "500",
         "burstDur0":  "3000",
@@ -36,6 +32,10 @@
         "recHist": "HIST",
         "constFreq": "1",
         "devFreq": "0"
+    },
+    "listOpt": {
+        "org1": ["peer1"],
+        "org2": ["peer1"]
     },
     "ccType": "ccchecker",
     "ccOpt": {

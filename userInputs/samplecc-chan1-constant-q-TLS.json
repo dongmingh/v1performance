@@ -10,7 +10,7 @@
     "targetPeers": "OrgAnchor",
     "nProcPerOrg": "1",
     "nRequest": "1000",
-    "runDur": "600",
+    "runDur": "1200",
     "TLS": "enabled",
     "channelOpt": {
         "name": "testorgschannel1",
@@ -44,9 +44,9 @@
     },
     "ccType": "ccchecker",
     "ccOpt": {
-        "keyStart": "1000",
-        "payLoadMin": "1024",
-        "payLoadMax": "1024"
+        "keyStart": "0",
+        "payLoadMin": "4096",
+        "payLoadMax": "4096"
     },
     "deploy": {
         "chaincodePath": "github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",

@@ -42,6 +42,9 @@ var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
 //var _commonProto = grpc.load(path.join(__dirname, 'node_modules/fabric-client/lib/protos/common/common.proto')).common;
 
+var LinkedList = require('singly-linked-list');
+var txidList = new LinkedList();
+
 var PTEid=process.argv[7];
 var loggerMsg='PTE '+PTEid+' exec';
 var logger = utils.getLogger(loggerMsg);
@@ -61,6 +64,7 @@ var inv_m = 0;    // counter of invoke move
 var inv_q = 0;    // counter of invoke query
 var evtTimeoutCnt = 0;    // counter of event timeout
 var evtTimeout = 0;    // event timeout
+var evtListener = null;
 var IDone=0;
 var QDone=0;
 var recHist;
@@ -109,12 +113,17 @@ logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] channelOrgName.length
 var client = new hfc();
 var channel = client.newChannel(channelName);
 
+if ( (typeof( uiContent.eventOpt ) !== 'undefined') && (typeof( uiContent.eventOpt.listener ) !== 'undefined') ) {
+    evtListener = uiContent.eventOpt.listener;
+} else {
+    evtListener = 'Transaction';
+}
 if ( (typeof( uiContent.eventOpt ) !== 'undefined') && (typeof( uiContent.eventOpt.timeout ) !== 'undefined') ) {
     evtTimeout = uiContent.eventOpt.timeout;
 } else {
     evtTimeout = 120000;
 }
-logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] event timeout: ', Nid, channel.getName(), org, pid, evtTimeout);
+logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] eventhub registration: %s, timeout: %d', Nid, channel.getName(), org, pid, evtListener, evtTimeout);
 invokeCheck = uiContent.invokeCheck;
 logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] invokeCheck: ', Nid, channel.getName(), org, pid, invokeCheck);
 
@@ -183,8 +192,9 @@ function getMoveRequest() {
     //logger.info('d:id:chan:org=%d:%s:%s:%d getMoveRequest] testInvokeArgs[1]', Nid, channelName, org, pid, testInvokeArgs[1]);
 
     tx_id = client.newTransactionID();
+    txidList.insert(tx_id._transaction_id);
+    //logger.info('[Nid:chan:org:id=%d:%s:%s:%d getMoveRequest] tx_id: %s', Nid, channel.getName(), org, pid, tx_id._transaction_id);
     utils.setConfigSetting('E2E_TX_ID', tx_id.getTransactionID());
-    //logger.info('setConfigSetting("E2E_TX_ID") = %s', tx_id);
 
     request_invoke = {
         chaincodeId : chaincode_id,
@@ -575,7 +585,7 @@ function assignThreadOrgAnchorPeer(channel, client, org) {
                     }
                     eh.connect();
                     eventHubs.push(eh);
-                    logger.info('[Nid:chan:org:id=%d:%s:%s:%d assignThreadOrgAnchorPeer] requests: %s, events: %s ', Nid, channelName, org, pid, ORGS[key].peer1.requests, ORGS[key].peer1.events);
+                    logger.info('[Nid:chan:org:id=%d:%s:%s:%d assignThreadOrgAnchorPeer] requests: %s, events: %s: %s', Nid, channelName, org, pid, ORGS[key].peer1.requests, ORGS[key].peer1.events);
                 }
         }
     }
@@ -656,6 +666,11 @@ function execTransMode() {
                     // execute transactions
                     channel.initialize()
                     .then((success) => {
+                        if (evtListener.toUpperCase() == 'BLOCK') {
+                            eventRegisterBlock();
+                        } else if (evtListener.toUpperCase() == 'NONE') {
+                            evtDisconnect();
+                        }
                     setTimeout(function() {
                         if (transMode.toUpperCase() == 'SIMPLE') {
                             execModeSimple();
@@ -741,31 +756,92 @@ function getTxRequest(results) {
     };
 }
 
+var evtRcvB=0;
+
+function eventRegisterBlock() {
+
+    eventHubs.forEach((eh) => {
+        let txPromise = new Promise((resolve, reject) => {
+            //let handle = setTimeout(reject, evtTimeout);
+
+            eh.registerBlockEvent((block) => {
+                //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] inv_m:evtRcvB=%d:%d block: %j ', Nid, channelName, org, pid, inv_m, evtRcvB, block);
+                //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] inv_m:evtRcvB=%d:%d block length: %d ', Nid, channelName, org, pid, inv_m, evtRcvB, block.data.data.length);
+                //clearTimeout(handle);
+                for (i=0; i<block.data.data.length; i++) {
+                    if ( txidList.find(block.data.data[i].payload.header.channel_header.tx_id) != -1 ) {
+                        evtRcvB = evtRcvB + 1;
+                        //txidList.printList();
+                        //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] evtRcvB:inv_m = %d:%d, found tx_id: %s ', Nid, channelName, org, pid, evtRcvB, inv_m, block.data.data[i].payload.header.channel_header.tx_id);
+                        txidList.removeNode(block.data.data[i].payload.header.channel_header.tx_id);
+                       // logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] txidList size: %d ', Nid, channelName, org, pid, txidList.getSize());
+                    }
+                }
+                //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] inv_m:evtRcvB=%d:%d ', Nid, channelName, org, pid, inv_m, evtRcvB);
+
+                if ( inv_m == evtRcvB  ) {
+                    if ( IDone == 1 ) {
+                        tCurr = new Date().getTime();
+                        logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] completed Rcvd(sent)=%d(%d) %s(%s) in %d ms, timestamp: start %d end %d, #event timeout: %d, txid size: %d', Nid, channelName, org, pid,  evtRcvB, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr, evtTimeoutCnt, txidList.getSize());
+                        if (invokeCheck.toUpperCase() == 'TRUE') {
+                            arg0 = keyStart + inv_m - 1;
+                            inv_q = inv_m - 1;
+                            invoke_query_simple(0);
+                        }
+                        if ( txidList.getSize() > 0 ) {
+                            logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] unreceived number: %d, tx_id: ', Nid, channelName, org, pid, txidList.getSize());
+                            txidList.printList();
+                        }
+                        evtDisconnect();
+                    }
+                }
+                    resolve();
+            },
+            (err) => {
+                //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] inv_m:evtRcvB=%d:%d err: %j', Nid, channelName, org, pid, inv_m, eBvtRcv, err);
+            });
+        }).catch((err) => {
+            //evtTimeoutCnt++;
+            //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegisterBlock] number of events timeout=%d %s(%s) in %d ms, timestamp: start %d end %d', Nid, channelName, org, pid, evtTimeoutCnt, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+        });
+
+    });
+
+}
+
 var evtRcv=0;
 var evtCount=0;
+
 function eventRegister(tx, cb) {
-    //var txId = tx.toString();
 
     var deployId = tx.getTransactionID();
     var eventPromises = [];
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
             let handle = setTimeout(function(){eh.unregisterTxEvent(deployId);
+                //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] txidList size: %d, timeout tx_id: %s ', Nid, channelName, org, pid, txidList.getSize(), deployId.toString());
             evtTimeoutCnt++;
             evtCount = evtRcv + evtTimeoutCnt;
+            logger.error('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] The invoke transaction (%s) timeout (%d).', Nid, channelName, org, pid, deployId.toString(), evtTimeoutCnt);
             if ( ( IDone == 1 ) && ( inv_m == evtCount )  ) {
-            tCurr = new Date().getTime();
-            logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] completed Rcvd(sent)=%d(%d) %s(%s) in %d ms, timestamp: start %d end %d, #event timeout: %d', Nid, channelName, org, pid,  evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr, evtTimeoutCnt);
-        }
-        evtDisconnect();resolve()}, evtTimeout);
+                tCurr = new Date().getTime();
+                logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] completed Rcvd(sent)=%d(%d) %s(%s) in %d ms, timestamp: start %d end %d, #event timeout: %d', Nid, channelName, org, pid,  evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr, evtTimeoutCnt);
+                if ( txidList.getSize() > 0 ) {
+                    logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] unreceived number: %d, tx_id: ', Nid, channelName, org, pid, txidList.getSize());
+                    txidList.printList();
+                }
+            }
+            evtDisconnect();resolve()}, evtTimeout);
 
             eh.registerTxEvent(deployId.toString(), (tx, code) => {
                 clearTimeout(handle);
                 eh.unregisterTxEvent(deployId);
+                txidList.removeNode(deployId.toString());
+                //logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] txidList size: %d, remove tx_id: %s ', Nid, channelName, org, pid, txidList.getSize(), deployId.toString());
                 evtRcv++;
 
                 if (code !== 'VALID') {
-                    logger.error('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] The invoke transaction was invalid, code = ', Nid, channelName, org, pid,  code);
+                    logger.error('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] The invoke transaction (%s) was invalid, code = ', Nid, channelName, org, pid, deployId.toString(), code);
                     reject();
                 } else {
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
@@ -775,6 +851,10 @@ function eventRegister(tx, cb) {
                             arg0 = keyStart + inv_m - 1;
                             inv_q = inv_m - 1;
                             invoke_query_simple(0);
+                        }
+                        if ( txidList.getSize() > 0 ) {
+                            logger.info('[Nid:chan:org:id=%d:%s:%s:%d eventRegister] unreceived number: %d, tx_id: ', Nid, channelName, org, pid, txidList.getSize());
+                            txidList.printList()
                         }
                         evtDisconnect();
                         resolve();
@@ -1017,6 +1097,89 @@ function getRandomNum(min0, max0) {
         return Math.floor(Math.random() * (max0-min0)) + min0;
 }
 
+function invoke_move_const_go_evtBlock(t1, freq) {
+
+    var freq_n=freq;
+    if ( devFreq > 0 ) {
+        freq_n=getRandomNum(freq-devFreq, freq+devFreq);
+    }
+    tCurr = new Date().getTime();
+    t1 = tCurr - t1;
+    if ( t1 < freq_n ) {
+       freq_n = freq_n - t1;
+    } else {
+       freq_n = 0;
+    }
+    setTimeout(function(){
+        invoke_move_const_evtBlock(freq);
+    },freq_n);
+
+}
+
+// invoke_move_const_evtBlock
+function invoke_move_const_evtBlock(freq) {
+    inv_m++;
+
+    var t1 = new Date().getTime();
+    getMoveRequest();
+
+    channel.sendTransactionProposal(request_invoke)
+    .then((results) => {
+            var proposalResponses = results[0];
+            if ( results[0][0].response && results[0][0].response.status != 200 ) {
+                logger.info('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const] failed to sendTransactionProposal status: %d', Nid, channelName, org, pid, results[0][0].response.status);
+                invoke_move_const_go(t1, freq);
+                return;
+            }
+
+            getTxRequest(results);
+
+                return channel.sendTransaction(txRequest)
+                .then((results) => {
+
+                    if ( results.status != 'SUCCESS' ) {
+                        logger.info('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const_evtBlock] failed to sendTransaction status: %j ', Nid, channelName, org, pid, results);
+                        invoke_move_const_go(t1, freq);
+                        return;
+                    }
+
+                    // hist output
+                    if ( recHist == 'HIST' ) {
+                        tCurr = new Date().getTime();
+                        buff = PTEid +':'+ Nid +':'+ pid + ':' + channelName +':' + org + ' ' + transType[0]+':'+invokeType[0] + ':' + inv_m + ' time:'+ tCurr + '\n';
+                        fs.appendFile(ofile, buff, function(err) {
+                            if (err) {
+                               return logger.error(err);
+                            }
+                        })
+                    }
+
+                    isExecDone('Move');
+                    if ( IDone != 1 ) {
+                        invoke_move_const_go_evtBlock(t1, freq);
+                    } else {
+                        tCurr = new Date().getTime();
+                        logger.info('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const_evtBlock] completed %d, evtTimoutCnt %d, %s(%s) in %d ms, timestamp: start %d end %d', Nid, channelName, org, pid, inv_m, evtTimeoutCnt, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        if ( txidList.getSize() > 0 ) {
+                            logger.info('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const_evtBlock] unreceived number: %d, tx_id: ', Nid, channelName, org, pid, txidList.getSize());
+                            txidList.printList();
+                        }
+                        return;
+                    }
+                    //return results[0];
+
+                }).catch((err) => {
+                    logger.error('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const_evtBlock] Failed to send transaction due to error: ', Nid, channelName, org, pid, err.stack ? err.stack : err);
+                    invoke_move_const_go_evtBlock(t1, freq);
+                    //evtDisconnect();
+                    //return;
+                })
+        }).catch((err) => {
+                logger.error('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const_evtBlock] Failed to send transaction proposal due to error: ', Nid, channelName, org, pid, err.stack ? err.stack : err);
+                invoke_move_const_go_evtBlock(t1, freq);
+        });
+}
+
 function invoke_move_const_go(t1, freq) {
 
     var freq_n=freq;
@@ -1035,7 +1198,6 @@ function invoke_move_const_go(t1, freq) {
     },freq_n);
 
 }
-
 // invoke_move_const
 function invoke_move_const(freq) {
     inv_m++;
@@ -1082,6 +1244,10 @@ function invoke_move_const(freq) {
                     } else {
                         tCurr = new Date().getTime();
                         logger.info('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const] completed %d, evtTimoutCnt %d, %s(%s) in %d ms, timestamp: start %d end %d', Nid, channelName, org, pid, inv_m, evtTimeoutCnt, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        if ( txidList.getSize() > 0 ) {
+                            logger.info('[Nid:chan:org:id=%d:%s:%s:%d invoke_move_const] unreceived number: %d, tx_id: ', Nid, channelName, org, pid, txidList.getSize());
+                            txidList.printList();
+                        }
                         return;
                     }
                     //return results[0];
@@ -1184,7 +1350,13 @@ function execModeConstant() {
                     freq = 20000;
                 }
             }
-            invoke_move_const(freq);
+            if (evtListener.toUpperCase() == 'BLOCK') {
+                invoke_move_const_evtBlock(freq);
+            } else if (evtListener.toUpperCase() == 'NONE') {
+                invoke_move_const_evtBlock(freq);
+            } else {
+                invoke_move_const(freq);
+            }
         } else if ( invokeType.toUpperCase() == 'QUERY' ) {
             invoke_query_const(freq);
         }

@@ -5,7 +5,7 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) Node 
 to interact with a [Hyperledger Fabric](http://hyperledger-fabric.readthedocs.io/en/latest/) network by sending requests to and receiving responses from one or more components of network.   PTE is designed to meet two-fold requirements:
 
 1. to handle the complexity of the Hyperledger Fabric network, e.g., locations and number of network, number of channels, organizations, peers, orderers etc.
-2. to support various test cases, e.g., various chaincodes, transaction number, duration, mode, type, and payload size etc, 
+2. to support various test cases, e.g., various chaincodes, transaction number, duration, mode, type, and payload size etc,
 
 In order to meet the two-fold requirements above, flexibility and modularity are the primary design concepts of PTE regarding implementation and usage.  Moreover, PTE allows users to specify many options, see below for available options. The design of PTE is demonstrated in the diagram below:
 
@@ -130,6 +130,7 @@ If planning to run your Fabric network locally, you'll need docker and a bit mor
     - `npm install`
         -  you should be able to safely ignore any warnings
     -  `gulp ca`
+    -  npm install singly-linked-list --save
 
 4. Clone PTE
     **Note:** This will not be necessary in future releases as PTE will be merged into Fabric.
@@ -179,7 +180,7 @@ For instance, a PTE mgr file containing two run cases files would be:
 
 `./pte_driver.sh userInputs/runCases.txt`
 
-`userInputs/runCases.txt` contains the list of user specified test cases to be executed. Each line is a test case and includes two parameters: **SDK type** and **user input file**.  
+`userInputs/runCases.txt` contains the list of user specified test cases to be executed. Each line is a test case and includes two parameters: **SDK type** and **user input file**.
 
 For instance, a run cases file containing two test cases using the node SDK would be:
 
@@ -319,7 +320,7 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         ```
         And set channelOpt name to the channel name and orgName to a list of org names:
         ```
-        "channelOpt": 
+        "channelOpt":
             "name":  "testchannel1",
             "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
             "action":  "create",
@@ -379,7 +380,7 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 200:10:60
         info: [PTE 0 main]: [queryBlockchainInfo] blocks= 195:200, totalLength= 60
 
-        
+
 
 ## Chaincodes
 The following chaincodes are tested and supported:
@@ -447,10 +448,6 @@ The output includes network id, process id, transaction type, total transactions
             "burstFreq1": "2000",
             "burstDur1": "10000"
         },
-        "listOpt": {
-            "org1": ["peer1", "peer2"],
-            "org2": ["peer1"]
-        },
         "mixOpt": {
             "mixFreq": "2000"
         },
@@ -458,6 +455,14 @@ The output includes network id, process id, transaction type, total transactions
             "recHIST": "HIST",
             "constFreq": "1000",
             "devFreq": "300"
+        },
+        "listOpt": {
+            "org1": ["peer1"],
+            "org2": ["peer2"]
+        },
+        "eventOpt": {
+            "register": "Transaction",
+            "timeout": "240000"
         },
         "ccType": "general",
         "ccOpt": {
@@ -479,7 +484,7 @@ The output includes network id, process id, transaction type, total transactions
                 "fcn": "invoke",
                 "args": ["put", "a", "string-msg"]
             }
-        },   
+        },
         "SCFile": [
             {"ServiceCredentials":"SCFiles/config-local.json"}
         ]
@@ -533,6 +538,12 @@ where:
     * **burstDur0**:  duration in ms for the first transaction rate
     * **burstFreq1**: frequency in ms for the second transaction rate
     * **burstDur1**: duration in ms for the second transaction rate
+* **mixOpt**: each invoke is followed by a query on every process. This parameter is valid only the transMode is set to **Mix**.
+* **mixFreq**: frequency in ms for the transaction rate. This value should be set based on the characteristics of the chaincode to avoid the failure of the immediate query.
+* **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to **Constant**.
+    * **recHist**: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
+    * **constFreq**: frequency in ms for the transaction rate.
+    * **devFreq**: deviation of frequency in ms for the transaction rate. A random frequency is calculated between constFrq-devFreq and constFrq+devFreq for the next transaction.  The value is set to default value, 0, if this value is not set in the user input json file.  All transactions are sent at constant rate if this number is set to 0.
 * **listOpt**: targetPeers list of the peers that the transactions are sent. These parameters are valid only when the targetPeers is set to List. Each line includes two parameters: **org name** and **peer array within the org**, for example:
 
              "listOpt": {
@@ -540,12 +551,12 @@ where:
                  "org3": ["peer1"],
                  "org6": ["peer3"]
              }
-* **mixOpt**: each invoke is followed by a query on every process. This parameter is valid only the transMode is set to **Mix**.
-* **mixFreq**: frequency in ms for the transaction rate. This value should be set based on the characteristics of the chaincode to avoid the failure of the immediate query.
-* **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to **Constant**.
-    * **recHist**: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
-    * **constFreq**: frequency in ms for the transaction rate.
-    * **devFreq**: deviation of frequency in ms for the transaction rate. A random frequency is calculated between constFrq-devFreq and constFrq+devFreq for the next transaction.  The value is set to default value, 0, if this value is not set in the user input json file.  All transactions are sent at constant rate if this number is set to 0.
+* **eventOpt**: event hub options
+    * **listener**: event listener
+        * **Transaction**: PTE registers a transaction listener to receive a registered transaction event. This is the default event listener.
+        * **Block**: PTE registers a block listener to receive every block event on all channels. PTE will parse the received block event for the transactions sent.
+        * **None**: PTE will not register any event listener.
+    * **timeout**: event timeout, applied to the transaction listener only, unit ms
 * **ccType**: chaincode type
     * **ccchecker**: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  The prefix of the key is made of process ID, ex, all keys issued from process 4 will have prefix of **key3_**. And, the second argument (payload) in an invoke (Move) is a random string of size ranging between payLoadMin and payLoadMax defined in ccOpt.
     * **general**: The arguments of transaction request are taken from the user input json file without any changes.

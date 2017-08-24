@@ -2,12 +2,17 @@
     "channelID": "_ch2",
     "chaincodeID": "sample_cc",
     "chaincodeVer": "v0",
+    "chainID": "testchainid",
     "logLevel": "ERROR",
     "invokeCheck": "FALSE",
     "transMode": "Constant",
     "transType": "Invoke",
     "invokeType": "Query",
     "targetPeers": "OrgAnchor",
+    "nOrderer": "1",
+    "nPeer": "4",
+    "nOrg": "2",
+    "nPeerPerOrg": "2",
     "nProcPerOrg": "2",
     "nRequest": "1000",
     "runDur": "600",
@@ -32,13 +37,6 @@
         "recHist": "HIST",
         "constFreq": "0",
         "devFreq": "0"
-    },
-    "listOpt": {
-        "org1": ["peer1"],
-        "org2": ["peer1"]
-    },
-    "eventOpt": {
-        "timeout": "2400000"
     },
     "ccType": "ccchecker",
     "ccOpt": {

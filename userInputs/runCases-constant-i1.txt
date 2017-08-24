@@ -1,0 +1,5 @@
+#sdk=node userInputs/samplecc-chan1-constant-i.json
+#sdk=node userInputs/samplecc-chan2-constant-i.json
+sdk=node userInputs/samplecc-chan1-constant-i-TLS.json
+#sdk=node userInputs/samplecc-chan2-constant-i-TLS.json
+#sdk=node userInputs/samplecc-chan3-constant-i-TLS.json
