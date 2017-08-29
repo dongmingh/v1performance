@@ -554,7 +554,7 @@ where:
 * **eventOpt**: event hub options
     * **listener**: event listener
         * **Transaction**: PTE registers a transaction listener to receive a registered transaction event. This is the default event listener.
-        * **Block**: PTE registers a block listener to receive every block event on all channels. PTE will parse the received block event for the transactions sent.
+        * **Block**: PTE registers a block listener to receive every block event on all channels. PTE will parse the received block event for the transactions sent. The block listener option applies to tranMode CONSTANT only.
         * **None**: PTE will not register any event listener.
     * **timeout**: event timeout, applied to the transaction listener only, unit ms
 * **ccType**: chaincode type

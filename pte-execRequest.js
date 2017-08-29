@@ -666,11 +666,6 @@ function execTransMode() {
                     // execute transactions
                     channel.initialize()
                     .then((success) => {
-                        if (evtListener.toUpperCase() == 'BLOCK') {
-                            eventRegisterBlock();
-                        } else if (evtListener.toUpperCase() == 'NONE') {
-                            evtDisconnect();
-                        }
                     setTimeout(function() {
                         if (transMode.toUpperCase() == 'SIMPLE') {
                             execModeSimple();
@@ -1351,8 +1346,10 @@ function execModeConstant() {
                 }
             }
             if (evtListener.toUpperCase() == 'BLOCK') {
+                eventRegisterBlock();
                 invoke_move_const_evtBlock(freq);
             } else if (evtListener.toUpperCase() == 'NONE') {
+                evtDisconnect();
                 invoke_move_const_evtBlock(freq);
             } else {
                 invoke_move_const(freq);
