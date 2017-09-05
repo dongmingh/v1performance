@@ -28,7 +28,7 @@
     },
     "mixOpt": {
         "mixQuery": "TRUE",
-        "mixFreq": "100"
+        "mixFreq": "1000"
     },
     "constantOpt": {
         "recHist": "HIST",
@@ -49,7 +49,7 @@
         "payLoadMax": "1024"
     },
     "deploy": {
-        "chaincodePath": "github.com/sample_cc",
+        "chaincodePath": "github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",
         "fcn": "init",
         "args": []
     },

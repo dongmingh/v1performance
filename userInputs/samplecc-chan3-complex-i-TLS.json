@@ -1,5 +1,5 @@
 {
-    "channelID": "_ch2",
+    "channelID": "_ch3",
     "chaincodeID": "sample_cc",
     "chaincodeVer": "v0",
     "logLevel": "ERROR",
@@ -13,11 +13,11 @@
     "runDur": "600",
     "TLS": "enabled",
     "channelOpt": {
-        "name": "testorgschannel2",
+        "name": "testorgschannel3",
         "action":  "create",
         "orgName": [
-            "org3",
-            "org4"
+            "org5",
+            "org6"
         ]
     },
     "burstOpt": {
@@ -64,6 +64,6 @@
         }
     },
     "SCFile": [
-		{"ServiceCredentials":"SCFiles/config-chan2-TLS.json"}
+		{"ServiceCredentials":"SCFiles/config-chan3-TLS.json"}
 	]
 }

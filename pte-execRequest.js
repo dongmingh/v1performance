@@ -1328,7 +1328,7 @@ function execModeConstant() {
         }
         logger.info('[Nid:chan:org:id=%d:%s:%s:%d execModeConstant] tStart %d, tLocal %d', Nid, channelName, org, pid, tStart, tLocal);
         var freq = parseInt(uiContent.constantOpt.constFreq);
-        ofile = 'ConstantResults'+Nid+'.txt';
+        ofile = 'ConstantResults'+PTEid+'.txt';
 
         if (typeof( uiContent.constantOpt.devFreq ) == 'undefined') {
             logger.error('[Nid:chan:org:id=%d:%s:%s:%d execModeConstant] devFreq undefined, set to 0', Nid, channelName, org, pid);
