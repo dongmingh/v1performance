@@ -22,8 +22,10 @@ In brief, PTE has the following features:
 - events: opens and listens to event port and keep the number of events received
 - blockchain information: queries blockchain height and number of transactions
 - results: provides test results
-- multiple PTEs: easy to manage multiple PTEs
+- multiple PTEs: easy to manage multiple PTEs, see the diagram below:
 
+
+![](PTE-mgr.png)
 
 
 
