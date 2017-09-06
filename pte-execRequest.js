@@ -156,6 +156,11 @@ if ( nRequest == 0 ) {
    runDur = 1000*runDur;
 }
 
+var runForever = 0;
+if ( ( nRequest == 0 ) && ( runDur == 0 ) ) {
+    runForever = 1;
+}
+logger.info('[Nid:chan:org:id=%d:%s:%s:%d pte-execRequest] runForever: %d', Nid, channel.getName(), org, pid,  runForever);
 
 var ccType = uiContent.ccType;
 var keyStart=0;
@@ -712,8 +717,10 @@ function isExecDone(trType){
                                          Nid, channelName, org, pid, trType, inv_m, evtTimeoutCnt, tCurr-tLocal));
            }
 
-           if ( tCurr > tEnd ) {
-                IDone = 1;
+           if ( runForever == 0 ) {
+               if ( tCurr > tEnd ) {
+                    IDone = 1;
+               }
            }
         }
     } else if ( trType.toUpperCase() == 'QUERY' ) {
@@ -732,8 +739,10 @@ function isExecDone(trType){
                                          Nid, channelName, org, pid, trType, inv_q, tCurr-tLocal));
            }
 
-           if ( tCurr > tEnd ) {
-                QDone = 1;
+           if ( runForever == 0 ) {
+               if ( tCurr > tEnd ) {
+                    QDone = 1;
+               }
            }
         }
     }
