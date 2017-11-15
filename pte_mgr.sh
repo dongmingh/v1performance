@@ -1,8 +1,15 @@
 #!/bin/bash
 
 #
-# usage: ./pte_driver.sh <PTE Mgr input file>
-# example: ./pte_driver.sh PTEMgr.txt
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#
+# usage: ./pte_mgr.sh <PTE Mgr input file>
+# example: ./pte_mgr.sh PTEMgr.txt
+# example: ./pte_mgr.sh PTEMgr.txt 1507234227470
 #
 #    PTEMgr.txt:
 #    driver=pte userInputs/runCases-constant-i.txt
@@ -12,6 +19,14 @@
 inFile=$1
 EXEPTE=pte_driver.sh
 nPTE=0
+tStart=0
+PIDS=""
+
+echo "num $#"
+
+if [ $# -gt 1 ]; then
+    tStart=$2
+fi
 
 while read line
 do
@@ -41,15 +56,18 @@ echo "PTE Array: ${pteArray[@]}"
 # PTE requests
 function pteProc {
     nPTE=${#pteArray[@]}
-    tWait=$[nPTE*4000+10000]
-    tCurr=`date +%s%N | cut -b1-13`
-    tStart=$[tCurr+tWait]
+    if [ $tStart -eq 0 ]; then
+        tWait=$[nPTE*4000+10000]
+        tCurr=`date +%s%N | cut -b1-13`
+        tStart=$[tCurr+tWait]
+    fi
     echo "nPTE: $nPTE, tStart: $tStart"
 
     iPTE=0
     for i in ${pteArray[@]}; do
-        echo "./$EXEPTE $i $iPTE $tStartE &"
+        echo "./$EXEPTE $i $iPTE $tStart &"
         ./$EXEPTE $i $iPTE $tStart &
+        PIDS="$PIDS $!"
         let iPTE+=1
     done
 }
@@ -62,4 +80,14 @@ else
     echo "no PTE requests"
 fi
 
-exit
+# wait for pte_driver.sh to complete
+RET=0
+for p in $PIDS; do
+	wait $p
+	# return the error code of the process failed last if any
+	if [ $? -ne 0 ]; then
+		RET=$?
+	fi
+done
+
+exit $RET

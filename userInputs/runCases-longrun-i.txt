@@ -1,3 +1,0 @@
-sdk=node userInputs/samplecc-chan1-longrun-i-TLS.json
-sdk=node userInputs/samplecc-chan2-longrun-i-TLS.json
-sdk=node userInputs/samplecc-chan3-longrun-i-TLS.json

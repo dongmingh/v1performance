@@ -1,27 +1,28 @@
 
 # Performance Traffic Engine - PTE
 
-The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) Node SDK](https://fabric-sdk-node.github.io/index.html)
-to interact with a [Hyperledger Fabric](http://hyperledger-fabric.readthedocs.io/en/latest/) network by sending requests to and receiving responses from one or more components of network.   PTE is designed to meet two-fold requirements:
+The Performance Traffic Engine (PTE) uses SDKs to interact with [Hyperledger Fabric](http://hyperledger-fabric.readthedocs.io/en/latest/) networks by sending requests to and receiving responses from one or more networks.   Currently, PTE only uses [Hyperledger Fabric Client (HFC) Node SDK](https://fabric-sdk-node.github.io/index.html) and will include other SDKs in the future.
+
+PTE is designed to meet two-fold requirements:
 
 1. to handle the complexity of the Hyperledger Fabric network, e.g., locations and number of network, number of channels, organizations, peers, orderers etc.
 2. to support various test cases, e.g., various chaincodes, transaction number, duration, mode, type, and payload size etc,
 
-In order to meet the two-fold requirements above, flexibility and modularity are the primary design concepts of PTE regarding implementation and usage.  Moreover, PTE allows users to specify many options, see below for available options. The design of PTE is demonstrated in the diagram below:
+In order to meet the two-fold requirements above, flexibility and modularity are the primary design concepts of PTE regarding implementation and usage.  Moreover, PTE provides users many options for their test cases, see below for available options. The design of PTE is demonstrated in the diagram below:
 
 ![](PTE-concept.png)
 
 
 In brief, PTE has the following features:
 
-- channel: creates and joins channel
-- chaincode: installs and instantiates user specified chaincode
-- transactions: delivers transactions to the targeted peers with specified transaction mode and type
-- network: interacts with local and/or remote networks simultaneously
-- scaling: easy to work with any number of networks, orderers, peers
-- events: opens and listens to event port and keep the number of events received
-- blockchain information: queries blockchain height and number of transactions
-- results: provides test results
+- channel: to create and join channel
+- chaincode: to install and instantiate user specified chaincode
+- transactions: to deliver transactions to the targeted peers with specified transaction mode, type, and frequency
+- network: to interact with local and/or remote networks simultaneously
+- scaling: easy to work with any number of networks, orderers, peers, organizations, channels, chaincodes etc.
+- events: to open and listen to event port and maintain the record of events received and un-received
+- blockchain height: to query blockchain height and number of transactions
+- results: to provide number of transactions sent versus the events received, and validates blockchain contents after last transaction
 - multiple PTEs: easy to manage multiple PTEs, see the diagram below:
 
 
@@ -43,49 +44,21 @@ In brief, PTE has the following features:
     - [User Input File](#user-input-file)
     - [Service Credentials File](#service-credentials-file)
     - [Creating a Local Fabric Network](#creating-a-local-fabric-network)
+    - [CI Test](#ci-test)
+    - [Remote PTE](#remote-pte)
 
 ---
 ### Code Base for v1.0.0
-- Fabric commit level: f56a82e36e040e1c1a986edfceac014ba1516571
+- Fabric commit level: e4b47043270f2293daabf7d24984dd46901e04e7
 - fabric-sdk-node commit level: 974bafcb1059c4cb8dda54a9e9d0afc6d87854c5
 - fabric-ca commit level: 74f8f4d4c29e45a79a8849efb057dbd8de3ae8d0
-- PTE commit level: `latest`
+- PTE commit level: 359dbfb39f507a737ad52129ac0e4fac9cc03c0b
 
-
-### Code Base for v1.0.0-RC1
-- Fabric commit level: b17afeb9da2ae34ce9dd76de558fbd23623fb186
-- fabric-sdk-node commit level: 244e916517f1c42d04b61eb55ea239cd94052846
-- fabric-ca commit level: fec4d76fa2c8162b735be2376ec831ff815209c6
-- PTE v1performance commit level: `latest`
-
-Note with PTE on RC1:
-- channel name must be lower case
-- Change cacerts to tlscacerts for both orderer and peer in config json in SCFiles directory. Below is an example of change for orderer.
-
-was:  `"tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/cacerts/ca.example.com-cert.pem" `
-
-now:  `"tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" `
-
-### Code Base for v1.0.0-alpha2
-
-- Fabric commit level: `6b6bfcfbd1e798a8a08fa9c3bf4dc0ff766a6b87`
-- fabric-sdk-node commit level: `f13f4b42e7155ec0dc3d7485b202bb6a6ca73aed`
-- fabric-ca commit level: `97ca16ca4f883a65072da860fce9eb76da269d62`
-- PTE commit level: `b16b825614cb713fa60aa8acb302772856079b10`
-
-### Code Base for v1.0.0-alpha
-For v1.0.0-alpha support, use v1performance commit level `aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`.
-Below is the v1.0.0-alpha commit levels.
-
-- Fabric commit level: `fa3d88cde177750804c7175ae000e0923199735c`
-- fabric-sdk-node commit level: `196d0484c884ab894374c73df89bfe047bcc9f00`
-- fabric-ca commit level: `29385879bc2931cce9ec833acf796129908b72fb`
-- PTE v1performance commit level: `aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`
 
 ### Future items
 
 - Endorsement policy is not supported yet.
-- Replace `git clone https://github.com/hyperledger/fabric-sdk-node.git` with fabric-client and fabric-ca-client.
+- Replace fabric-sdk-node with fabric-client and fabric-ca-client.
 
 
 
@@ -103,51 +76,53 @@ To build and test the following prerequisites must be installed first:
     - or refer to your distribution's repository
 
 If planning to run your Fabric network locally, you'll need docker and a bit more. See [Hyperledger Fabric - Getting Started](http://hyperledger-fabric.readthedocs.io/en/latest/getting_started.html) for details.
-
+`
 ## Setup
-1. Download fabric sources
-    - `go get -d github.com/hyperledger/fabric`
-2. Checkout appropriate commit levels. There are two ways to obtain the docker images:
-    - download from dockerhub:
-      - `cd $GOPATH/src/github.com/hyperledger/fabric/scripts`
-      - If testing v1.0.0: `./bootstrap-1.0.0.sh`
-      - If testing v1.0.0-rc1: `./bootstrap-1.0.0-rc1.sh`
-      - If testing v1.0.0-alpha2: `./bootstrap-1.0.0-alpha2.sh`
-    - build images yourself (v1.0.0-alpha2 shown here):
-      * `cd $GOPATH/src/github.com/hyperledger/fabric/`
-      * `git checkout v1.0.0-alpha2`
-      * Optional: `make docker`
-      * `go get -d github.com/hyperledger/fabric-ca`
-      * `cd $GOPATH/src/github.com/hyperledger/fabric-ca/`
-      * `git checkout v1.0.0-alpha2`
-      * Optional: `make docker`
+1. Download fabric-test sources:
+    - `go get -d github.com/hyperledger/fabric-test`
 
+2. Download or update fabric, fabric-ca, and fabric-sdk-node sources, see [Hyperledger fabric-test](https://github.com/hyperledger/fabric-test) for details:
+    - `cd $GOPATH/src/github.com/hyperledger/fabric-test`
+    - if first time:
+         - `git submodule update --init --recursive`
+         - `git submodule foreach git pull origin master`
+    - else:
+         - `git submodule foreach git pull origin master`
 
-    If `make docker` is skipped, the assumption is that the user will either acquire docker images from another source, or PTE will run against a remote Fabric network. See [Creating a local Fabric network](#creating-a-local-fabric-network) for additional information on this.
+3. Obtain appropriate docker images:
 
-3. Install node packages and build the ca libraries:
-    - `go get -d github.com/hyperledger/fabric-sdk-node`
-    - `cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node`
-    - If testing v1.0.0-alpha2: `git checkout v1.0.0-alpha2`
-    - `npm install`
-        -  you should be able to safely ignore any warnings
-    -  `gulp ca`
-    -  npm install singly-linked-list --save
+    Optionally, you may choose to skip this step of obtaining `fabric` and `fabric-ca` images if plan to run PTE against a remote Fabric network. See [Creating a local Fabric network](#creating-a-local-fabric-network) for additional information on this.
 
-4. Clone PTE
-    **Note:** This will not be necessary in future releases as PTE will be merged into Fabric.
-    - clone the v1performance repo:
-        - `cd test`
-        - `git clone https://github.com/dongmingh/v1performance`
-        - `cd v1performance`
-        - If testing v1.0.0-alpha2: `git reset --hard b16b825614cb713fa60aa8acb302772856079b10`
+    - fabric
+        - download from dockerhub:
+            * `cd $GOPATH/src/github.com/hyperledger/fabric-test/fabric/scripts`
+            * If testing v1.0.0: `./bootstrap-1.0.0.sh`
+        - build images yourself (v1.0.0 shown here):
+            * `cd $GOPATH/src/github.com/hyperledger/fabric-test/fabric/`
+            * `git checkout v1.0.0`
+            * `make docker`
+    - fabric-ca
+        * `cd $GOPATH/src/github.com/hyperledger/fabric-test/fabric-ca`
+        * `git checkout v1.0.0`
+        * `make docker`
+    - fabric-sdk-node
+        * `cd $GOPATH/src/github.com/hyperledger/fabric-test/fabric-sdk-node`
+        * If testing v1.0.0: `git checkout v1.0.0`
+        * `npm install`
+            *  you should be able to safely ignore any warnings
+        *  `gulp ca`
+        *  `npm install singly-linked-list --save`
+
+4. Install PTE:
+    - `cd $GOPATH/src/github.com/hyperledger/fabric-test/tools`
+    - `cp -r PTE $GOPATH/src/github.com/hyperledger/fabric-test/fabric-sdk-node/test`
 
 
 5. Create Service Credentials file(s) for your Fabric network:
     - See the examples in `SCFiles` and change the address to your own Fabric addresses and credentials. Add a block for each organization and peer, ensuring correctness.
 
 6. Specify run scenarios:
-    - Create your own version of PTEMgr.txt (if use pte_mgr.sh), runCases.txt and User Input json files, according to the test requirements. Use the desired chaincode name, channel name, organizations, etc. Using the information in your own network profiles, remember to "create" all channels, and "join" and "install" for each org, to ensure all peers are set up correctly. Additional information can be found below.
+    - Create your own version of PTEMgr.txt (if use pte_mgr.sh), runCases.txt and User Input json files, according to the test requirements. Use the desired chaincode name, channel name, organizations, etc. Using the information in your own network profiles, remember to "create" all channels, "join" channel, and "install"  and "instantiate" chaincode for each org, to ensure all peers are set up correctly. Additional information can be found below.
 
 ## Running PTE
 
@@ -157,113 +132,117 @@ If you do not have access to a Fabric network, please see the section on [Creati
 ### Usage
 There are two ways to execute PTE: pte_mgr.sh and pte_driver.sh. pte_mgr.sh can be used to manage multiple PTEs while pte_driver.sh can only manage one PTE.
 
-##### pte_mgr.sh
+* ### pte_mgr.sh
 
-`./pte_mgr.sh <PTE mgr input file>`
+      `./pte_mgr.sh <PTE mgr input file>`
 
-###### Example
+    * Example
 
-`./pte_mgr.sh userInputs/PTEMgr.txt`
+        `./pte_mgr.sh sampleccInputs/PTEMgr.txt`
 
-`userInputs/PTEMgr.txt` contains the list of user specified run cases to be executed.  Each line is a PTE run case and includes two parameters: **driver type** and **run case file**.
+        `sampleccInputs/PTEMgr.txt` contains the list of user specified run cases to be executed.  Each line is a PTE run case and includes two parameters: **driver type** and **run case file**.
 
-For instance, a PTE mgr file containing two run cases files would be:
+        For instance, a PTE mgr file containing two run cases files would be:
 
-    driver=pte userInputs/runCases-constant-i.txt
-    driver=pte userInputs/runCases-constant-q.txt
+            driver=pte sampleccInputs/runCases-constant-i-TLS.txt
+            driver=pte sampleccInputs/runCases-constant-q-TLS.txt
 
-**Note:** Available driver type is pte only.
+        **Note:** Available driver type is pte only.
 
-##### pte_driver.sh
+* ### pte_driver.sh
 
-`./pte_driver.sh <run cases file>`
+    `./pte_driver.sh <run cases file>`
 
-###### Example
+    * Example
 
-`./pte_driver.sh userInputs/runCases.txt`
+        `./pte_driver.sh sampleccInputs/runCases.txt`
 
-`userInputs/runCases.txt` contains the list of user specified test cases to be executed. Each line is a test case and includes two parameters: **SDK type** and **user input file**.
+        `sampleccInputs/runCases.txt` contains the list of test cases to be executed. Each line is a test case and includes two parameters: **SDK type** and **user input file**.
 
-For instance, a run cases file containing two test cases using the node SDK would be:
+        For instance, a run cases file containing three test cases using the node SDK would be:
 
-    sdk=node userInputs/samplecc-chan1-i.json
-    sdk=node userInputs/samplecc-chan2-i.json
+            sdk=node sampleccInputs/samplecc-chan1-i-TLS.json
+            sdk=node sampleccInputs/samplecc-chan2-i-TLS.json
+            sdk=node sampleccInputs/samplecc-chan3-i-TLS.json
 
 
-**Note:** Available SDK types are node, go, python and java; however, only the node SDK is currently supported.
+        **Note:** Available SDK types are node, go, python and java; however, only the node SDK is currently supported.
 
-See [User Input file](#user-input-file) in the Reference section below for more information about these files.
+    See [User Input file](#user-input-file) in the Reference section below for more information about these files.
+
+
 
 ### Transaction Execution
 A single test case is described by a user input file. User input files define all the parameters for executing a test; including transaction type, number of processes, number of transactions, duration, etc. All processes in one test case will concurrently execute the specified transaction. Different transactions may be used in different test cases and then combined into a single run cases file, making it possible to create more complicated scenarios. For example, in a single run of PTE, a user could send a specific number of invokes to all peers and then query each peer separately.
 
-There are two ways to control transaction execution:
+* ### Transaction Execution Control
 
-* **transaction number**: Each process executes the specified number of transactions specified by nRequest in the user input file.
-* **run time duration**: Each process executes the same transaction concurrently for the specified time duration specified by runDur in the user input file, note that nRequest is set to 0.
+    The transaction can be executed with either **transaction number** or **run time duration**.  They are controlled by two user input parameters **nRequest** and **runDur**. See [User Input file](#user-input-file) in the Reference section below on how to control transaction execution using these two parameters.
+
 
 ### Transaction Type
 * ### Invoke (move)
     To execute invoke (move) transactions, set the transType to Invoke and invokeType to Move, and specify the network parameters and desired execution parameters:
-    ```
-    "invokeCheck": "TRUE",
-    "transMode": "Constant",
-    "transType": "Invoke",
-    "invokeType": "Move",
-    "targetPeers": "OrgAnchor",
-    "nProcPerOrg": "4",
-    "nRequest": "1000",
-    "runDur": "600",
-    "TLS": "Enabled",
-    ```
+
+        "invokeCheck": "TRUE",
+        "transMode": "Constant",
+        "transType": "Invoke",
+        "invokeType": "Move",
+        "targetPeers": "OrgAnchor",
+        "nProcPerOrg": "4",
+        "nRequest": "1000",
+        "runDur": "600",
+        "TLS": "Enabled",
+
     And set the channel name in channelOpt:
-    ```
-    "channelOpt": {
-        "name": "testchannel1",
-        "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
-        "action":  "create",
-        "orgName": [
-            "testOrg1"
-        ]
-    },
-    ```
+
+        "channelOpt": {
+            "name": "testchannel1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric-test/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
+            "action":  "create",
+            "orgName": [
+                "testOrg1"
+            ]
+        },
+
+
 * ### Invoke (query)
     To execute invoke (move) transactions, set the transType to Invoke and invokeType to Query, and specify the network parameters and desired execution parameters:
-    ```
-    "invokeCheck": "TRUE",
-    "transMode": "Constant",
-    "transType": "Invoke",
-    "invokeType": "Query",
-    "targetPeers": "OrgAnchor",
-    "nProcPerOrg": "4",
-    "nRequest": "1000",
-    "runDur": "600",
-    "TLS": "Enabled",
-    ```
+
+        "invokeCheck": "TRUE",
+        "transMode": "Constant",
+        "transType": "Invoke",
+        "invokeType": "Query",
+        "targetPeers": "OrgAnchor",
+        "nProcPerOrg": "4",
+        "nRequest": "1000",
+        "runDur": "600",
+        "TLS": "Enabled",
+
     And set the channel name in channelOpt:
-    ```
-    "channelOpt": {
-        "name": "testchannel1",
-        "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
-        "action":  "create",
-        "orgName": [
-            "testOrg1"
-        ]
-    },
-    ```
+
+        "channelOpt": {
+            "name": "testchannel1",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric-test/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
+            "action":  "create",
+            "orgName": [
+                "testOrg1"
+            ]
+        },
+
 
 ### Sample Use Cases
 * ### Latency
-    Example: `userInputs/samplecc-latency-i.json`
+    Example: `sampleccInputs/samplecc-latency-i.json`
     Performs 1000 invokes (Move) with 1 process on 1 network using the sample_cc chaincode. The average of the execution result (execution time (ms)/1000 transactions) represents the latency of 1 invoke (Move).
 * ### Long run
-    Example: `userInputs/samplecc-longrun-i.json`
+    Example: `sampleccInputs/samplecc-longrun-i.json`
     Performs invokes (Move) of various payload size ranging from 1kb-2kb with 1 processes on one network using sample_cc chaincode for 72 hours at 1 transaction per second.
 * ### Concurrency
-    Example: `userInputs/samplecc-concurrency-i.json`
+    Example: `sampleccInputs/samplecc-concurrency-i.json`
     Performs invokes (Move) of 1kb payload with 50 processes on one 4-peer network using sample_cc chaincode for 10 minutes.
 * ### Complex
-    Example: `userInputs/samplecc-complex-i.json`
+    Example: `sampleccInputs/samplecc-complex-i.json`
     Performs invokes (Move) of various payload size ranging from 10kb-500kb with 10 processes on one 4-peer network using sample_cc chaincode for 10 minutes. Each invoke (Move) is followed by an invoke (Query).
 * ### More complicated scenarios
     * For multiple chaincodes deployments and transactions, configure each user input file to install and instantiate chaincodes and drive the transactions appropriately.
@@ -275,112 +254,113 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
 
 * ### Channel Operations
     For any channel activities (create or join), set transType to `Channel`:
-    ```
-    "transMode": "Simple",
-    "transType": "Channel",
-    "invokeType": "Move",
-    ```
+
+        "transMode": "Constant",
+        "transType": "Channel",
+        "invokeType": "Move",
+
     * ### Create a channel
         To create a channel, set the action in channelOpt to `create`, and set the name to the channel name. Note that orgName is ignored in this operation:
-        ```
-        "channelOpt": {
-            "name": "testchannel1",
-            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
-            "action":  "create",
-            "orgName": [
-                "testOrg1"
-            ]
-        },
-        ```
+
+            "channelOpt": {
+                "name": "testchannel1",
+                "channelTX": "/root/gopath/src/github.com/hyperledger/fabric-test/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
+                "action":  "create",
+                "orgName": [
+                    "testOrg1"
+                ]
+            },
+
     * ### Join a channel
         To join all peers in an org to a channel, set the action in channelOpt to `join`, set name to channel name, and set orgName to the list of orgs to join:
-        ```
-        "channelOpt": {
-            "name": "testchannel1",
-            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
-            "action":  "join",
-            "orgName": [
-                "testOrg1"
-            ]
-        },
-        ```
+
+            "channelOpt": {
+                "name": "testchannel1",
+                "channelTX": "/root/gopath/src/github.com/hyperledger/fabric-test/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
+                "action":  "join",
+                "orgName": [
+                    "testOrg1"
+                ]
+            },
+
 * ### Chaincode Operations
     For chaincode setup (install or instantiate) set `deploy` according to the test. For example:
-    ```
-    "deploy": {
-        "chaincodePath": "github.com/sample_cc",
-        "fcn": "init",
-        "args": []
-    },
-    ```
+
+        "deploy": {
+            "chaincodePath": "github.com/hyperledger/fabric-test/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",
+            "fcn": "init",
+            "args": []
+        },
+
     * ### Install a chaincode
         To install a chaincode, set the transType to `install`:
-        ```
-        "transMode": "Simple",
-        "transType": "install",
-        "invokeType": "Move",
-        ```
+
+            "transMode": "Constant",
+            "transType": "install",
+            "invokeType": "Move",
+
         And set channelOpt name to the channel name and orgName to a list of org names:
-        ```
-        "channelOpt":
-            "name":  "testchannel1",
-            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
-            "action":  "create",
-            "orgName": [
-                "testOrg1"
-            ]
-        },
-        ```
+
+            "channelOpt":
+                "name":  "testchannel1",
+                "channelTX": "/root/gopath/src/github.com/hyperledger/fabric-test/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
+                "action":  "create",
+                "orgName": [
+                    "testOrg1"
+                ]
+            },
+
         Note that action is ignored.
     * ### Instantiate a chaincode
         To instantiate a chaincode, set the transType to `instantiate`:
-        ```
-        "transMode": "Simple",
-        "transType": "instantiate",
-        "invokeType": "Move",
-        ```
+
+            "transMode": "Constant",
+            "transType": "instantiate",
+            "invokeType": "Move",
+
         and set channelOpt name to the channel name and specify the list of organizations that the chaincode will be instantiated:
-        ```
-        "channelOpt": {
-            "name":  "testchannel1",
-            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
-            "action":  "create",
-            "orgName": [
-                "testOrg1",
-                "testOrg3"
-            ]
-        },
-        ```
-        Note that action is ignored. PTE instantiates chaincode on all peers of each organization listed in channelOpt.orgName. **Recommendation: instantiate a chaincode on the organization before sending a transaction to any peer of that organization.**
 
-* ### Query Blockchain Information Operations
-    For any query blockchain information activities (query block), set transType to `QueryBlock`:
-    ```
-    "transMode": "Constant",
-    "transType": "QueryBlock",
-    "invokeType": "Move",
-    ```
-    * ### Query Blockchain information
+            "channelOpt": {
+                "name":  "testchannel1",
+                "channelTX": "/root/gopath/src/github.com/hyperledger/fabric-test/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
+                "action":  "create",
+                "orgName": [
+                    "testOrg1",
+                    "testOrg2"
+                ]
+            },
+
+        Note that action is ignored. PTE instantiates chaincode on all peers of each organization listed in channelOpt.orgName.
+
+        **Recommendation: instantiate a chaincode on the organization before sending a transaction to any peer of that organization.**
+
+* ### Query Blockchain Height Operations
+    For any query blockchain height activities (query block), set transType to `QueryBlock`:
+
+        "transMode": "Constant",
+        "transType": "QueryBlock",
+        "invokeType": "Move",
+
+    * ### Query Blockchain height
         To query the length (number of transactions) in blocks, set org, peer, startBlock, and endBlock in queryBlockOpt:
-        ```
-        "queryBlockOpt": {
-            "org":  "org1",
-            "peer":  "peer1",
-            "startBlock":  "195",
-            "endBlock":  "200"
-        },
 
-        ```
+            "queryBlockOpt": {
+                "org":  "org1",
+                "peer":  "peer1",
+                "startBlock":  "195",
+                "endBlock":  "200"
+            },
+
         The following is the output with startBlock=195 and endBlock=200. The output includes the block height and the number of transactions from startBlock to endBlock.
 
-        info: [PTE 0 main]: [queryBlockchainInfo] Channel queryInfo() returned block height=202
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 195:10:10
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 196:10:20
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 197:10:30
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 198:10:40
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 199:10:50
-        info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 200:10:60
-        info: [PTE 0 main]: [queryBlockchainInfo] blocks= 195:200, totalLength= 60
+            info: [PTE 0 main]: [queryBlockchainInfo] Channel queryInfo() returned block height=202
+            info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 195:10:10
+            info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 196:10:20
+            info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 197:10:30
+            info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 198:10:40
+            info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 199:10:50
+            info: [PTE 0 main]: [queryBlockchainInfo] block:Length:accu length= 200:10:60
+            info: [PTE 0 main]: [queryBlockchainInfo] blocks= 195:200, totalLength= 60
 
 
 
@@ -388,27 +368,83 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
 The following chaincodes are tested and supported:
 
 * **example02**: This is a simple chaincode with limited capability.  This chaincode is **NOT** suitable for performance benchmark.
-* **ccchecker**:  This chaincode supports variable payload sizes.
-See userInput-ccchecker.json for example of userInput file. Take the following steps to install this chaincode:
-  - `cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com`
-  - `mkdir ccchecker`
-  - download newkeyperinvoke.go into ccchecker directory
-* **sample_cc**: This chaincode supports variable (randomized) payload sizes and performs encryption and decryption on the payload. Specify ccType as ccchecker when using this chaincode.
-See userInput-samplecc.json for example of userInput file. Take the following steps to install this chaincode:
-  - `cd $GOPATH/src/github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com`
-  - `mkdir sample_cc`
-  - download chaincode_sample.go into sample_cc directory
+
+* **sample_cc**: This chaincode supports variable (randomized) payload sizes and performs encryption and decryption on the payload. Specify ccType as ccchecker when using this chaincode. See directory `sampleccInputs` for examples related to this chaincode. This chaincode is available in `$GOPATH/src/github.com/hyperledger/fabric-test/chaincodes/samplecc/go`.  Set the deploy.chaincodePath to this directory in the user input file.
+
+        "deploy": {
+            "chaincodePath": "github.com/hyperledger/fabric-test/chaincodes/samplecc/go",
+            "fcn": "init",
+            "args": []
+        },
+
+* **marbles_cc**: [Marbles chaincode](https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go/marbles02). PTE alters the marble name (the first argument) and the marble size (the third argument) for each `initMarble` transaction. Specify ccType as marblescc when using this chaincode.  See directory `marblesccInputs` for examples related to this chaincode. This chaincode is available in `$GOPATH/src/github.com/hyperledger/fabric-test/fabric/examples/chaincode/go/marbles02`.  Set the deploy.chaincodePath to this directory in the user input file.
+
+        "deploy": {
+            "chaincodePath": "github.com/hyperledger/fabric-test/fabric/examples/chaincode/go/marbles02",
+            "fcn": "init",
+            "args": []
+        },
+
 
 ## Output
-The output includes network id, process id, transaction type, total transactions, completed transactions, failed transactions, starting time, ending time, and elapsed time.
-* For example, consider a test case that has 4 processes driving a single peer. The output shows that network 0 process 0 executed 1000 moves with no failure in 406530 ms, network 0 process 1 executed 1000 moves with no failure in 400421 ms, and so on.  Note that the starting and ending timestamps are provided:
+* **Statistical Output Message**
 
-    ```
-    stdout: [Nid:id=0:3] eventRegister: completed 1000(1000) Invoke(Move) in 259473 ms, timestamp: start 1492024894518 end 1492025153991
-    stdout: [Nid:id=0:2] eventRegister: completed 1000(1000) Invoke(Move) in 364174 ms, timestamp: start 1492024894499 end 1492025258673
-    stdout: [Nid:id=0:1] eventRegister: completed 1000(1000) Invoke(Move) in 400421 ms, timestamp: start 1492024894500 end 1492025294921
-    stdout: [Nid:id=0:0] eventRegister: completed 1000(1000) Invoke(Move) in 406530 ms, timestamp: start 1492024894498 end 1492025301028
-    ```
+    The statistical output message includes PTE id, network id, channel name, org name, process id, transaction type, total transactions received and sent, elapsed time, starting time, ending time, and number of un-received events.
+
+    For example, the following is the statistical output message for a test case with 4 processes.
+
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org2:0 eventRegister] completed Rcvd(sent)=1000(1000) Invoke(Move) in 46199 ms, timestamp: start 1508185534030 end 1508185580229, #event timeout: 0
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org2:1 eventRegister] completed Rcvd(sent)=1000(1000) Invoke(Move) in 46266 ms, timestamp: start 1508185533969 end 1508185580235, #event timeout: 0
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org1:0 eventRegister] completed Rcvd(sent)=1000(1000) Invoke(Move) in 54232 ms, timestamp: start 1508185533962 end 1508185588194, #event timeout: 0
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org1:1 eventRegister] completed Rcvd(sent)=1000(1000) Invoke(Move) in 54613 ms, timestamp: start 1508185533985 end 1508185588598, #event timeout: 0
+
+* **Completed Message**
+
+    For each process, One message of `pte-exec:completed` is logged in PTE output upon the status of completion of each process. For each pte_driver.sh (each line in runCase.txt) execution, one message of `pte-main:completed` is logged in the PTE output upon completion of all associated pte_driver.sh.
+
+    * **pte-main:completed** For each runCases.txt, a `pte-main:completed` message is logged in PTE output.
+
+    * **pte-exec:completed** If PTE completed normally, then the message `pte-exec:completed` is logged.
+
+    * **pte-exec:completed:timeout** If PTE completed but with any event timeout, then the message `pte-exec:completed:timeout` is logged.
+
+    * **pte-exec:completed:error** If PTE exits due to any error, then the message `pte-exec:completed:error` is logged.
+
+
+
+
+
+    For example, if pte_mgr.sh is executed with a mgr.txt contains:
+
+        driver=pte CITest/FAB-3832-4i/samplecc/runCases-FAB-3832-4i1-TLS.txt
+
+    and runCases-FAB-3832-4i1-TLS.txt contains
+
+        sdk=node CITest/FAB-3832-4i/samplecc/samplecc-chan1-FAB-3832-4i-TLS.json
+
+    and `samplecc-chan1-FAB-3832-4i-TLS.json` contains
+
+        ...
+        "nProcPerOrg": "2",
+        ...
+        "channelOpt": {
+            ...
+            "orgName": [
+                "org1",
+                "org2"
+            ]
+        },
+
+    Then there will be 4 `pte-exec:completed` messages since there are 4 processes, 2 org and 2 processes per org. And there will be 1 `pte-main:completed` since 1 pte_driver.sh is executed (only one line of sdk=node in runCases.txt).  The completed message will be as follow:
+
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org2:0 eventRegister] pte-exec:completed
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org2:1 eventRegister] pte-exec:completed
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org1:0 eventRegister] pte-exec:completed
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org1:1 eventRegister] pte-exec:completed
+        info: [PTE 0 main]: [performance_main] pte-main:completed
+
+
+
 
 ## Reference
 
@@ -419,13 +455,14 @@ The output includes network id, process id, transaction type, total transactions
         "channelID": "_ch1",
         "chaincodeID": "sample_cc",
         "chaincodeVer": "v0",
-        "chainID": "testchainid",
         "logLevel": "ERROR",
         "invokeCheck": "TRUE",
-        "transMode": "Simple",
+        "transMode": "Constant",
         "transType": "Invoke",
         "invokeType": "Move",
         "targetPeers": "OrgAnchor",
+        "peerFailover": "TRUE",
+        "ordererFailover": "TRUE",
         "nProcPerOrg": "4",
         "nRequest": "0",
         "runDur": "600",
@@ -438,7 +475,7 @@ The output includes network id, process id, transaction type, total transactions
         },
         "channelOpt": {
             "name": "testchannel1",
-            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
+            "channelTX": "/root/gopath/src/github.com/hyperledger/fabric-test/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testorgschannel1.tx",
             "action":  "create",
             "orgName": [
                 "org1"
@@ -460,11 +497,15 @@ The output includes network id, process id, transaction type, total transactions
         },
         "listOpt": {
             "org1": ["peer1"],
-            "org2": ["peer2"]
+            "org2": ["peer1"]
         },
         "eventOpt": {
-            "register": "Transaction",
+            "listener": "Transaction",
             "timeout": "240000"
+        },
+        "failoverOpt": {
+            "method": "RoundRobin",
+            "list": "targetPeers"
         },
         "ccType": "general",
         "ccOpt": {
@@ -473,7 +514,7 @@ The output includes network id, process id, transaction type, total transactions
             "payLoadMax": "2048"
         },
         "deploy": {
-            "chaincodePath": "github.com/ccchecker",
+            "chaincodePath": "github.com/hyperledger/fabric-test/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",
             "fcn": "init",
             "args": []
         },
@@ -488,7 +529,7 @@ The output includes network id, process id, transaction type, total transactions
             }
         },
         "SCFile": [
-            {"ServiceCredentials":"SCFiles/config-local.json"}
+            {"ServiceCredentials":"SCFiles/config-chan1-TLS.json"}
         ]
     }
 
@@ -497,7 +538,6 @@ where:
 * **channelID**: channel ID for the run.
 * **chaincodeID**: chaincode ID for the run.
 * **chaincodeVer**: chaincode version.
-* **chainID**: chain ID for the run. **DO NOT CHANGE.**
 * **logLevel**: logging level for the run. Options are ERROR, DEBUG, or INFO.  Set to ERROR for performance test. The default value is ERROR.
 * **invokeCheck**: if this is TRUE, then a query will be executed for the last invoke upon the receiving of the event of the last invoke. This value is ignored for query test.
 * **transMode**: transaction mode
@@ -512,6 +552,8 @@ where:
     * **Instantiate**: instantiate chaincode
     * **QueryBlock**: query blockchain information
     * **Invoke**: invokes transaction
+* **peerFailover**: if this parameter is set to `TRUE` and if the transaction cannot be delivered to the targeted peer, then PTE will send the transaction to the next peer in the peer list, and so on.  The peer list consists of all peers in the configuration json.
+* **ordererFailover**: if this parameter is set to `TRUE` and if the transaction cannot be delivered to the targeted orderer, then PTE will send the transaction to the next orderer in the orderer list, and so on.  The orderer list consists of all orderers in the configuration json.
 * **invokeType**: invoke transaction type. This parameter is valid only if the transType is set to invoke
     * **Move**: move transaction
     * **Query**: query transaction
@@ -523,10 +565,13 @@ where:
     * **List**: only send to the peers given in listOpt, see listOpt below for details
 * **nProcPerOrg**: number of processes for the test
 * **nRequest**: number of transactions to be executed for each process
-* **runDur**: run duration in seconds to be executed if nRequest is 0
+* **runDur**: run duration in seconds to be executed  for each process.
+    * if nRequest is non-zero the nRequest is executed.
+    * if nRequest is zero and runDur is non-zero, then runDur is executed.
+    * if both nRequest and runDur are zero, then PTE runs forever.
 * **TLS**: TLS setting for the test: Disabled or Enabled.
 * **queryBlock**: query blockchain information options
-    * **org**: the org name to be queried
+    * **org**: the org to be queried
     * **peer**: the peer to be queried
     * **startBlock**: the starting block
     * **endBlock**: the ending block. If the the ending block is greater than the chain height in the peer, eBlock will be set to the chain height.
@@ -545,7 +590,7 @@ where:
 * **constantOpt**: the transactions are sent at the specified rate. This parameter is valid only the transMode is set to **Constant**.
     * **recHist**: This parameter indicates if brief history of the run will be saved.  If this parameter is set to HIST, then the output is saved into a file, namely ConstantResults.txt, under the current working directory.  Otherwise, no history is saved.
     * **constFreq**: frequency in ms for the transaction rate.
-    * **devFreq**: deviation of frequency in ms for the transaction rate. A random frequency is calculated between constFrq-devFreq and constFrq+devFreq for the next transaction.  The value is set to default value, 0, if this value is not set in the user input json file.  All transactions are sent at constant rate if this number is set to 0.
+    * **devFreq**: deviation of frequency in ms for the transaction rate. A random frequency is calculated between `constFrq-devFreq` and `constFrq+devFreq` for the next transaction.  The value is set to default value, 0, if this value is not set in the user input json file.  All transactions are sent at constant rate if this number is set to 0.
 * **listOpt**: targetPeers list of the peers that the transactions are sent. These parameters are valid only when the targetPeers is set to List. Each line includes two parameters: **org name** and **peer array within the org**, for example:
 
              "listOpt": {
@@ -553,12 +598,20 @@ where:
                  "org3": ["peer1"],
                  "org6": ["peer3"]
              }
+
 * **eventOpt**: event hub options
     * **listener**: event listener
         * **Transaction**: PTE registers a transaction listener to receive a registered transaction event. This is the default event listener.
         * **Block**: PTE registers a block listener to receive every block event on all channels. PTE will parse the received block event for the transactions sent. The block listener option applies to tranMode CONSTANT only.
         * **None**: PTE will not register any event listener.
     * **timeout**: event timeout, applied to the transaction listener only, unit ms
+* **failoverOpt**: peer failover options
+    * **method**: peer failover selection method, default is `RoundRobin`
+         * **random**: a peer is selected randomly from the list for failover
+         * **RoundRobin**: the peer listed next to the current peer is selected for failover
+    * **list**: peer failover candidate list, default is `targetPeers`
+         * **targetPeers**: the peer candidate list is the same as the peers specified in the `targetPeers`
+         * **all**: the peer candidate list is made of all peers listed in the associated service confidential file
 * **ccType**: chaincode type
     * **ccchecker**: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  The prefix of the key is made of process ID, ex, all keys issued from process 4 will have prefix of **key3_**. And, the second argument (payload) in an invoke (Move) is a random string of size ranging between payLoadMin and payLoadMax defined in ccOpt.
     * **general**: The arguments of transaction request are taken from the user input json file without any changes.
@@ -645,24 +698,71 @@ The service credentials contain the information of the network and are stored in
 
 ## Creating a local Fabric network
 - If you do not yet have the Fabric docker images in your local docker registry, please either build them from Fabric source or download them from dockerhub.
-    - `cd $GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/`
-    - `sh ./download-dockerimages.sh -c x86_64-1.0.0-alpha2 -f x86_64-1.0.0-alpha2`
+    - `cd $GOPATH/src/github.com/hyperledger/fabric-test/fabric/examples/e2e_cli/`
+    - `sh ./download-dockerimages.sh -c x86_64-1.0.0 -f x86_64-1.0.0`
 - If you do not have an existing network already, you can start a network using the Fabric e2e example:
-    - `cd $GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/`
-    - Edit `
-    - setup.sh` and change **COMPOSE_FILE**:
-        ````
-        #COMPOSE_FILE=docker-compose-cli.yaml
-        COMPOSE_FILE=docker-compose-e2e.yaml
-        ...
-        #docker logs -f cli
-       ````
+    - `cd $GOPATH/src/github.com/hyperledger/fabric-test/fabric/examples/e2e_cli/`
+    - Edit `network_setup.sh` and change **COMPOSE_FILE**:
+
+            COMPOSE_FILE=docker-compose-e2e.yaml
+
     - `./network_setup.sh up`
 - Alternatively, consider using the [NetworkLauncher](https://github.com/hyperledger/fabric-test/tree/master/tools/NL) tool:
     - `cd $GOPATH/src/github.com/hyperledger/`
     - `git clone https://github.com/hyperledger/fabric-test`
     - `cd tools/NL`
-    - `./NetworkLauncher.sh -?`
+    - `./networkLauncher.sh -?`
+
+## CI Test
+A set of predefined tests are designed for CI daily or weekly execution and are available in the directory, [CITest](https://github.com/hyperledger/fabric-test/tree/master/tools/PTE/CITest), under PTE.
+
+
+## Remote PTE
+This feature allows user to execute PTE (PTE manager and/or driver) to send transactions from remote hosts to Blockchain networks, see diagram below.
+
+![](PTE-ctlr.png)
+
+
+In order to execute PTE remotely, the PTE controller host will need to have access to the remote PTE hosts.  **In the setup below, ssh auto login without password is illustrated. However, users should choose any preferred remote access method between PTE controller host and remote PTE hosts for their environment.**
+
+* ### Usage
+    `./pte_ctlr.sh <PTE controller file>`
+
+    * Example
+
+        `./pte_ctlr.sh ctlrInputs/PTECtlr.txt`
+
+        `ctlrInputs/PTECtlr.txt` contains the list of testcases to be executed on the remote hosts. Each line is a PTE controller case and inlcude three parameters: driver type, user/host, and a script.  The available driver type is `ctlr` only.
+
+        For instance, this sample PTE controller file conatins two control testcases:
+
+            driver=ctlr pteuser@remotePTEhost.com ctlrInputs/remotePTEhost-samplecc-q.sh
+            driver=ctlr pteuser@remotePTEhost.com ctlrInputs/remotePTEhost-samplecc-i.sh
+
+
+* ### Setup
+   * On the local host where the PTE controller resides
+       * setup ssh auto login to remote systems without password. Note that users may choose a preferred method for remote access.
+       * a PTECtlr.txt file containing the controller testcases, e.g., `PTE/ctlrInputs/PTECtlr.txt`
+       * all controller testcases files, e.g., `PTE/ctlrInputs/pteHost11-samplecc-q.sh`
+   * On the remote host where the PTE manager/driver resides
+       * setup PTE
+       * contains crypto keys of the Blockchain network
+       * a script to execute PTE, e.g., `PTE/CITest/scripts/test_driver_remote.sh`, Users can create scripts for their testcases.
+   * Blockchain network
+       * can be a single host or multi hosts network
+
+* ### Setup ssh auto login without password
+   **Note that ssh is just one method for the PTE controller host to access remote PTE.  Users should choose a method suitable for their environment.**
+
+   * On PTE controller host (assuming the remote access is pteuser@remotePTEhost.com):
+       * `ssh-keygen -t rsa` (You can just hit return for each question.)
+       * `ssh pteuser@remotePTEhost.com mkdir -p .ssh`
+
+            pteuser@remotePTEhost.com's password:
+       * `cat .ssh/id_rsa.pub | ssh pteuser@remotePTEhost.com 'cat >> .ssh/authorized_keys'`
+
+            pteuser@remotePTEhost.com's password:
 
 
 ---

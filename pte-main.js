@@ -16,9 +16,11 @@
 
 /*
  *   usage:
- *      node pte-main.js <ui file> <Nid>
- *        - ui file: user input file
+ *      node pte-main.js <Nid> <uiFile> <tStart> <PTEid>
  *        - Nid: Network id
+ *        - uiFile: user input file
+ *        - tStart: tStart
+ *        - PTEid: PTE id
  */
 // This is an end-to-end test that focuses on exercising all parts of the fabric APIs
 // in a happy-path scenario
@@ -42,7 +44,6 @@ var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
 
-var gopath=process.env.GOPATH;
 
 utils.setConfigSetting('crypto-keysize', 256);
 
@@ -51,12 +52,12 @@ const child_process = require('child_process');
 var webUser = null;
 var tmp;
 var i=0;
+var procDone=0;
 
 // input: userinput json file
 var PTEid = parseInt(process.argv[5]);
 var loggerMsg='PTE ' + PTEid + ' main';
 var logger = utils.getLogger(loggerMsg);
-logger.info('GOPATH: ', gopath);
 
 var Nid = parseInt(process.argv[2]);
 var uiFile = process.argv[3];
@@ -84,12 +85,20 @@ var svcFile = uiContent.SCFile[0].ServiceCredentials;
 logger.info('svcFile; ', svcFile);
 hfc.addConfigFile(path.join(__dirname, svcFile));
 var ORGS = hfc.getConfigSetting('test-network');
+var goPath=process.env.GOPATH;
+if ( typeof(ORGS.gopath) === 'undefined' ) {
+    goPath = '';
+} else if ( ORGS.gopath == 'GOPATH') {
+    goPath = process.env['GOPATH'];
+} else {
+    goPath = ORGS.gopath;
+}
+logger.info('GOPATH: ', goPath);
 
 var users =  hfc.getConfigSetting('users');
 
 
 var transType = uiContent.transType;
-var nRequest = parseInt(uiContent.nRequest);
 var nProcPerOrg = parseInt(uiContent.nProcPerOrg);
 logger.info('nProcPerOrg ', nProcPerOrg);
 var tCurr;
@@ -120,6 +129,8 @@ var eBlock = 0;
 var qOrg ;
 var qPeer ;
 
+var testSummaryArray=[];
+
 function printChainInfo(channel) {
     logger.info('[printChainInfo] channel name: ', channel.getName());
     logger.info('[printChainInfo] orderers: ', channel.getOrderers());
@@ -131,7 +142,7 @@ function clientNewOrderer(client, org) {
     var ordererID = ORGS[org].ordererID;
     logger.info('[clientNewOrderer] org: %s, ordererID: %s', org, ordererID);
     if (TLS.toUpperCase() == 'ENABLED') {
-        var caRootsPath = ORGS['orderer'][ordererID].tls_cacerts;
+        var caRootsPath = path.join(goPath, ORGS['orderer'][ordererID].tls_cacerts);
         let data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
@@ -152,7 +163,7 @@ function chainAddOrderer(channel, client, org) {
     logger.info('[chainAddOrderer] channel name: ', channel.getName());
     var ordererID = ORGS[org].ordererID;
     if (TLS.toUpperCase() == 'ENABLED') {
-        var caRootsPath = ORGS['orderer'][ordererID].tls_cacerts;
+        var caRootsPath = path.join(goPath, ORGS['orderer'][ordererID].tls_cacerts);
         var data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
@@ -183,7 +194,7 @@ function channelAddAllPeer(chain, client) {
             for (let key in ORGS[key1]) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    data = fs.readFileSync(ORGS[key1][key].tls_cacerts);
+                    data = fs.readFileSync(path.join(goPath, ORGS[key1][key].tls_cacerts));
                     peerTmp = client.newPeer(
                         ORGS[key1][key].requests,
                         {
@@ -230,7 +241,7 @@ function channelRemoveAllPeer(channel, client) {
             for (let key in ORGS[key1]) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    data = fs.readFileSync(ORGS[key1][key].tls_cacerts);
+                    data = fs.readFileSync(path.join(goPath, ORGS[key1][key].tls_cacerts));
                     peerTmp = client.newPeer(
                         ORGS[key1][key].requests,
                         {
@@ -260,7 +271,7 @@ function channelAddAnchorPeer(channel, client, org) {
     for (let key in ORGS) {
         if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
             if (TLS.toUpperCase() == 'ENABLED') {
-                data = fs.readFileSync(ORGS[key].peer1['tls_cacerts']);
+                data = fs.readFileSync(path.join(goPath, ORGS[key].peer1['tls_cacerts']));
                 peerTmp = client.newPeer(
                     ORGS[key].peer1.requests,
                     {
@@ -308,7 +319,7 @@ function channelAddPeer(channel, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                    let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
@@ -338,7 +349,7 @@ function channelAddQIPeer(channel, client, qorg, qpeer) {
         if (ORGS[qorg].hasOwnProperty(key)) {
             if (key.indexOf(qpeer) === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(ORGS[qorg][key]['tls_cacerts']);
+                    let data = fs.readFileSync(path.join(goPath, ORGS[qorg][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[qorg][key].requests,
                         {
@@ -367,7 +378,7 @@ function channelAddPeer1(channel, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                    let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
@@ -397,7 +408,7 @@ function channelRemovePeer(channel, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                    let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
@@ -425,7 +436,7 @@ function channelAddPeerEventJoin(channel, client, org) {
                 if (ORGS[org].hasOwnProperty(key)) {
                     if (key.indexOf('peer') === 0) {
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                             targets.push(
                                 client.newPeer(
                                     ORGS[org][key].requests,
@@ -446,7 +457,7 @@ function channelAddPeerEventJoin(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -473,7 +484,7 @@ function channelAddPeerEvent(channel, client, org) {
                 if (ORGS[org].hasOwnProperty(key)) {
                     if (key.indexOf('peer') === 0) {
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                             peerTmp = client.newPeer(
                                     ORGS[org][key].requests,
                                     {
@@ -493,7 +504,7 @@ function channelAddPeerEvent(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -521,7 +532,7 @@ function channelAddEvent(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            var data = fs.readFileSync(ORGS[org][key]['tls_cacerts']);
+                            var data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -614,7 +625,9 @@ function buildChaincodeProposal(client, the_user, upgrade, transientMap) {
                 fcn: uiContent.deploy.fcn,
                 args: testDeployArgs,
                 chainId: channelName,
+
                 txId: tx_id
+
                 // use this to demonstrate the following policy:
                 // 'if signed by org1 admin, then that's the only signature required,
                 // but if that signature is missing, then the policy can also be fulfilled
@@ -1192,6 +1205,17 @@ function performance_main() {
 
                 workerProcess.stdout.on('data', function (data) {
                     logger.info('stdout: ' + data);
+                    if (data.indexOf('pte-exec:completed') > -1) {
+                        var dataStr=data.toString();
+                        var tempDataArray =dataStr.split("\n");
+                        for (var i=0; i<tempDataArray.length;i++) {
+                            if (tempDataArray[i].indexOf('pte-exec:completed') > -1) {
+                                testSummaryArray.push(tempDataArray[i]);
+                            }
+                        }
+
+
+                    }
                 });
 
                 workerProcess.stderr.on('data', function (data) {
@@ -1200,6 +1224,121 @@ function performance_main() {
 
                 workerProcess.on('close', function (code) {
                 });
+
+                workerProcess.on('exit', function (code) {
+                    procDone = procDone+1;
+                    logger.info("Child proc exited, procId=%d ,exit code=%d",procDone, code );
+
+                    if ( procDone === nProcPerOrg*channelOrgName.length ) {
+
+                        var summaryIndex;
+
+                        var maxInvokeDuration=0;
+                        var minInvokeDuration=0;
+                        var maxQueryDuration=0;
+                        var minQueryDuration=0;
+                        var maxMixedDuration=0;
+                        var minMixedDuration=0;
+                        var totalInvokeTimeout=0;
+
+                        var totalInvokeTrans=0;
+                        var totalInvokeTps=0;
+                        var totalQueryTrans=0;
+                        var totalQueryTps=0;
+                        var totalInvokeTime=0;
+                        var totalQueryTime=0;
+                        var totalMixedTPS=0;
+                        var totalMixedTime=0;
+                        var totalMixedInvoke=0;
+                        var totalMixedQuery=0;
+
+                        for (summaryIndex in testSummaryArray ) {
+                            var rawText=testSummaryArray[summaryIndex].toString();
+                            logger.info('Test Summary[%d]: %s',summaryIndex, rawText.substring(rawText.indexOf("[Nid")));
+                            if (rawText.indexOf("execTransMode")>-1) {
+                                logger.info("ERROR occurred:" +rawText);
+                                continue;
+                            };
+                            if (rawText.indexOf("execModeConstant")>-1) {
+                                logger.info("ERROR occurred:" +rawText);
+                                continue;
+                            };
+                            if (rawText.indexOf("eventRegister")>-1) {
+                                var transNum= parseInt(rawText.substring(rawText.indexOf("(sent)=")+7,rawText.indexOf("(",rawText.indexOf("(sent)=")+7)).trim());
+                                totalInvokeTrans=totalInvokeTrans+transNum;
+                                var tempTimeoutNum=parseInt(rawText.substring(rawText.indexOf("timeout:")+8).trim());
+                                totalInvokeTimeout=totalInvokeTimeout+tempTimeoutNum;
+                                var tempDur=parseInt(rawText.substring(rawText.indexOf(") in")+4,rawText.indexOf("ms")).trim());
+                                totalInvokeTime=totalInvokeTime+tempDur;
+                                if (tempDur >maxInvokeDuration ) {
+                                    maxInvokeDuration= tempDur;
+                                }
+                                if ((tempDur <minInvokeDuration ) ||(minInvokeDuration ==0) ) {
+                                    minInvokeDuration= tempDur;
+                                }
+                                var tempInvokeTps=parseInt(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
+                                if (tempInvokeTps >0 ) {
+                                    totalInvokeTps =totalInvokeTps+tempInvokeTps;
+                                }
+
+                                continue;
+                            };
+                            if (rawText.indexOf("invoke_query_mix")>-1) {
+                                var mixedTransNum= parseInt(rawText.substring(rawText.indexOf("pte-exec:completed")+18,rawText.indexOf("Invoke(move)")).trim());
+                                totalMixedInvoke=totalMixedInvoke+mixedTransNum;
+                                var mixedQueryNum=parseInt(rawText.substring(rawText.indexOf("and")+3, rawText.indexOf("Invoke(query)")).trim());
+                                totalMixedQuery=totalMixedQuery+mixedQueryNum;
+                                var tempDur=parseInt(rawText.substring(rawText.indexOf(") in")+4,rawText.indexOf("ms")).trim());
+                                totalMixedTime=totalMixedTime+tempDur;
+                                if (tempDur >maxMixedDuration ) {
+                                    maxMixedDuration= tempDur;
+                                }
+                                if ((tempDur <minMixedDuration ) ||(minMixedDuration ==0) ) {
+                                    minMixedDuration= tempDur;
+                                }
+                                var tempMixedTps=parseInt(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
+                                if (tempMixedTps >0 ) {
+                                    totalMixedTPS =totalMixedTPS+tempMixedTps;
+                                }
+
+                                continue;
+                            };
+                            if (rawText.indexOf("invoke_query_")>-1) {
+                                var queryTransNum= parseInt(rawText.substring(rawText.indexOf("pte-exec:completed")+18,rawText.indexOf("transaction",rawText.indexOf("pte-exec:completed")+18)).trim());
+                                totalQueryTrans=totalQueryTrans+queryTransNum;
+
+                                var tempDur=parseInt(rawText.substring(rawText.indexOf(") in")+4,rawText.indexOf("ms")).trim());
+                                totalQueryTime=totalQueryTime+tempDur;
+                                if (tempDur >maxQueryDuration ) {
+                                    maxQueryDuration= tempDur;
+                                }
+                                if ((tempDur <minQueryDuration ) ||(minQueryDuration ==0) ) {
+                                    minQueryDuration= tempDur;
+                                }
+                                var tempQueryTps=parseInt(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
+                                if (tempQueryTps >0 ) {
+                                    totalQueryTps =totalQueryTps+tempQueryTps;
+                                }
+
+                                continue;
+                            };
+                        }
+                        logger.info("Test Summary: Total %d Threads run completed",procDone);
+                        if (totalInvokeTrans>0) {
+                            logger.info("Test Summary:Total INVOKE transaction=%d, timeout transaction=%d, the Min duration is %d ms,the Max duration is %d ms,Avg duration=%d ms, total throughput=%d TPS", totalInvokeTrans, totalInvokeTimeout, minInvokeDuration, maxInvokeDuration,totalInvokeTime/procDone, totalInvokeTps.toFixed(2));
+                        }
+                        if (totalQueryTrans>0) {
+                            logger.info("Test Summary:Total  QUERY transaction=%d, the Min duration is %d ms,the Max duration is %d ms,Avg duration=%d ms, total throughput=%d TPS", totalQueryTrans, minQueryDuration, maxQueryDuration, totalQueryTime/procDone,totalQueryTps.toFixed(2));
+                        }
+                        if (totalMixedTPS) {
+                            logger.info("Test Summary:Total mixed transaction=%d, the Min duration is %d ms,the Max duration is %d ms,Avg duration=%d ms, total throughput=%d TPS", totalMixedInvoke+totalMixedQuery , minMixedDuration, maxMixedDuration, (totalMixedTime)/(procDone),(totalMixedTPS).toFixed(2));
+                        }
+                        logger.info('[performance_main] pte-main:completed:');
+
+                    }
+
+                });
+
             }
         } else {
             logger.error('[Nid=%d] invalid transType: %s', Nid, transType);

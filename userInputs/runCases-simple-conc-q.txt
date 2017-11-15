@@ -1,2 +1,0 @@
-sdk=node userInputs/samplecc-chan1-simple-conc-q-TLS.json
-sdk=node userInputs/samplecc-chan2-simple-conc-q-TLS.json

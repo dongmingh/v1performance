@@ -1,3 +1,0 @@
-driver=pte userInputs/runCases-constant-q1.txt
-driver=pte userInputs/runCases-constant-q2.txt
-driver=pte userInputs/runCases-constant-q3.txt

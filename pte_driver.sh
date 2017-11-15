@@ -1,6 +1,12 @@
 #!/bin/bash
 
 #
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#
 # usage: ./pte_driver.sh <user input file>
 # example: ./pte_driver.sh runCases.txt
 #
@@ -23,6 +29,7 @@ fi
 echo "$0 inFile= $inFile, tStart=$tStart iPTE=$iPTE "
 EXENODE=pte-main.js
 nInstances=0
+PIDS=""
 
 while read line
 do
@@ -73,16 +80,17 @@ function nodeProc {
     for i in ${nodeArray[@]}; do
         echo "execution: $i"
         node $EXENODE $BCN $i $tStart $iPTE &
+        PIDS="$PIDS $!"
         let BCN+=1
     done
 }
 
-# node requests
+# python requests
 function pythonProc {
     echo "python has not supported yet."
 }
 
-# node requests
+# java requests
 function javaProc {
     echo "java has not supported yet."
 }
@@ -111,4 +119,14 @@ else
     echo "no java requests"
 fi
 
-exit
+# wait for processes to complete
+RET=0
+for p in $PIDS; do
+	wait $p
+	# return the error code of the process failed last if any
+	if [ $? -ne 0 ]; then
+		RET=$?
+	fi
+done
+
+exit $RET

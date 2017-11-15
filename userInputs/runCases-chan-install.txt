@@ -1,6 +1,0 @@
-sdk=node userInputs/samplecc-chan1-install1.json
-sdk=node userInputs/samplecc-chan1-install2.json
-sdk=node userInputs/samplecc-chan2-install3.json
-sdk=node userInputs/samplecc-chan2-install4.json
-sdk=node userInputs/samplecc-chan3-install5.json
-sdk=node userInputs/samplecc-chan3-install6.json

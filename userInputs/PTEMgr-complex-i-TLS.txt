@@ -1,3 +1,0 @@
-driver=pte userInputs/runCases-complex-i1.txt
-driver=pte userInputs/runCases-complex-i2.txt
-driver=pte userInputs/runCases-complex-i3.txt
