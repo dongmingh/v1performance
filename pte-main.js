@@ -83,7 +83,7 @@ logger.info('channelOrgName.length: %d, channelOrgName: %s', channelOrgName.leng
 
 var svcFile = uiContent.SCFile[0].ServiceCredentials;
 logger.info('svcFile; ', svcFile);
-hfc.addConfigFile(path.join(__dirname, svcFile));
+hfc.addConfigFile(path.resolve(__dirname, svcFile));
 var ORGS = hfc.getConfigSetting('test-network');
 var goPath=process.env.GOPATH;
 if ( typeof(ORGS.gopath) === 'undefined' ) {
@@ -104,9 +104,24 @@ logger.info('nProcPerOrg ', nProcPerOrg);
 var tCurr;
 
 
+// default chaincode language: golang
+var language='golang';
 var testDeployArgs = [];
-for (i=0; i<uiContent.deploy.args.length; i++) {
-    testDeployArgs.push(uiContent.deploy.args[i]);
+var chaincodePath;
+function initDeploy() {
+    if ((typeof( uiContent.deploy.language ) !== 'undefined')) {
+        language=uiContent.deploy.language.toLowerCase();
+    }
+
+    for (i=0; i<uiContent.deploy.args.length; i++) {
+        testDeployArgs.push(uiContent.deploy.args[i]);
+    }
+
+    chaincodePath = uiContent.deploy.chaincodePath;
+    if ( language === 'node' ) {
+        chaincodePath = path.resolve(goPath, 'src', chaincodePath);
+    }
+    logger.info('chaincode language: %s, path: %s', language, chaincodePath)
 }
 
 var tx_id = null;
@@ -142,7 +157,7 @@ function clientNewOrderer(client, org) {
     var ordererID = ORGS[org].ordererID;
     logger.info('[clientNewOrderer] org: %s, ordererID: %s', org, ordererID);
     if (TLS.toUpperCase() == 'ENABLED') {
-        var caRootsPath = path.join(goPath, ORGS['orderer'][ordererID].tls_cacerts);
+        var caRootsPath = path.resolve(goPath, ORGS['orderer'][ordererID].tls_cacerts);
         let data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
@@ -163,7 +178,7 @@ function chainAddOrderer(channel, client, org) {
     logger.info('[chainAddOrderer] channel name: ', channel.getName());
     var ordererID = ORGS[org].ordererID;
     if (TLS.toUpperCase() == 'ENABLED') {
-        var caRootsPath = path.join(goPath, ORGS['orderer'][ordererID].tls_cacerts);
+        var caRootsPath = path.resolve(goPath, ORGS['orderer'][ordererID].tls_cacerts);
         var data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
@@ -194,7 +209,7 @@ function channelAddAllPeer(chain, client) {
             for (let key in ORGS[key1]) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    data = fs.readFileSync(path.join(goPath, ORGS[key1][key].tls_cacerts));
+                    data = fs.readFileSync(path.resolve(goPath, ORGS[key1][key].tls_cacerts));
                     peerTmp = client.newPeer(
                         ORGS[key1][key].requests,
                         {
@@ -241,7 +256,7 @@ function channelRemoveAllPeer(channel, client) {
             for (let key in ORGS[key1]) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    data = fs.readFileSync(path.join(goPath, ORGS[key1][key].tls_cacerts));
+                    data = fs.readFileSync(path.resolve(goPath, ORGS[key1][key].tls_cacerts));
                     peerTmp = client.newPeer(
                         ORGS[key1][key].requests,
                         {
@@ -271,7 +286,7 @@ function channelAddAnchorPeer(channel, client, org) {
     for (let key in ORGS) {
         if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
             if (TLS.toUpperCase() == 'ENABLED') {
-                data = fs.readFileSync(path.join(goPath, ORGS[key].peer1['tls_cacerts']));
+                data = fs.readFileSync(path.resolve(goPath, ORGS[key].peer1['tls_cacerts']));
                 peerTmp = client.newPeer(
                     ORGS[key].peer1.requests,
                     {
@@ -319,7 +334,7 @@ function channelAddPeer(channel, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                    let data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
@@ -349,7 +364,7 @@ function channelAddQIPeer(channel, client, qorg, qpeer) {
         if (ORGS[qorg].hasOwnProperty(key)) {
             if (key.indexOf(qpeer) === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(goPath, ORGS[qorg][key]['tls_cacerts']));
+                    let data = fs.readFileSync(path.resolve(goPath, ORGS[qorg][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[qorg][key].requests,
                         {
@@ -378,7 +393,7 @@ function channelAddPeer1(channel, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                    let data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
@@ -408,7 +423,7 @@ function channelRemovePeer(channel, client, org) {
         if (ORGS[org].hasOwnProperty(key)) {
             if (key.indexOf('peer') === 0) {
                 if (TLS.toUpperCase() == 'ENABLED') {
-                    let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                    let data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                     peerTmp = client.newPeer(
                         ORGS[org][key].requests,
                         {
@@ -436,7 +451,7 @@ function channelAddPeerEventJoin(channel, client, org) {
                 if (ORGS[org].hasOwnProperty(key)) {
                     if (key.indexOf('peer') === 0) {
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                            let data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                             targets.push(
                                 client.newPeer(
                                     ORGS[org][key].requests,
@@ -457,7 +472,7 @@ function channelAddPeerEventJoin(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                            let data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -484,7 +499,7 @@ function channelAddPeerEvent(channel, client, org) {
                 if (ORGS[org].hasOwnProperty(key)) {
                     if (key.indexOf('peer') === 0) {
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                            let data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                             peerTmp = client.newPeer(
                                     ORGS[org][key].requests,
                                     {
@@ -504,7 +519,7 @@ function channelAddPeerEvent(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            let data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                            let data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -532,7 +547,7 @@ function channelAddEvent(channel, client, org) {
 
                         eh=client.newEventHub();
                         if (TLS.toUpperCase() == 'ENABLED') {
-                            var data = fs.readFileSync(path.join(goPath, ORGS[org][key]['tls_cacerts']));
+                            var data = fs.readFileSync(path.resolve(goPath, ORGS[org][key]['tls_cacerts']));
                             eh.setPeerAddr(
                                 ORGS[org][key].events,
                                 {
@@ -572,8 +587,9 @@ function chaincodeInstall(channel, client, org) {
     //sendInstallProposal
     var request_install = {
         targets: targets,
-        chaincodePath: uiContent.deploy.chaincodePath,
+        chaincodePath: chaincodePath,
         chaincodeId: chaincode_id,
+        chaincodeType: language,
         chaincodeVersion: chaincode_ver
     };
 
@@ -614,18 +630,19 @@ function chaincodeInstall(channel, client, org) {
         });
 }
 
-function buildChaincodeProposal(client, the_user, upgrade, transientMap) {
+function buildChaincodeProposal(client, the_user, type, upgrade, transientMap) {
         let tx_id = client.newTransactionID();
 
         // send proposal to endorser
         var request = {
-                chaincodePath: uiContent.deploy.chaincodePath,
+                chaincodePath: chaincodePath,
                 chaincodeId: chaincode_id,
                 chaincodeVersion: chaincode_ver,
                 fcn: uiContent.deploy.fcn,
                 args: testDeployArgs,
                 chainId: channelName,
-
+                chaincodeType: type,
+                'endorsement-policy': uiContent.deploy.endorsement,
                 txId: tx_id
 
                 // use this to demonstrate the following policy:
@@ -683,12 +700,12 @@ function chaincodeInstantiate(channel, client, org) {
 
             var badTransientMap = { 'test1': 'transientValue' }; // have a different key than what the chaincode example_cc1.go expects in Init()
             var transientMap = { 'test': 'transientValue' };
-            var request = buildChaincodeProposal(client, the_user, upgrade, badTransientMap);
+            var request = buildChaincodeProposal(client, the_user, language, upgrade, badTransientMap);
             tx_id = request.txId;
 
             // sendInstantiateProposal
             //logger.info('request_instantiate: ', request_instantiate);
-            return channel.sendInstantiateProposal(request);
+            return channel.sendInstantiateProposal(request, 120000);
         },
         function(err) {
             logger.error('[chaincodeInstantiate:Nid=%d] Failed to initialize channel[%s] due to error: ', Nid,  channelName, err.stack ? err.stack : err);
@@ -795,7 +812,7 @@ function readAllFiles(dir) {
         var files = fs.readdirSync(dir);
         var certs = [];
         files.forEach((file_name) => {
-                let file_path = path.join(dir,file_name);
+                let file_path = path.resolve(dir,file_name);
                 logger.info('[readAllFiles] looking at file ::'+file_path);
                 let data = fs.readFileSync(file_path);
                 certs.push(data);
@@ -1127,6 +1144,7 @@ function performance_main() {
         var client = new hfc();
 
         if ( transType.toUpperCase() == 'INSTALL' ) {
+            initDeploy();
             var username = ORGS[org].username;
             var secret = ORGS[org].secret;
             logger.info('[performance_main] Deploy: user= %s, secret= %s', username, secret);
@@ -1156,6 +1174,7 @@ function performance_main() {
                 evtDisconnect();
             });
         } else if ( transType.toUpperCase() == 'INSTANTIATE' ) {
+            initDeploy();
             var username = ORGS[org].username;
             var secret = ORGS[org].secret;
             logger.info('[performance_main] instantiate: user= %s, secret= %s', username, secret);
@@ -1276,7 +1295,7 @@ function performance_main() {
                                 if ((tempDur <minInvokeDuration ) ||(minInvokeDuration ==0) ) {
                                     minInvokeDuration= tempDur;
                                 }
-                                var tempInvokeTps=parseInt(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
+                                var tempInvokeTps=parseFloat(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
                                 if (tempInvokeTps >0 ) {
                                     totalInvokeTps =totalInvokeTps+tempInvokeTps;
                                 }
@@ -1296,7 +1315,7 @@ function performance_main() {
                                 if ((tempDur <minMixedDuration ) ||(minMixedDuration ==0) ) {
                                     minMixedDuration= tempDur;
                                 }
-                                var tempMixedTps=parseInt(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
+                                var tempMixedTps=parseFloat(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
                                 if (tempMixedTps >0 ) {
                                     totalMixedTPS =totalMixedTPS+tempMixedTps;
                                 }
@@ -1315,7 +1334,7 @@ function performance_main() {
                                 if ((tempDur <minQueryDuration ) ||(minQueryDuration ==0) ) {
                                     minQueryDuration= tempDur;
                                 }
-                                var tempQueryTps=parseInt(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
+                                var tempQueryTps=parseFloat(rawText.substring(rawText.indexOf("Throughput=")+11,rawText.indexOf("TPS")).trim());
                                 if (tempQueryTps >0 ) {
                                     totalQueryTps =totalQueryTps+tempQueryTps;
                                 }

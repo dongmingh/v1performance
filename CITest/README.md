@@ -51,6 +51,14 @@ The command is located in `PTE/CITest/scripts`
         FAB-3811-2q: 2 processes X 10000 queries, TLS
         FAB-3807-4i: 4 processes X 10000 invokes, TLS
         FAB-3835-4q: 4 processes X 10000 queries, TLS
+        FAB-4036-2q: samplecc Node JS chaincode, 2 processes X 10000 queries, TLS, levelDB
+        FAB-4038-2i: samplecc Node JS chaincode, 2 processes X 10000 invokes, TLS, levelDB
+        FAB-7204-4i: samplecc Node JS chaincode, 4 processes X 12 hours invokes, constant mode, TLS, levelDB
+        FAB-7204-4q: samplecc Node JS chaincode, 4 processes X 100 invokes, TLS, levelDB
+        FAB-7331-4i: samplecc Node JS chaincode, 4 processes X 10000 invokes, TLS, levelDB, 1 channel, event listener: per transaction
+        FAB-7332-4i: samplecc Node JS chaincode, 4 processes X 10000 invokes, TLS, levelDB, 2 channel, event listener: per transaction
+        FAB-7329-4i: samplecc Node JS chaincode, 4 processes X 10000 invokes, TLS, levelDB, 1 channel, channel event service, event listener: per transaction
+        FAB-7246-4i: samplecc Node JS chaincode, 4 processes X 10000 invokes, TLS, levelDB, 2 channel, channel event service, event listener: per transaction
 
 
 * ### Examples
@@ -91,7 +99,19 @@ The command is located in `PTE/CITest/scripts`
         - executes test cases [FAB-3811-2q](https://jira.hyperledger.org/browse/FAB-3808) and [FAB-3808-2i](https://jira.hyperledger.org/browse/FAB-3811).
 
 
+* ### Scenarios
+    The PTE test scenarios scripts are located in directory `PTE/CITest/scenarios`.  Each script will create a network, create/join channels, install/instantiate chaincode, and execute test. The TPS results will be documented in a file, namely `result_<scenarios script>.log`, located in the `PTE/CITest/scenarios` if applicable. For example, `result_FAB-3808-2i.log` is the results of executing FAB-3808-2i.sh. The available scenarios scripts includes the following:
 
+        FAB-3807-4i.sh: execute both FAB-3807-4i and FAB-3835-4q
+        FAB-3808-2i.sh: execute both FAB-3808-2i and FAB-3811-2q
+        FAB-3832-4i.sh: execute both FAB-3832-4i and FAB-3834-4q
+        FAB-3833-2i.sh: execute both FAB-3833-2i and FAB-3810-2q
+        FAB-4038-2i.sh: execute both FAB-4038-2i and FAB-4036-2q
+        FAB-7204-4i.sh: execute FAB-7204-4i (TPS result not applicable)
+        FAB-7331-4i.sh: execute FAB-7331-4i
+        FAB-7332-4i.sh: execute FAB-7332-4i
+        FAB-7246-4i.sh: execute FAB-7246-4i
+        FAB-7329-4i.sh: execute FAB-7329-4i
 
 
 * ### Network
@@ -124,6 +144,7 @@ The following chaincodes are available:
 
 - [sample chaincode](https://github.com/hyperledger/fabric-test/tree/master/chaincodes/samplecc/go)
 - [marbles chaincode](https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go/marbles02)
+- [sample Node JS chaincode](https://github.com/hyperledger/fabric-test/tree/master/chaincodes/samplecc/node)
 
 The user can add a chaincode for his test case by following the same directory structure in `preconfig` directory.
 

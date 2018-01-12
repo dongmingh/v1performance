@@ -42,6 +42,7 @@
         "org6": ["peer1"]
     },
     "eventOpt": {
+        "type": "Channel",
         "listener": "Transaction",
         "timeout": "240000"
     },

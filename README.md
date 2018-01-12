@@ -111,7 +111,7 @@ If planning to run your Fabric network locally, you'll need docker and a bit mor
         * `npm install`
             *  you should be able to safely ignore any warnings
         *  `gulp ca`
-        *  `npm install singly-linked-list --save`
+
 
 4. Install PTE:
     - `cd $GOPATH/src/github.com/hyperledger/fabric-test/tools`
@@ -291,6 +291,26 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
             "fcn": "init",
             "args": []
         },
+    In above example, a default endorsement policy of "a signature by any member from any of the organizations corresponding to the array of member service providers" is used.
+    If the test need a specific endorsement policy when chaincode instantiate, the 'endorsement' section need be configured like below format:
+
+         "deploy": {
+             "chaincodePath": "github.com/hyperledger/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",
+             "fcn": "init",
+             "endorsement": {
+                           "identities": [
+                            { "role": { "name": "member", "mspId": "Org1MSP" }},
+                            { "role": { "name": "member", "mspId": "Org2MSP" }}
+                               ],
+                           "policy": {
+                              "2-of": [{ "signed-by": 0 }, { "signed-by": 1 }]
+                             }
+                          },
+            "args": []
+        },
+
+    The policy syntax definition in :
+        [Polciy Specification](https://fabric-sdk-node.github.io/global.html#PolicySpec)
 
     * ### Install a chaincode
         To install a chaincode, set the transType to `install`:
@@ -385,6 +405,14 @@ The following chaincodes are tested and supported:
             "args": []
         },
 
+* **sample_js**: This is the Node JS chaincode of sample_cc. See directory `samplejsInputs` for examples related to this chaincode. This chaincode is available in `$GOPATH/src/github.com/hyperledger/fabric-test/chaincodes/samplecc/node`.  Set the deploy.chaincodePath to this directory in the user input file.
+
+        "deploy": {
+            "chaincodePath": "github.com/hyperledger/fabric-test/chaincodes/samplecc/node",
+            "fcn": "init",
+            "language": "node",
+            "args": []
+        },
 
 ## Output
 * **Statistical Output Message**
@@ -444,6 +472,25 @@ The following chaincodes are tested and supported:
         info: [PTE 0 main]: [performance_main] pte-main:completed
 
 
+    When the transmode is `CONSTANT`, the latency metrics for `proposal`, `transaction` and `event` of each process are provided.  Where
+
+       * **proposal**: the time between the prosoal is sent to peers and the response is received.
+       * **transaction**: the time between the transaction is sent to orderer and response is received.
+       * **event**: the time between the event is registered, the transaction is sent to orderer, and the event is received.
+
+    The output of the latency metrics include average, minimum, and maximum of all transactions for that process.  The following is an example of the output with two processes, one targets org1 and one targets org2 with 1000 transactions each:
+
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org1:0 latency_output] peer latency stats: tx num= 1000, total time: 10240 ms, avg= 10.24 ms, min= 5 ms, max= 92 ms
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org1:0 latency_output] orderer latency stats: tx num= 1000, total time: 8735 ms, avg= 8.73 ms, min= 4 ms, max= 79 ms
+        info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org1:0 latency_output] event latency stats: tx num= 1000, total time: 837918 ms, avg= 837.92 ms, min= 307 ms, max= 2130 ms
+
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org2:0 latency_output] peer latency stats: tx num= 1000, total time: 9991 ms, avg= 9.99 ms, min= 5 ms, max= 111 ms
+        info: [PTE 0 main]: stdout: info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org2:0 latency_output] orderer latency stats: tx num= 1000, total time: 9128 ms, avg= 9.13 ms, min= 4 ms, max= 126 ms
+        info: [PTE 0 exec]: [Nid:chan:org:id=0:testorgschannel1:org2:0 latency_output] event latency stats: tx num= 1000, total time: 828433 ms, avg= 828.43 ms, min= 284 ms, max= 2195 ms
+
+
+
+
 
 
 ## Reference
@@ -500,6 +547,7 @@ The following chaincodes are tested and supported:
             "org2": ["peer1"]
         },
         "eventOpt": {
+            "type": "Channel",
             "listener": "Transaction",
             "timeout": "240000"
         },
@@ -509,13 +557,17 @@ The following chaincodes are tested and supported:
         },
         "ccType": "general",
         "ccOpt": {
+            "keyIdx": [1],
+            "keyPayLoad": [2],
             "keyStart": "5000",
+            "payLoadType": "Random",
             "payLoadMin": "1024",
             "payLoadMax": "2048"
         },
         "deploy": {
             "chaincodePath": "github.com/hyperledger/fabric-test/fabric-sdk-node/test/fixtures/src/github.com/sample_cc",
             "fcn": "init",
+            "language": "golang"
             "args": []
         },
         "invoke": {
@@ -600,11 +652,14 @@ where:
              }
 
 * **eventOpt**: event hub options
-    * **listener**: event listener
+    * **type**: event type, default: Peer
+        * **Channel**: events at channel level
+        * **Peer**: events at peer level
+    * **listener**: event listener, default: Transaction
         * **Transaction**: PTE registers a transaction listener to receive a registered transaction event. This is the default event listener.
         * **Block**: PTE registers a block listener to receive every block event on all channels. PTE will parse the received block event for the transactions sent. The block listener option applies to tranMode CONSTANT only.
         * **None**: PTE will not register any event listener.
-    * **timeout**: event timeout, applied to the transaction listener only, unit ms
+    * **timeout**: event timeout, applied to the transaction listener only, unit ms, default: 120000 ms
 * **failoverOpt**: peer failover options
     * **method**: peer failover selection method, default is `RoundRobin`
          * **random**: a peer is selected randomly from the list for failover
@@ -615,11 +670,19 @@ where:
 * **ccType**: chaincode type
     * **ccchecker**: The first argument (key) in the query and invoke request is incremented by 1 for every transaction.  The prefix of the key is made of process ID, ex, all keys issued from process 4 will have prefix of **key3_**. And, the second argument (payload) in an invoke (Move) is a random string of size ranging between payLoadMin and payLoadMax defined in ccOpt.
     * **general**: The arguments of transaction request are taken from the user input json file without any changes.
-* **ccOpt**: chaincode options
+* **ccOpt**: chaincode options, see `ccOpt` and `invoke.query` and `invoke.move` in `marblesccInputs/marblescc-chan1-constant-i-TLS.json` as an example on how to **keyIdx** and **keyPayLoad** below.
+    * **keyIdx**: a list of indexes of transaction argument used as keys
+    * **keyPayLoad**: a list of indexes of transaction argument used as payload
     * **keyStart**: the starting transaction key index, this is used when the ccType is non general which requires a unique key for each invoke.
-    * **payLoadMin**: minimum size in bytes of the payload. The payload is made of random string with various size between payLoadMin and payLoadMax.
+    * **payLoadType**: payload type
+        * **Fixed**: fixed payload with the size of payLoadMin for every trandsaction
+        * **Random**: random payload with a random size between payLoadMin and payLoadMax for every transaction
+    * **payLoadMin**: minimum size in bytes of the payload
     * **payLoadMax**: maximum size in bytes of the payload
 * **deploy**: deploy transaction contents
+    * language: the chaincode language including:
+        * **golang**: golang chaincode, this is the default language
+        * **node**: Node JS chaincode
 * **invoke** invoke transaction contents
     * **query**: query content
     * **move**: move content
@@ -702,9 +765,13 @@ The service credentials contain the information of the network and are stored in
     - `sh ./download-dockerimages.sh -c x86_64-1.0.0 -f x86_64-1.0.0`
 - If you do not have an existing network already, you can start a network using the Fabric e2e example:
     - `cd $GOPATH/src/github.com/hyperledger/fabric-test/fabric/examples/e2e_cli/`
-    - Edit `network_setup.sh` and change **COMPOSE_FILE**:
+    - Edit `network_setup.sh`
+
+        * change **COMPOSE_FILE** to
 
             COMPOSE_FILE=docker-compose-e2e.yaml
+
+        * comment out `docker logs -f cli`
 
     - `./network_setup.sh up`
 - Alternatively, consider using the [NetworkLauncher](https://github.com/hyperledger/fabric-test/tree/master/tools/NL) tool:
